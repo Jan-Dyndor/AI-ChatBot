@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: ai-chatbot
+Version: 0.1.0
+Summary: This is local AI chatbot with FastAPI backend, Streamlit UI, DB persistance and Ollama
+Requires-Python: >=3.14
+Description-Content-Type: text/markdown

@@ -1,7 +1,13 @@
 [project]
 name = "ai-chatbot"
 version = "0.1.0"
-description = "Add your description here"
+description = "This is local AI chatbot with FastAPI backend, Streamlit UI, DB persistance and Ollama"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = []
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

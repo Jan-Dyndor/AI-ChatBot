@@ -34,4 +34,6 @@ class ChatBot:
         self.history.append(ai_message)
 
 
-ai_bot = ChatBot("llama3:8b")  # This will eb changed later on Statless architecture
+ai_bot = ChatBot(
+    "llama3:8b"
+)  # This will eb changed later on Statless architecture - one object constais all history

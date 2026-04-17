@@ -5,7 +5,10 @@ description = "This is local AI chatbot with FastAPI backend, Streamlit UI, DB p
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "fastapi>=0.136.0",
     "ollama>=0.6.1",
+    "ruff>=0.15.11",
+    "uvicorn>=0.44.0",
 ]
 
 [tool.setuptools]

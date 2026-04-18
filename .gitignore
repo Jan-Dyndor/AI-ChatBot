@@ -1,10 +1,7 @@
-.vscode
-.venv
-
-*.pyc
-*.pyo
+.venv/
+.vscode/
 __pycache__/
-
+*.pyc
 .env
 *.egg-info/
 

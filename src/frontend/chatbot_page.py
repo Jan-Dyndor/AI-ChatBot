@@ -1,6 +1,5 @@
-import streamlit as st
 import requests
-
+import streamlit as st
 
 API_URL = "http://0.0.0.0:8000/v1/chat"
 
@@ -50,10 +49,13 @@ def render_chat_history() -> None:
             st.markdown(message["content"])
 
 
-def get_ai_response(user_input: str):
+def get_ai_response(user_input: str, model: str, chat_history: list[dict]):
     try:
         response = requests.post(
-            API_URL, json={"input": user_input}, timeout=120, stream=True
+            API_URL,
+            json={"input": user_input, "model": model, "chat_history": chat_history},
+            timeout=120,
+            stream=True,
         )
         response.raise_for_status()
     except requests.RequestException as e:
@@ -88,7 +90,9 @@ def main() -> None:
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 ai_response = ""
-                for chunk in get_ai_response(user_input):
+                for chunk in get_ai_response(
+                    user_input, model_name, st.session_state.messages  # type:ignore
+                ):
                     st.markdown(chunk)
                     ai_response += chunk
 

@@ -59,9 +59,13 @@ def get_ai_response(user_input: str, model: str, chat_history: list[dict]):
         )
         response.raise_for_status()
     except requests.RequestException as e:
-        return f"Error while connecting to backend: {e}"
+        return f"Error while connecting to backend: {e}"  # TODO
+    # Silent UI bugs. If return will run -> for loop will never run and UI will not get error message. UI will get emnpty generator and therefore empty model response , so user will not know whats happening.
+    # TODO What to do?
+    # 1. Create backedn application error if somethig will go wrong and pass this here as structured error ( few approaches do it at mdoel responce level or at Fastapi level later when sending data, creconsider)
+    # 2. raise Streamlit error but do not use return
 
-    for chunk in response.iter_lines(chunk_size=1024):
+    for chunk in response.iter_content(chunk_size=1024):
         yield chunk.decode("utf-8")
 
 
@@ -89,12 +93,13 @@ def main() -> None:
 
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
+                placeholder = st.empty()
                 ai_response = ""
                 for chunk in get_ai_response(
                     user_input, model_name, st.session_state.messages  # type:ignore
                 ):
-                    st.markdown(chunk)
                     ai_response += chunk
+                    placeholder.markdown(ai_response)
 
         st.session_state.messages.append(
             {

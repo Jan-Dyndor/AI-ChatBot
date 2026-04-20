@@ -4,7 +4,13 @@ version = "0.1.0"
 description = "This is local AI chatbot with FastAPI backend, Streamlit UI, DB persistance and Ollama"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "fastapi>=0.136.0",
+    "ollama>=0.6.1",
+    "ruff>=0.15.11",
+    "streamlit>=1.56.0",
+    "uvicorn>=0.44.0",
+]
 
 [tool.setuptools]
 package-dir = { "" = "src" }

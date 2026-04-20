@@ -1,6 +1,5 @@
-def main():
-    print("Hello from ai-chatbot!")
+from fastapi import FastAPI
+from backend.api.router.v1 import router
 
-
-if __name__ == "__main__":
-    main()
+app = FastAPI()
+app.include_router(router)

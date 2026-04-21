@@ -1,7 +1,8 @@
 import requests
+from backend.configuration.settings import get_settings
 import streamlit as st
 
-API_URL = "http://0.0.0.0:8000/v1/chat"
+settings = get_settings()
 
 
 def init_session_state() -> None:
@@ -52,7 +53,7 @@ def render_chat_history() -> None:
 def get_ai_response(user_input: str, model: str, chat_history: list[dict]):
     try:
         response = requests.post(
-            API_URL,
+            settings.api_url_ai_chat,
             json={"input": user_input, "model": model, "chat_history": chat_history},
             timeout=120,
             stream=True,

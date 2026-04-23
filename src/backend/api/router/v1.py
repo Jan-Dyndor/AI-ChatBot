@@ -13,9 +13,7 @@ def health():
 
 
 @router.post("/chat")
-def chat(
-    user_input: UserInput,
-):
+def chat(user_input: UserInput):
     ai_bot = ChatBot(user_input.model)
 
     return StreamingResponse(

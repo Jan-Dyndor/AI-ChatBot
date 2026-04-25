@@ -1,18 +1,18 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from backend.chat_bot.client import ChatBot
 
 
 @patch.object(ChatBot, "stream_response")
 def test_chat_streaming(
-    chatbot_instance,
+    chatbot_mock,
     client,
     happy_test_user_input_short,
     happy_model_stream_response,
     model_stream_response,
 ):
 
-    chatbot_instance.side_effect = happy_model_stream_response
+    chatbot_mock.side_effect = happy_model_stream_response
 
     response = client.post("v1/chat", json=happy_test_user_input_short)
 

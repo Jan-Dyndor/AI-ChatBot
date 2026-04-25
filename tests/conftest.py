@@ -2,9 +2,9 @@ import time
 
 import pytest
 from fastapi.testclient import TestClient
-
+from backend.configuration.settings import get_settings
 from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
-from backend.main import app
+from backend.main import create_app
 
 
 @pytest.fixture
@@ -63,6 +63,16 @@ def happy_test_user_input_long():
 
 
 @pytest.fixture
-def client():
+def test_env(monkeypatch):
+    monkeypatch.setenv("API_URL", "test_url")
+
+
+@pytest.fixture
+def client(test_env):
+    get_settings.cache_clear()
+
+    app = create_app()
     with TestClient(app=app) as client:
         yield client
+
+    get_settings.cache_clear()

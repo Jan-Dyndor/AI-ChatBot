@@ -3,6 +3,16 @@ from unittest.mock import patch
 from backend.chat_bot.client import ChatBot
 
 
+def test_chat_wrong_user_input(client, wrong_user_input_empty):
+    response = client.post("v1/chat", json=wrong_user_input_empty)
+    assert response.status_code == 422
+
+
+def test_chat_wrong_user_input_long(client, wrong_user_input_too_long):
+    response = client.post("v1/chat", json=wrong_user_input_too_long)
+    assert response.status_code == 422
+
+
 @patch.object(ChatBot, "stream_response")
 def test_chat_streaming(
     chatbot_mock,

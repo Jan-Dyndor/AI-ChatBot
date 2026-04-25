@@ -8,6 +8,24 @@ from backend.main import create_app
 
 
 @pytest.fixture
+def wrong_user_input_empty():
+    return {
+        "input": "",
+        "model": "llama3:8b",
+        "chat_history": [{"role": "assistant", "content": "example"}],
+    }
+
+
+@pytest.fixture
+def wrong_user_input_too_long():
+    return {
+        "input": "example" * 3000,
+        "model": "llama3:8b",
+        "chat_history": [{"role": "assistant", "content": "example"}],
+    }
+
+
+@pytest.fixture
 def happy_test_user_input_short():
     return UserInput(
         input="What are you?",

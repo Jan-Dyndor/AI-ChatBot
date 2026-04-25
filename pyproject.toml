@@ -9,6 +9,7 @@ dependencies = [
     "loguru>=0.7.3",
     "ollama>=0.6.1",
     "pydantic-settings>=2.14.0",
+    "pytest>=9.0.3",
     "ruff>=0.15.11",
     "streamlit>=1.56.0",
     "uvicorn>=0.44.0",

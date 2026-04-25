@@ -22,6 +22,8 @@ jobs:
     - name: Setup Python
       run: uv python install 
     - name: Install dependecies 
-      run: uv sync --locked  
+      run: |
+          uv sync --locked  
+          uv pip install -e .
     - name: Run Tests    
       run: uv run pytest

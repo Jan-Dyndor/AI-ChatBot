@@ -1,0 +1,29 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install UV
+      uses: astral-sh/setup-uv@v7
+    - name: Setup Python
+      run: uv python install 
+    - name: Install dependecies 
+      run: |
+          uv sync --locked  
+          uv pip install -e .
+    - name: Run Tests    
+      run: uv run pytest

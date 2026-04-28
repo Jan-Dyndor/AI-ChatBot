@@ -1,7 +1,7 @@
 from ollama import chat
 
 
-class ChatBot:
+class ChatBotClient:
     def __init__(
         self,
         model: str,

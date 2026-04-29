@@ -15,3 +15,5 @@ Current Scope of Project:
 - Ollama AI bot streaming responses 
 - Streamilt frontend that sends POSTs request to FastAPI endpoint. Streamlit for now takes care of whole history of chat between user-bot 
 - Logging middleware that also adds ID to header fro future tracing in case of microservices 
+- tests 
+- Clean layer architecture 

@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from backend.chat_bot.client import ChatBotClient
+from backend.service.chat_service import ChatService
 
 
 def test_chat_wrong_user_input(client, wrong_user_input_empty):
@@ -32,3 +33,22 @@ def test_chat_streaming(
 
     full_response_txt = "".join(chunks)
     assert full_response_txt.strip() == model_stream_response
+    chatbot_mock.assert_called_once()
+
+
+def test_chat_streaming_with_dependecy_override(
+    client, FakeChatService_fixture, happy_test_user_input_short
+):
+    """Functioon will test streaming with dependency override. It does not go so deep like above function"""
+
+    client.app.dependency_overrides[ChatService] = lambda: FakeChatService_fixture()
+
+    result = client.post("/v1/chat", json=happy_test_user_input_short)
+    chunks = []
+
+    for chunk in result.iter_text():
+        chunks.append(chunk)
+        print(chunk)
+
+    assert result.status_code == 200
+    assert "".join(chunks) == "I am powerfull AI! I am here to destroy you! ".strip()

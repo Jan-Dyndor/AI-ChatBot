@@ -15,6 +15,7 @@ def health():
 
 @router.post("/chat")
 def chat(user_input: UserInput, service: ChatService = Depends(ChatService)):
+
     return StreamingResponse(
         service.stream_response_from_client(
             model=user_input.model, chat_history=user_input.chat_history

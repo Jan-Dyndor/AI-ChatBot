@@ -2,8 +2,9 @@ import time
 
 import pytest
 from fastapi.testclient import TestClient
-from backend.configuration.settings import get_settings
+
 from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
+from backend.configuration.settings import get_settings
 from backend.main import create_app
 
 
@@ -77,7 +78,31 @@ def happy_test_user_input_long():
     )
 
 
-# Dependencies / clients Fixtures
+# Dependencies / clients Fixtures / classs
+
+
+@pytest.fixture
+def FakeChatService_fixture():
+    """Fixture returns callable class object that mimics the ChatService object"""
+
+    class FakeChatService:
+        def stream_response_from_client(self, model: str, chat_history: list):
+            for word in [
+                "I",
+                "am",
+                "powerfull",
+                "AI!",
+                "I",
+                "am",
+                "here",
+                "to",
+                "destroy",
+                "you!",
+            ]:
+                yield word + " "
+                time.sleep(0.01)
+
+    return FakeChatService
 
 
 @pytest.fixture
@@ -86,7 +111,9 @@ def test_env(monkeypatch):
 
 
 @pytest.fixture
-def client(test_env):
+def client(
+    test_env,
+):
     get_settings.cache_clear()
 
     app = create_app()

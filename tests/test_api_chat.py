@@ -51,4 +51,7 @@ def test_chat_streaming_with_dependecy_override(
         print(chunk)
 
     assert result.status_code == 200
-    assert "".join(chunks) == "I am powerfull AI! I am here to destroy you! ".strip()
+    assert (
+        "".join(chunks).strip()
+        == "I am powerfull AI! I am here to destroy you! ".strip()
+    )

@@ -36,9 +36,9 @@ class ChatBotClient:
 
         ai_response_content: str = ""
 
-        stream_response = chat(model=self.model, messages=chat_history, stream=True)
-
         try:
+            stream_response = chat(model=self.model, messages=chat_history, stream=True)
+
             for chunk in stream_response:
                 content_chunk = chunk.message.content
                 if content_chunk is None:
@@ -49,17 +49,17 @@ class ChatBotClient:
         except httpx.ConnectError as error:
             logger.exception(error)
             yield "\n\n\n\n\n[ERROR] Ollama is not available. Check if its running on your system"
-            raise OllamaConnectionError() from error
+            return
         except ollama.ResponseError as error:
             if error.status_code == 404:
                 logger.exception(error)
                 yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
-                raise OllamaModelError() from error
+                return
             else:
                 logger.exception(error)
                 yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}."
-                raise OllamaError() from error
+                return
         except httpx.RemoteProtocolError as error:
             yield "\n\n\n\n\n [ERROR] Ollama stopped responding and is unavailable. Check if its running on your system"
             logger.exception(error)
-            raise OllamaConnectionStoppedError() from error
+            return

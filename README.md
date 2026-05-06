@@ -69,7 +69,7 @@ Monitoring (planned):
 src/
 ├── backend/
 │   ├── api/
-│   ├── services/
+│   ├── service/
 │   ├── middleware/
 │   ├── configuration/
 │   ├── exceptions/

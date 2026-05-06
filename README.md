@@ -18,6 +18,14 @@ This project was created to explore and understand:
 - AI system design without abstraction-heavy frameworks
 
 ## How to run (Docker planned later on)
+Create a `.env` file in the root of the repository and define:
+
+```env
+API_URL=http://localhost:8000/v1/chat
+```
+
+The application uses Pydantic Settings to load environment variables from the `.env` file.
+
 Follow the command from root of the repo
 ### Backend
 ```cmd

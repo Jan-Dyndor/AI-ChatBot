@@ -3,12 +3,6 @@ import ollama
 from ollama import chat
 
 from backend.configuration.logging_config import logger
-from backend.exceptions.exc import (
-    OllamaConnectionError,
-    OllamaConnectionStoppedError,
-    OllamaError,
-    OllamaModelError,
-)
 
 
 class ChatBotClient:
@@ -19,16 +13,10 @@ class ChatBotClient:
         self.model: str = model
 
     def stream_response(self, chat_history: list):
-        """Function streams responses form LLM using Ollama
+        """Function streams responses from LLM using Ollama
 
         Args:
             chat_history (list): chat history, list of dics
-
-        Raises:
-            OllamaConnectionError: Cound not connect to Ollama
-            OllamaModelError: Wrong model name or model not downloaded
-            OllamaError: Ollama client faced some errors
-            OllamaConnectionStoppedError: Ollama client was working, connection was secured but somehow it stopped working
 
         Yields:
             _type_: strigns (LLM responses / ERROR messages)

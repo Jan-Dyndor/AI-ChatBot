@@ -1,6 +1,7 @@
 import requests
 from backend.configuration.settings import get_settings
 import streamlit as st
+from backend.configuration.logging_config import logger
 
 settings = get_settings()
 
@@ -59,15 +60,13 @@ def get_ai_response(user_input: str, model: str, chat_history: list[dict]):
             stream=True,
         )
         response.raise_for_status()
-    except requests.RequestException as e:
-        return f"Error while connecting to backend: {e}"  # TODO
-    # Silent UI bugs. If return will run -> for loop will never run and UI will not get error message. UI will get emnpty generator and therefore empty model response , so user will not know whats happening.
-    # TODO What to do?
-    # 1. Create backedn application error if somethig will go wrong and pass this here as structured error ( few approaches do it at mdoel responce level or at Fastapi level later when sending data, creconsider)
-    # 2. raise Streamlit error but do not use return
 
-    for chunk in response.iter_content(chunk_size=1024):
-        yield chunk.decode("utf-8")
+        for chunk in response.iter_content(chunk_size=1024):
+            yield chunk.decode("utf-8")
+    except requests.RequestException as e:
+        logger.exception(e)
+        yield "\n\n\n\n\n[ERROR] Backend is unavailable or stream was interrupted."
+        return
 
 
 def main() -> None:
@@ -97,7 +96,7 @@ def main() -> None:
                 placeholder = st.empty()
                 ai_response = ""
                 for chunk in get_ai_response(
-                    user_input, model_name, st.session_state.messages  # type:ignore
+                    user_input, model_name, st.session_state.messages  # type: ignore
                 ):
                     ai_response += chunk
                     placeholder.markdown(ai_response)

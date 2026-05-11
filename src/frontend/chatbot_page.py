@@ -8,15 +8,37 @@ settings = get_settings()
 
 
 def init_session_state() -> None:
+    if "conversation_id" not in st.session_state:
+        conversetion_id = requests.get(
+            "http://localhost:8000/v1/create_conversation_id"
+        )
+        conversetion_id_int = conversetion_id.json()
+        st.session_state.conversation_id = conversetion_id_int
+    # else:
+    #     conversetion_id_int = st.session_state.conversation_id
+    # TODO. what if conversation id is alreaady there?
+
     if "messages" not in st.session_state:
         st.session_state.messages = []
         try:
             chat_history = requests.get(
-                "http://localhost:8000/v1/chat_history", timeout=120
+                f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
+                timeout=120,
             )
+
+            if chat_history.status_code == 404:
+                st.session_state.messages = [
+                    {
+                        "role": "assistant",
+                        "content": "Hi! How can I help you today?",
+                    }
+                ]
+                return
             chat_history.raise_for_status()
-            for message in chat_history.json():
-                st.session_state.messages.append(message)
+            if chat_history.json():
+                for message in chat_history.json():
+                    st.session_state.messages.append(message)
+
         except requests.RequestException as e:
             logger.exception(e)
             st.session_state.messages = [  # TODO here I will add different exception maybe later on so DoConversaionID exception and different user message and later on if different error or nrew conversation I will add just standard AI content in comment
@@ -25,12 +47,6 @@ def init_session_state() -> None:
                     "content": "Hi! I coould not fetch data from out previous conversation, if its first one great, if not  issue is in the logs. How can I help you today?",
                 }
             ]
-        # st.session_state.messages = [
-        #     {
-        #         "role": "assistant",
-        #         "content": "Hi! How can I help you today?",
-        #     }
-        # ]
 
 
 # TODO If there are no chat histroy we need to start it - maybe like if that is error of not found conversation ID we will switch .  Have to figure out how to add logging and storing some ID of conversation in streamlit
@@ -51,12 +67,15 @@ def render_sidebar() -> None:
         st.markdown("---")
 
         if st.button("Clear chat"):
+            st.session_state.clear()
+            init_session_state()
             st.session_state.messages = [
                 {
                     "role": "assistant",
                     "content": "Chat cleared. How can I help you now?",
                 }
             ]
+
             st.rerun()
 
         st.markdown("---")
@@ -71,11 +90,18 @@ def render_chat_history() -> None:
             st.markdown(message["content"])
 
 
-def get_ai_response(user_input: str, model: str, chat_history: list[dict]):
+def get_ai_response(
+    user_input: str, model: str, chat_history: list[dict], conversation_id: int
+):
     try:
         response = requests.post(
             settings.api_url_ai_chat,
-            json={"input": user_input, "model": model, "chat_history": chat_history},
+            json={
+                "input": user_input,
+                "model": model,
+                "chat_history": chat_history,
+                "conversation_id": conversation_id,
+            },
             timeout=120,
             stream=True,
         )
@@ -116,7 +142,7 @@ def main() -> None:
                 placeholder = st.empty()
                 ai_response = ""
                 for chunk in get_ai_response(
-                    user_input, model_name, st.session_state.messages  # type: ignore
+                    user_input, model_name, st.session_state.messages, st.session_state.conversation_id  # type: ignore
                 ):
                     ai_response += chunk
                     placeholder.markdown(ai_response)

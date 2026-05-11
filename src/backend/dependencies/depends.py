@@ -1,8 +1,8 @@
 from fastapi import Depends
 
-from src.backend.database.db import session_factory
-from src.backend.database.repository import ChatRepository
-from src.backend.service.chat_service import ChatService
+from backend.database.db import session_factory
+from backend.database.repository import ChatRepository
+from backend.service.chat_service import ChatService
 
 
 def get_db():

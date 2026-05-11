@@ -1,36 +1,35 @@
-from src.backend.database.models import Conversations, Messages
+from backend.database.models import Conversations, Messages
+from backend.exceptions.exc import ConversationNotFound
 
 
 class ChatRepository:
     def __init__(self, db_session) -> None:
         self.db = db_session
 
-    def save_user_input(self, input):
-        # example_con = Conversations(
-        #     id=1
-        # )  # TODO temporaty id =1 , figure out latrer how to switch between conversetions so now i do not create another object
-        example_mess = Messages(conversation_id=1, role="user", content=input)
-        # self.db.add(example_con)
-        self.db.add(example_mess)
+    def create_conversation(self) -> int:
+        new_conversation = Conversations()
+        self.db.add(new_conversation)
+        self.db.commit()
+        return new_conversation.id
+
+    def save_user_input(self, input: str, conversation_id: int):
+        mess = Messages(conversation_id=conversation_id, role="user", content=input)
+        self.db.add(mess)
         self.db.commit()
 
-    def save_bot_output(self, output):
-        bot_mess = Messages(conversation_id=1, role="assistant", content=output)
+    def save_bot_output(self, output: str, conversation_id: int):
+        bot_mess = Messages(
+            conversation_id=conversation_id, role="assistant", content=output
+        )
         self.db.add(bot_mess)
         self.db.commit()
 
-    def chat_history(self):
-        conversation = self.db.query(Conversations).where(Conversations.id == 1).first()
-        # print("conversation:", conversation)
-        # print("type:", type(conversation))
-
-        # if conversation is None:
-        #     print("No conversation found")
-        #     return []
-        # role = ""
-        # print("messages:", conversation.messages)
-        # for mess in conversation.messages:
-        #     role += " " + mess.role
-        # print("messages type:", type(conversation.messages))
-        # return role
+    def chat_history(self, conversation_id):
+        conversation = (
+            self.db.query(Conversations)
+            .where(Conversations.id == conversation_id)
+            .first()
+        )
+        if conversation.messages == []:
+            raise ConversationNotFound()
         return conversation.messages

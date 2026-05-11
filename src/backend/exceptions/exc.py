@@ -28,3 +28,12 @@ class OllamaConnectionStoppedError(AppExceptions):
         super().__init__(
             message="Ollama stopped responding and is unavailable", status_code=500
         )
+
+
+# DataBase exceptions
+class ConversationNotFound(AppExceptions):
+    def __init__(self) -> None:
+        super().__init__(
+            message="Conversation with that ID does not yet stores data",
+            status_code=404,
+        )

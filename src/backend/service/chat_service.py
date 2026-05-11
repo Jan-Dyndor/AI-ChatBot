@@ -1,18 +1,16 @@
 from backend.chat_bot.client import ChatBotClient
-from src.backend.database.repository import ChatRepository
+from backend.database.repository import ChatRepository
 
 
 class ChatService:
     def __init__(self, db: ChatRepository) -> None:
         self.db = db
 
-    def show_chat_history(self):
-        # TODO narize zakladam conversation_id = 1
-        # Potem dodaj oblusge bledow
-        return self.db.chat_history()
+    def show_chat_history(self, conversation_id):
+        return self.db.chat_history(conversation_id)
 
     def stream_response_from_client(
-        self, model: str, chat_history: list, user_input: str
+        self, model: str, chat_history: list, user_input: str, conversation_id
     ):
         """Function creates ChatBotClient object with choosen model, and stream responses from LLM using yield. It also creates full model response to save it in DB.
 
@@ -25,9 +23,15 @@ class ChatService:
         """
         full_llm_response: str = ""
         client = ChatBotClient(model)
-        self.db.save_user_input(user_input)
+        self.db.save_user_input(user_input, conversation_id)
 
         for chunk in client.stream_response(chat_history=chat_history):
             full_llm_response += chunk
             yield chunk
-        self.db.save_bot_output(output=full_llm_response)
+        self.db.save_bot_output(
+            output=full_llm_response, conversation_id=conversation_id
+        )
+
+    def return_conversation_id(self):
+        # TODO mzoe nazwa bardizej create conversation ID
+        return self.db.create_conversation()

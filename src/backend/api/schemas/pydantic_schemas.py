@@ -12,3 +12,4 @@ class UserInput(BaseModel):
     input: str = Field(min_length=1, max_length=3000)
     model: Literal["llama3:8b"]
     chat_history: list[ChatMessage]
+    conversation_id: int

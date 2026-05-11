@@ -1,4 +1,4 @@
-from src.backend.database.db import Base
+from backend.database.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, Integer, String, ForeignKey
 from datetime import UTC, datetime

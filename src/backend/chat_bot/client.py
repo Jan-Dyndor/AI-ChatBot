@@ -22,8 +22,6 @@ class ChatBotClient:
             _type_: strigns (LLM responses / ERROR messages)
         """
 
-        ai_response_content: str = ""
-
         try:
             stream_response = chat(model=self.model, messages=chat_history, stream=True)
 
@@ -32,7 +30,6 @@ class ChatBotClient:
                 if content_chunk is None:
                     continue
                 else:
-                    ai_response_content += content_chunk
                     yield content_chunk
         except httpx.ConnectError as error:
             logger.exception(error)

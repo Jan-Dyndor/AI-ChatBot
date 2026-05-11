@@ -1,19 +1,39 @@
 import requests
-from backend.configuration.settings import get_settings
 import streamlit as st
+
 from backend.configuration.logging_config import logger
+from backend.configuration.settings import get_settings
 
 settings = get_settings()
 
 
 def init_session_state() -> None:
     if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {
-                "role": "assistant",
-                "content": "Hi! How can I help you today?",
-            }
-        ]
+        st.session_state.messages = []
+        try:
+            chat_history = requests.get(
+                "http://localhost:8000/v1/chat_history", timeout=120
+            )
+            chat_history.raise_for_status()
+            for message in chat_history.json():
+                st.session_state.messages.append(message)
+        except requests.RequestException as e:
+            logger.exception(e)
+            st.session_state.messages = [  # TODO here I will add different exception maybe later on so DoConversaionID exception and different user message and later on if different error or nrew conversation I will add just standard AI content in comment
+                {
+                    "role": "assistant",
+                    "content": "Hi! I coould not fetch data from out previous conversation, if its first one great, if not  issue is in the logs. How can I help you today?",
+                }
+            ]
+        # st.session_state.messages = [
+        #     {
+        #         "role": "assistant",
+        #         "content": "Hi! How can I help you today?",
+        #     }
+        # ]
+
+
+# TODO If there are no chat histroy we need to start it - maybe like if that is error of not found conversation ID we will switch .  Have to figure out how to add logging and storing some ID of conversation in streamlit
 
 
 def render_sidebar() -> None:

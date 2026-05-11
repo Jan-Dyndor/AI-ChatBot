@@ -10,7 +10,7 @@ from backend.middleware.request_id_middleware import RequestIDMiddleware
 from src.backend.database.db import Base, engine
 
 set_up_logging()
-Base.metadata.create_all(bind=engine)  # Temporarly creating DB here
+Base.metadata.create_all(bind=engine)  # TODO Temporarly creating DB here
 
 
 @asynccontextmanager

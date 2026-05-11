@@ -1,8 +1,9 @@
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ChatMessage(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     role: Literal["assistant", "user"]
     content: str
 

@@ -9,6 +9,7 @@ root = Path(__file__).resolve().parents[3]
 
 class Settings(BaseSettings):
     api_url_ai_chat: str = Field(validation_alias="API_URL")
+    api_url_chat_history: str = Field(validation_alias="API_CHAT_HISTORY")
 
     model_config = SettingsConfigDict(
         env_file=root / ".env",
@@ -18,4 +19,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type:ignore
+    return Settings()  # type: ignore

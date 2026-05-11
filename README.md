@@ -22,6 +22,7 @@ Create a `.env` file in the root of the repository and define:
 
 ```env
 API_URL=http://localhost:8000/v1/chat
+API_CHAT_HISTORY="http://localhost:8000/v1/chat_history"
 ```
 
 The application uses Pydantic Settings to load environment variables from the `.env` file.

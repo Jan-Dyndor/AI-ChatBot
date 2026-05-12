@@ -12,9 +12,13 @@ from backend.database.db import Base, engine
 set_up_logging()
 
 
+def create_db():
+    Base.metadata.create_all(bind=engine)  # create DB
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)  # create DB
+    create_db()
     get_settings.cache_clear()
     # Before app starts
     get_settings()  # read .env file

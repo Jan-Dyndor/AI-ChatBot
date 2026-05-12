@@ -10,11 +10,11 @@ from backend.middleware.request_id_middleware import RequestIDMiddleware
 from backend.database.db import Base, engine
 
 set_up_logging()
-Base.metadata.create_all(bind=engine)  # TODO Temporarly creating DB here
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)  # create DB
     get_settings.cache_clear()
     # Before app starts
     get_settings()  # read .env file

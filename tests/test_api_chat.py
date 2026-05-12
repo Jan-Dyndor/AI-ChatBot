@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from backend.chat_bot.client import ChatBotClient
+from backend.dependencies.depends import get_db
 from backend.service.chat_service import ChatService
 
 
@@ -36,12 +37,17 @@ def test_chat_streaming(
     chatbot_mock.assert_called_once()
 
 
+@patch.object(ChatBotClient, "stream_response")
 def test_chat_streaming_with_dependecy_override(
-    client, FakeChatService_fixture, happy_test_user_input_short
+    chatbot_mock,
+    client,
+    happy_test_user_input_short,
+    db_session_override,
+    happy_model_stream_response,
 ):
     """Functioon will test streaming with dependency override. It does not go so deep like above function"""
-
-    client.app.dependency_overrides[ChatService] = lambda: FakeChatService_fixture()
+    client.app.dependency_overrides[get_db] = db_session_override
+    chatbot_mock.side_effect = happy_model_stream_response
 
     result = client.post("/v1/chat", json=happy_test_user_input_short)
     chunks = []
@@ -55,3 +61,4 @@ def test_chat_streaming_with_dependecy_override(
         "".join(chunks).strip()
         == "I am powerfull AI! I am here to destroy you! ".strip()
     )
+    client.app.dependency_overrides.clear()

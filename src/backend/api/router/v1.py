@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 
 from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
 from backend.service.chat_service import ChatService
-from backend.dependencies.depends import get_chat_service, get_db
+from backend.dependencies.depends import get_chat_service
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 

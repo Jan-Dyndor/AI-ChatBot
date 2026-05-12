@@ -8,10 +8,7 @@ def register_exception_handlers(app: FastAPI):
 
     @app.exception_handler(AppExceptions)
     async def app_exception_handler(request: Request, exc: AppExceptions):
-        logger.info(
-            "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
-        )
-
+        logger.warning(f"Exception ocured - {exc}")
         return JSONResponse(
             status_code=exc.status_code, content={"message": exc.message}
         )

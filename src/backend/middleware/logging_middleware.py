@@ -24,6 +24,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             duration = (time.perf_counter() - start) * 1000
 
             logger.info(
-                f"Streaming response started for  {method} {path} with status {response.status_code} in {duration:.2f}"
+                f"Response started for  {method} {path} with status {response.status_code} in {duration:.2f}"
             )
             return response

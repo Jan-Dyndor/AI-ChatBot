@@ -14,9 +14,6 @@ def init_session_state() -> None:
         )
         conversetion_id_int = conversetion_id.json()
         st.session_state.conversation_id = conversetion_id_int
-    # else:
-    #     conversetion_id_int = st.session_state.conversation_id
-    # TODO. what if conversation id is alreaady there?
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -34,6 +31,7 @@ def init_session_state() -> None:
                     }
                 ]
                 return
+
             chat_history.raise_for_status()
             if chat_history.json():
                 for message in chat_history.json():
@@ -41,15 +39,12 @@ def init_session_state() -> None:
 
         except requests.RequestException as e:
             logger.exception(e)
-            st.session_state.messages = [  # TODO here I will add different exception maybe later on so DoConversaionID exception and different user message and later on if different error or nrew conversation I will add just standard AI content in comment
+            st.session_state.messages = [
                 {
                     "role": "assistant",
-                    "content": "Hi! I coould not fetch data from out previous conversation, if its first one great, if not  issue is in the logs. How can I help you today?",
+                    "content": "Hi! I could not fetch data from our previous conversation. Issue occured (details in fastAPI server logs). New conversation has started. How can I help you today?",
                 }
-            ]
-
-
-# TODO If there are no chat histroy we need to start it - maybe like if that is error of not found conversation ID we will switch .  Have to figure out how to add logging and storing some ID of conversation in streamlit
+            ]  # TODO check if it really starts new conversetion or not
 
 
 def render_sidebar() -> None:

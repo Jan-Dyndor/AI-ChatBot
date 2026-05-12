@@ -2,7 +2,6 @@ from unittest.mock import patch
 
 from backend.chat_bot.client import ChatBotClient
 from backend.dependencies.depends import get_db
-from backend.service.chat_service import ChatService
 
 
 def test_chat_wrong_user_input(client, wrong_user_input_empty):
@@ -22,8 +21,9 @@ def test_chat_streaming(
     happy_test_user_input_short,
     happy_model_stream_response,
     model_stream_response,
+    db_session_override,
 ):
-
+    client.app.dependency_overrides[get_db] = db_session_override
     chatbot_mock.side_effect = happy_model_stream_response
 
     response = client.post("v1/chat", json=happy_test_user_input_short)
@@ -35,6 +35,7 @@ def test_chat_streaming(
     full_response_txt = "".join(chunks)
     assert full_response_txt.strip() == model_stream_response
     chatbot_mock.assert_called_once()
+    client.app.dependency_overrides.clear()
 
 
 @patch.object(ChatBotClient, "stream_response")

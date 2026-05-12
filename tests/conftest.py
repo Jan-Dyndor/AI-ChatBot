@@ -3,6 +3,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
 from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
@@ -112,7 +113,11 @@ def FakeChatService_fixture():
 
 @pytest.fixture
 def create_db_fixture():
-    engine_in_memory = create_engine("sqlite:///:memory")
+    engine_in_memory = create_engine(
+        "sqlite:///:memory:",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
     Base.metadata.create_all(bind=engine_in_memory)
     session_factory = sessionmaker(
         bind=engine_in_memory, autoflush=False, autocommit=False

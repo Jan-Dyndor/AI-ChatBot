@@ -10,6 +10,7 @@ root = Path(__file__).resolve().parents[3]
 class Settings(BaseSettings):
     api_url_ai_chat: str = Field(validation_alias="API_URL")
     api_url_chat_history: str = Field(validation_alias="API_CHAT_HISTORY")
+    db_url: str = Field(validation_alias="DB_URL")
 
     model_config = SettingsConfigDict(
         env_file=root / ".env",

@@ -2,13 +2,9 @@ import time
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.pool import StaticPool
-from sqlalchemy.orm import sessionmaker
 
 from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
 from backend.configuration.settings import get_settings
-from backend.database.db import Base
 from backend.main import create_app
 
 
@@ -111,47 +107,50 @@ def FakeChatService_fixture():
     return FakeChatService
 
 
-@pytest.fixture
-def create_db_fixture():
-    engine_in_memory = create_engine(
-        "sqlite:///:memory:",
-        poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
-    )
-    Base.metadata.create_all(bind=engine_in_memory)
-    session_factory = sessionmaker(
-        bind=engine_in_memory, autoflush=False, autocommit=False
-    )
+# @pytest.fixture
+# def create_db_fixture():
+#     engine_in_memory = create_engine(
+#         "sqlite:///:memory:",
+#         poolclass=StaticPool,
+#         connect_args={"check_same_thread": False},
+#     )
+#     Base.metadata.create_all(bind=engine_in_memory)
+#     session_factory = sessionmaker(
+#         bind=engine_in_memory, autoflush=False, autocommit=False
+#     )
 
-    return session_factory
-
-
-@pytest.fixture()
-def db_session_override(create_db_fixture):
-    """When Pytest sees yield it do all the code  before yield in fixture even before the code in test runs.
-    That leads to situation when
-        client.app.dependency_overrides[get_db] = db_session_override is equal  to
-        client.app.dependency_overrides[get_db] = db
-    And FastAPI expects Dependes to be callable and tries to call db() but its not callable.
-
-    We need to wrap function that yields db_session and return it so FastAPI will get a callable and that collable will return yield bd
+#     return session_factory
 
 
-    """
+# @pytest.fixture()
+# def db_session_override(create_db_fixture):
+#     """When Pytest sees yield it do all the code  before yield in fixture even before the code in test runs.
+#     That leads to situation when
+#         client.app.dependency_overrides[get_db] = db_session_override is equal  to
+#         client.app.dependency_overrides[get_db] = db
+#     And FastAPI expects Dependes to be callable and tries to call db() but its not callable.
 
-    def get_db_session():
-        db = create_db_fixture()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    return get_db_session
+#     We need to wrap function that yields db_session and return it so FastAPI will get a callable and that collable will return yield bd
 
 
+#     """
+
+#     def get_db_session():
+#         db = create_db_fixture()
+#         try:
+#             yield db
+#         finally:
+#             db.close()
+
+#     return get_db_session
+
+
+# TODO skoro zrobilem teraz ze cala baza danych jest tworzona w lifespan i tam jest engine + sessionamker, jedyne co mam zmeinci to tyko URL do DB. I nawet juz nie potrzebuje dependency override.  Ale problem jest taki ze moje test database potrzebuje troszke inncyh ustawien np poolclass=StaticPool,
+#         connect_args={"check_same_thread": False}
 @pytest.fixture
 def test_env(monkeypatch):
     monkeypatch.setenv("API_URL", "test_url")
+    monkeypatch.setenv("DB_URL", "sqlite:///:memory:")
 
 
 @pytest.fixture

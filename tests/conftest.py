@@ -151,6 +151,8 @@ def FakeChatService_fixture():
 def test_env(monkeypatch):
     monkeypatch.setenv("API_URL", "test_url")
     monkeypatch.setenv("DB_URL", "sqlite:///:memory:")
+    monkeypatch.setenv("API_CHAT_HISTORY", "test_history_url")
+
     get_settings.cache_clear()
 
 

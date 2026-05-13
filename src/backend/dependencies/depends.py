@@ -1,17 +1,17 @@
-from fastapi import Depends
+from fastapi import Depends, Request
 
-from backend.database.db import session_factory
 from backend.database.repository import ChatRepository
 from backend.service.chat_service import ChatService
 
 
-def get_db():
+def get_db(request: Request):
     """Function uses sesionmaker to return DB session object
 
     Yields:
         _type_: session object
     """
-    db = session_factory()
+
+    db = request.app.state.session_maker()
     try:
         yield db
     finally:

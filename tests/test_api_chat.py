@@ -21,9 +21,9 @@ def test_chat_streaming(
     happy_test_user_input_short,
     happy_model_stream_response,
     model_stream_response,
-    db_session_override,
+    # db_session_override,
 ):
-    client.app.dependency_overrides[get_db] = db_session_override
+    # client.app.dependency_overrides[get_db] = db_session_override
     chatbot_mock.side_effect = happy_model_stream_response
 
     response = client.post("v1/chat", json=happy_test_user_input_short)
@@ -43,11 +43,11 @@ def test_chat_streaming_with_dependecy_override(
     chatbot_mock,
     client,
     happy_test_user_input_short,
-    db_session_override,
+    # db_session_override,
     happy_model_stream_response,
 ):
     """Functioon will test streaming with dependency override. It does not go so deep like above function"""
-    client.app.dependency_overrides[get_db] = db_session_override
+    # client.app.dependency_overrides[get_db] = db_session_override
     chatbot_mock.side_effect = happy_model_stream_response
 
     result = client.post("/v1/chat", json=happy_test_user_input_short)

@@ -145,8 +145,6 @@ def FakeChatService_fixture():
 #     return get_db_session
 
 
-# TODO skoro zrobilem teraz ze cala baza danych jest tworzona w lifespan i tam jest engine + sessionamker, jedyne co mam zmeinci to tyko URL do DB. I nawet juz nie potrzebuje dependency override.  Ale problem jest taki ze moje test database potrzebuje troszke inncyh ustawien np poolclass=StaticPool,
-#         connect_args={"check_same_thread": False}
 @pytest.fixture
 def test_env(monkeypatch):
     monkeypatch.setenv("API_URL", "test_url")

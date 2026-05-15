@@ -32,6 +32,5 @@ class ChatService:
             output=full_llm_response, conversation_id=conversation_id
         )
 
-    def return_conversation_id(self):
-        # TODO mzoe nazwa bardizej create conversation ID
+    def create_conversation(self) -> int:
         return self.db.create_conversation()

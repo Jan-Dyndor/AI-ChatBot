@@ -1,4 +1,5 @@
 from sqlalchemy.exc import SQLAlchemyError
+from loguru import logger
 
 from backend.database.models import Conversations, Messages
 from backend.exceptions.exc import (
@@ -13,6 +14,7 @@ class ChatRepository:
         self.db = db_session
 
     def create_conversation(self) -> int:
+
         new_conversation = Conversations()
         self.db.add(new_conversation)
         try:
@@ -58,6 +60,8 @@ class ChatRepository:
             raise DataBaseResourceNotFound()
 
         if conversation.messages == []:
-            raise ConversationNotFound()
+            logger.info(
+                f"Conversation with ID {conversation_id} does not yet stores data"
+            )
 
         return conversation.messages

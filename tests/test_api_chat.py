@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 from backend.chat_bot.client import ChatBotClient
-from backend.dependencies.depends import get_db
 
 
 def test_chat_wrong_user_input(client, wrong_user_input_empty):

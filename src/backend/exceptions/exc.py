@@ -35,5 +35,17 @@ class ConversationNotFound(AppExceptions):
     def __init__(self) -> None:
         super().__init__(
             message="Conversation with that ID does not yet stores data",
-            status_code=404,
+            status_code=200,
+        )
+
+
+class DataBaseError(AppExceptions):
+    def __init__(self) -> None:
+        super().__init__(message="Database operation failed", status_code=500)
+
+
+class DataBaseResourceNotFound(AppExceptions):
+    def __init__(self):
+        super().__init__(
+            message="Database cound not find given resource", status_code=404
         )

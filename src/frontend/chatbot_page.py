@@ -12,6 +12,7 @@ def init_session_state() -> None:
         conversetion_id = requests.get(
             "http://localhost:8000/v1/create_conversation_id"
         )
+
         conversetion_id_int = conversetion_id.json()
         st.session_state.conversation_id = conversetion_id_int
 
@@ -22,20 +23,18 @@ def init_session_state() -> None:
                 f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
                 timeout=120,
             )
-
-            if chat_history.status_code == 404:
+            messages = chat_history.json()
+            chat_history.raise_for_status()
+            if messages:
+                for message in chat_history.json():
+                    st.session_state.messages.append(message)
+            else:
                 st.session_state.messages = [
                     {
                         "role": "assistant",
                         "content": "Hi! How can I help you today?",
                     }
                 ]
-                return
-
-            chat_history.raise_for_status()
-            if chat_history.json():
-                for message in chat_history.json():
-                    st.session_state.messages.append(message)
 
         except requests.RequestException as e:
             logger.exception(e)

@@ -1,9 +1,8 @@
-from sqlalchemy.exc import SQLAlchemyError
 from loguru import logger
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.models import Conversations, Messages
 from backend.exceptions.exc import (
-    ConversationNotFound,
     DataBaseError,
     DataBaseResourceNotFound,
 )
@@ -14,7 +13,14 @@ class ChatRepository:
         self.db = db_session
 
     def create_conversation(self) -> int:
+        """Function creates new conversation and saves it into DB
 
+        Raises:
+            DataBaseError: Custom exception that FastAPI error handler will catch
+
+        Returns:
+            int: conversation ID to frontend
+        """
         new_conversation = Conversations()
         self.db.add(new_conversation)
         try:
@@ -26,6 +32,15 @@ class ChatRepository:
         return new_conversation.id
 
     def save_user_input(self, input: str, conversation_id: int):
+        """Function saves user query to ChatBot
+
+        Args:
+            input (str): user query
+            conversation_id (int): ID of conversation the User and Bot participate in
+
+        Raises:
+            DataBaseError: Custom exception that FastAPI error handler will catch
+        """
         mess = Messages(conversation_id=conversation_id, role="user", content=input)
         self.db.add(mess)
         try:
@@ -35,6 +50,15 @@ class ChatRepository:
             raise DataBaseError() from error
 
     def save_bot_output(self, output: str, conversation_id: int):
+        """Function saves Bot answer to user query
+
+        Args:
+            output (str): Bot answer
+            conversation_id (int): ID of conversation the User and Bot participate in
+
+        Raises:
+            DataBaseError: Custom exception that FastAPI error handler will catch
+        """
         bot_mess = Messages(
             conversation_id=conversation_id, role="assistant", content=output
         )
@@ -46,6 +70,18 @@ class ChatRepository:
             raise DataBaseError() from error
 
     def chat_history(self, conversation_id):
+        """Function returns chat history between User and Bot
+
+        Args:
+            conversation_id (int): ID of conversation the User and Bot participate in
+
+        Raises:
+            DataBaseError: Custom exception that FastAPI error handler will catch
+            DataBaseResourceNotFound: Did not found the resource. Custom exception that FastAPI error handler will catch.
+
+        Returns:
+            _type_: _description_
+        """
         try:
             conversation = (
                 self.db.query(Conversations)

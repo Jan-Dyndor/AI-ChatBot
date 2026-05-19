@@ -17,6 +17,12 @@ def init_session_state() -> None:
             conversetion_id.raise_for_status()
             conversetion_id_int = conversetion_id.json()
             st.session_state.conversation_id = conversetion_id_int
+            st.session_state.messages = [
+                {
+                    "role": "assistant",
+                    "content": "Hi! How can I help you today?",
+                }
+            ]
 
         except requests.RequestException as error:
             disable_conversation()
@@ -27,12 +33,6 @@ def init_session_state() -> None:
                     "content": "Hello. Could not create new conversation - check the logs of application. Try to reload the page. Now your are unable to write.",
                 }
             ]
-        st.session_state.messages = [
-            {
-                "role": "assistant",
-                "content": "Hi! How can I help you today?",
-            }
-        ]
 
     else:
         if "messages" not in st.session_state:
@@ -63,8 +63,6 @@ def init_session_state() -> None:
                         "content": "Hi! I could not fetch data from our previous conversation. Issue occured (details in FastAPI server logs or Streamlit logs). New conversation has started. How can I help you today?",
                     }
                 ]  # TODO check if it really starts new conversetion or not
-
-    # ================================================
 
 
 def get_conversation_history_ids() -> list[int] | int | None:

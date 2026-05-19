@@ -107,7 +107,6 @@ class ChatRepository:
             conversations = (
                 self.db.query(Conversations.id)
                 .order_by(Conversations.updated_at.desc())
-                .offset(1)
                 .limit(10)
             ).all()  # TODO Temporary limit 10, later add not to include the first one since it may be the current conversation
 

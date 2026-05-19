@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
-from backend.service.chat_service import ChatService
 from backend.dependencies.depends import get_chat_service
+from backend.service.chat_service import ChatService
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 
@@ -37,8 +37,8 @@ def chat_history(
     return service.show_chat_history(conversation_id)
 
 
-@router.get("/create_conversation_id")
-def get_conversation_id(
+@router.get("/create_conversation")
+def create_conversation(
     id: int | None = None, service: ChatService = Depends(get_chat_service)
-):
-    return service.return_conversation_id()
+) -> int:
+    return service.create_conversation()

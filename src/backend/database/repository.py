@@ -101,3 +101,21 @@ class ChatRepository:
             )
 
         return conversation.messages
+
+    def user_lates_conversations_ids(self):
+        try:
+            conversations = (
+                self.db.query(Conversations.id)
+                .order_by(Conversations.updated_at.desc())
+                .offset(1)
+                .limit(10)
+            ).all()  # TODO Temporary limit 10, later add not to include the first one since it may be the current conversation
+
+            conversations_ids = [db_object[0] for db_object in conversations]
+        except SQLAlchemyError as error:
+            self.db.rollback()
+            raise DataBaseError() from error
+
+        if not conversations_ids:
+            raise DataBaseResourceNotFound()
+        return conversations_ids

@@ -27,35 +27,64 @@ def init_session_state() -> None:
                     "content": "Hello. Could not create new conversation - check the logs of application. Try to reload the page. Now your are unable to write.",
                 }
             ]
+        st.session_state.messages = [
+            {
+                "role": "assistant",
+                "content": "Hi! How can I help you today?",
+            }
+        ]
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-        try:
-            chat_history = requests.get(
-                f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
-                timeout=120,
-            )
-            messages = chat_history.json()
-            chat_history.raise_for_status()
-            if messages:
-                for message in chat_history.json():
-                    st.session_state.messages.append(message)
-            else:
+    else:
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+            try:
+                chat_history = requests.get(
+                    f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
+                    timeout=120,
+                )
+                messages = chat_history.json()
+                chat_history.raise_for_status()
+                if messages:
+                    for message in chat_history.json():
+                        st.session_state.messages.append(message)
+                else:
+                    st.session_state.messages = [
+                        {
+                            "role": "assistant",
+                            "content": "Hi! How can I help you today?",
+                        }
+                    ]
+
+            except requests.RequestException as e:
+                logger.exception(e)
                 st.session_state.messages = [
                     {
                         "role": "assistant",
-                        "content": "Hi! How can I help you today?",
+                        "content": "Hi! I could not fetch data from our previous conversation. Issue occured (details in FastAPI server logs or Streamlit logs). New conversation has started. How can I help you today?",
                     }
-                ]
+                ]  # TODO check if it really starts new conversetion or not
 
-        except requests.RequestException as e:
-            logger.exception(e)
-            st.session_state.messages = [
-                {
-                    "role": "assistant",
-                    "content": "Hi! I could not fetch data from our previous conversation. Issue occured (details in fastAPI server logs). New conversation has started. How can I help you today?",
-                }
-            ]  # TODO check if it really starts new conversetion or not
+    # ================================================
+
+
+def get_conversation_history_ids() -> list[int] | int | None:
+    """Function send GET request to DB and gives back defoult value of latest user conversations IDs
+    Returns:
+        list[int] | int | None: When 200 response it gives back list of converssations. If 404 - no conversetions yet found return 0 to inform user. If Error occured return None.
+    """
+    try:
+        ids_obj = requests.get(
+            "http://localhost:8000/v1/get_conversations_ids",
+            timeout=120,
+        )
+        if ids_obj.status_code == 404:
+            return 0
+        ids_obj.raise_for_status()
+        ids_result = ids_obj.json()
+        return ids_result
+    except requests.RequestException as ex:
+        logger.exception(ex)
+        return None
 
 
 def render_sidebar() -> None:
@@ -69,10 +98,25 @@ def render_sidebar() -> None:
             options=["llama3:8b"],
             index=0,
         )
+        conversations = get_conversation_history_ids()
+        if conversations:
+            st.subheader("Go back to previous conversations (Latest 10 by defoult)")
+            for conversation_id_history in conversations:  # type: ignore
+                if st.button(str(conversation_id_history)):
+                    st.session_state.clear()
+                    st.session_state.conversation_id = conversation_id_history
+                    init_session_state()
+                    st.rerun()
+        elif conversations == 0:
+            st.subheader("No previous conversations found")
+        else:
+            st.subheader(
+                "Exception occured - could not download the chat history. Check logs"
+            )
 
         st.markdown("---")
 
-        if st.button("Clear chat"):
+        if st.button("Start new chat"):
             st.session_state.clear()
             init_session_state()
             st.session_state.messages = [

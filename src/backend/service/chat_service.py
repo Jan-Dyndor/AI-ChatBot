@@ -6,6 +6,9 @@ class ChatService:
     def __init__(self, db: ChatRepository) -> None:
         self.db = db
 
+    def lates_conversations_ids(self):
+        return self.db.user_lates_conversations_ids()
+
     def show_chat_history(self, conversation_id):
         return self.db.chat_history(conversation_id)
 
@@ -33,4 +36,9 @@ class ChatService:
         )
 
     def create_conversation(self) -> int:
+        """Function creates new conversation, saves it to DB and returns conversation ID so frontend cas attach new messages to it
+
+        Returns:
+            int: Conversation ID
+        """
         return self.db.create_conversation()

@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from backend.chat_bot.client import ChatBotClient
+from backend.database.models import Conversations, Messages
 
 
 def test_chat_wrong_user_input(client, wrong_user_input_empty):
@@ -24,6 +25,11 @@ def test_chat_streaming(
 ):
     # client.app.dependency_overrides[get_db] = db_session_override
     chatbot_mock.side_effect = happy_model_stream_response
+    conversation_example = Conversations()
+    db_session = client.app.state.session_maker()
+    db_session.add(conversation_example)
+    db_session.commit()
+    db_session.refresh(conversation_example)
 
     response = client.post("v1/chat", json=happy_test_user_input_short)
 
@@ -47,6 +53,12 @@ def test_chat_streaming_with_dependecy_override(
 ):
     """Functioon will test streaming with dependency override. It does not go so deep like above function"""
     # client.app.dependency_overrides[get_db] = db_session_override
+    conversation_example = Conversations()
+    db_session = client.app.state.session_maker()
+    db_session.add(conversation_example)
+    db_session.commit()
+    db_session.refresh(conversation_example)
+
     chatbot_mock.side_effect = happy_model_stream_response
 
     result = client.post("/v1/chat", json=happy_test_user_input_short)
@@ -54,11 +66,11 @@ def test_chat_streaming_with_dependecy_override(
 
     for chunk in result.iter_text():
         chunks.append(chunk)
-        print(chunk)
 
     assert result.status_code == 200
     assert (
         "".join(chunks).strip()
         == "I am powerfull AI! I am here to destroy you! ".strip()
     )
-    client.app.dependency_overrides.clear()
+    # client.app.dependency_overrides.clear()
+    db_session.close()

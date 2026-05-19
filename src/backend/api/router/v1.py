@@ -42,3 +42,10 @@ def create_conversation(
     id: int | None = None, service: ChatService = Depends(get_chat_service)
 ) -> int:
     return service.create_conversation()
+
+
+@router.get("/get_conversations_ids")
+def get_conversetions_ids(
+    service: ChatService = Depends(get_chat_service),
+) -> list[int]:
+    return service.lates_conversations_ids()

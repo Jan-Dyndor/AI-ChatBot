@@ -1,3 +1,6 @@
+from datetime import UTC
+from datetime import datetime as dt
+
 from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -42,7 +45,14 @@ class ChatRepository:
             DataBaseError: Custom exception that FastAPI error handler will catch
         """
         mess = Messages(conversation_id=conversation_id, role="user", content=input)
+        conversation = (
+            self.db.query(Conversations)
+            .where(Conversations.id == conversation_id)
+            .first()
+        )
+        conversation.updated_at = dt.now(tz=UTC)
         self.db.add(mess)
+        self.db.add(conversation)
         try:
             self.db.commit()
         except SQLAlchemyError as error:
@@ -50,7 +60,7 @@ class ChatRepository:
             raise DataBaseError() from error
 
     def save_bot_output(self, output: str, conversation_id: int):
-        """Function saves Bot answer to user query
+        """Function saves Bot answer to user query and updates Conversation 'update_at' column in ordrer to better filter data
 
         Args:
             output (str): Bot answer
@@ -62,7 +72,16 @@ class ChatRepository:
         bot_mess = Messages(
             conversation_id=conversation_id, role="assistant", content=output
         )
+
+        conversation = (
+            self.db.query(Conversations)
+            .where(Conversations.id == conversation_id)
+            .first()
+        )
+        conversation.updated_at = dt.now(tz=UTC)
         self.db.add(bot_mess)
+        self.db.add(conversation)
+
         try:
             self.db.commit()
         except SQLAlchemyError as error:
@@ -101,3 +120,20 @@ class ChatRepository:
             )
 
         return conversation.messages
+
+    def user_lates_conversations_ids(self):
+        try:
+            conversations = (
+                self.db.query(Conversations.id)
+                .order_by(Conversations.updated_at.desc())
+                .limit(10)
+            ).all()  # TODO Temporary limit 10, later add not to include the first one since it may be the current conversation
+
+            conversations_ids = [db_object[0] for db_object in conversations]
+        except SQLAlchemyError as error:
+            self.db.rollback()
+            raise DataBaseError() from error
+
+        if not conversations_ids:
+            raise DataBaseResourceNotFound()
+        return conversations_ids

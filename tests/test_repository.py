@@ -1,6 +1,9 @@
 from unittest.mock import MagicMock, Mock
 
+import pytest
+
 from backend.database.models import Conversations, Messages
+from backend.exceptions.exc import DataBaseResourceNotFound
 
 
 def test_happy_create_conversation(session, repo_service):
@@ -44,9 +47,15 @@ def test_save_user_input_happy(repo_service, session):
 
 
 def test_save_user_input_no_conversation(session, repo_service):
-    """Test assums Conversation exists in DB - my business logic works that way it allwasy first creates Conversation and then some operations or Messages between AI and user happen
-
+    """Test assums Conversation does not exists in DB
     Args:
        session (_type_): db session from sessionmaker
         repo_service (_type_): ChatRepository object initialized with session
     """
+    assert session.query(Messages).first() is None
+    assert session.query(Conversations).first() is None
+
+    with pytest.raises(DataBaseResourceNotFound):
+        repo_service.save_user_input(input="test", conversation_id=1)
+    assert session.query(Messages).first() is None
+    assert session.query(Conversations).first() is None

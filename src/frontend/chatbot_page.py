@@ -158,6 +158,11 @@ def get_ai_response(
             logger.error(response.json())
             yield f"\n\n\n\n\n[ERROR] {response_json["detail"][0]["msg"]}"
             return
+        if response.status_code == 404:
+            logger.exception(response.json())
+            yield "\n\n\n\n\n[ERROR] DataBase error occured. Check logs"
+            return
+
         response.raise_for_status()
 
         for chunk in response.iter_content(chunk_size=1024):

@@ -50,6 +50,9 @@ class ChatRepository:
             .where(Conversations.id == conversation_id)
             .first()
         )
+        if conversation is None:
+            self.db.rollback()
+            raise DataBaseResourceNotFound()
         conversation.updated_at = dt.now(tz=UTC)
         self.db.add(mess)
         self.db.add(conversation)

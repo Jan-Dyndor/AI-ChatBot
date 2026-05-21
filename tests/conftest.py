@@ -2,10 +2,15 @@ import time
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import StaticPool, create_engine
+from sqlalchemy.orm import sessionmaker
 
 from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
 from backend.configuration.settings import get_settings
+from backend.database.db import Base
+from backend.database.repository import ChatRepository
 from backend.main import create_app
+from backend.database.models import Messages
 
 
 @pytest.fixture
@@ -107,6 +112,48 @@ def FakeChatService_fixture():
     return FakeChatService
 
 
+# =========== DB Fixture for UNIT testing
+@pytest.fixture()  # Create one DB and one engine but i am not sure if its correct to do so = iwont create meny Db nd meny engiens jeust one but hten i have to del all info from DB after each test or just at the beggingin of each
+
+# Explainiton: for now i do not see better option to deal with tetsting functions without Request so withcout app gettign created since app creates my Db and i can use request.app.state to obtain session_maker and use that as DB connection but when teting just simple functions in Repositry or Seervice layrt thats not the cas so i think i have to create new DB for this
+def create_db():
+    """Function creates DB and returns engine
+
+    Returns:
+        _type_: SqlAlchemy engine
+    """
+    engine = create_engine(
+        url="sqlite:///:memory:",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
+    Base.metadata.create_all(bind=engine)
+    return engine
+
+
+@pytest.fixture
+def session_maker(create_db):
+    return sessionmaker(bind=create_db, autoflush=False, autocommit=False)
+
+
+@pytest.fixture
+def session(session_maker):
+    # def get_db():
+    db = session_maker()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# return get_db
+
+
+@pytest.fixture
+def repo_service(session):
+    return ChatRepository(session)
+
+
 # @pytest.fixture
 # def create_db_fixture():
 #     engine_in_memory = create_engine(
@@ -145,6 +192,8 @@ def FakeChatService_fixture():
 #     return get_db_session
 
 
+# ============ FIXTURES FOR INTEGRATION tests with request from TestClient
+# DB creation is in create_app function
 @pytest.fixture
 def test_env(monkeypatch):
     monkeypatch.setenv("API_URL", "test_url")

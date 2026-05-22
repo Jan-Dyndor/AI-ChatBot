@@ -81,6 +81,8 @@ class ChatRepository:
             .where(Conversations.id == conversation_id)
             .first()
         )
+        if conversation is None:
+            raise DataBaseResourceNotFound()
         conversation.updated_at = dt.now(tz=UTC)
         self.db.add(bot_mess)
         self.db.add(conversation)
@@ -130,7 +132,7 @@ class ChatRepository:
                 self.db.query(Conversations.id)
                 .order_by(Conversations.updated_at.desc())
                 .limit(10)
-            ).all()  # TODO Temporary limit 10, later add not to include the first one since it may be the current conversation
+            ).all()  # TODO Temporary limit 10
 
             conversations_ids = [db_object[0] for db_object in conversations]
         except SQLAlchemyError as error:

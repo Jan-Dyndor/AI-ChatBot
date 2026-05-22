@@ -156,7 +156,7 @@ def get_ai_response(
         if response.status_code == 422:
             response_json = response.json()
             logger.error(response.json())
-            yield f"\n\n\n\n\n[ERROR] {response_json["detail"][0]["msg"]}"
+            yield f"\n\n\n\n\n[ERROR] {response_json['detail'][0]['msg']}"
             return
         if response.status_code == 404:
             logger.exception(response.json())
@@ -215,7 +215,10 @@ def main() -> None:
                 placeholder = st.empty()
                 ai_response = ""
                 for chunk in get_ai_response(
-                    user_input, model_name, st.session_state.messages, st.session_state.conversation_id  # type: ignore
+                    user_input,
+                    model_name,  # type: ignore
+                    st.session_state.messages,
+                    st.session_state.conversation_id,  # type: ignore
                 ):
                     ai_response += chunk
                     placeholder.markdown(ai_response)

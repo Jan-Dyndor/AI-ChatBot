@@ -1,10 +1,15 @@
+from unittest.mock import Mock
+
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.models import Conversations, Messages
-from backend.exceptions.exc import DataBaseResourceNotFound
+from backend.database.repository import ChatRepository
+from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound
 
 
-def test_happy_create_conversation(session, repo_service):
+#! create_conversation
+def test_create_conversation_happy(session, repo_service):
     """Function tests create_conversation
 
     Args:
@@ -19,6 +24,19 @@ def test_happy_create_conversation(session, repo_service):
     assert conv_id == 1
 
 
+def test_create_conversation_error():
+    """Function tests create_conversation with DB error"""
+    db_session_mock = Mock()
+    db_session_mock.commit.side_effect = SQLAlchemyError()
+
+    repo_mock = ChatRepository(db_session=db_session_mock)
+    with pytest.raises(DataBaseError):
+        repo_mock.create_conversation()
+
+    db_session_mock.rollback.assert_called_once()
+
+
+#! save_user_input
 def test_save_user_input_happy(repo_service, session):
     """Test assums Conversation exists in DB - my business logic works that way it allwasy first creates Conversation and then some operations or Messages between AI and user happen
 
@@ -44,6 +62,21 @@ def test_save_user_input_happy(repo_service, session):
     assert conv_result.id == 1
 
 
+def test_save_user_input_error():
+    """Testing DB error.
+    To invoke DB errror I do not use working DB session - I mock the session and pass it to object ChatRepository
+    When Function will invoke "commit" on mocked session it will raise an error
+    """
+    db_session_mock = Mock()
+    db_session_mock.commit.side_effect = SQLAlchemyError()
+
+    repo_mock_session = ChatRepository(db_session=db_session_mock)
+
+    with pytest.raises(DataBaseError):
+        repo_mock_session.create_conversation()
+    db_session_mock.rollback.assert_called_once()
+
+
 def test_save_user_input_no_conversation(session, repo_service):
     """Test assums Conversation does not exists in DB
     Args:
@@ -59,6 +92,7 @@ def test_save_user_input_no_conversation(session, repo_service):
     assert session.query(Conversations).first() is None
 
 
+#! save_bot_output
 def test_save_bot_output_happy(session, repo_service):
     """Test assums Conversation exists in DB - my business logic works that way it allwasy first creates Conversation and then some operations or Messages between AI and user happen
 
@@ -99,6 +133,21 @@ def test_save_bot_output_no_conversation(session, repo_service):
     assert session.query(Conversations).first() is None
 
 
+def test_save_bot_output_error():
+    """
+    Function tests saving bot output when DB errro occured
+    """
+
+    db_session_mock = Mock()
+    db_session_mock.query.side_effect = SQLAlchemyError()
+
+    repo_mock = ChatRepository(db_session=db_session_mock)
+
+    with pytest.raises(DataBaseError):
+        repo_mock.save_bot_output(output="test", conversation_id=1)
+
+
+#! chat_history
 def test_chat_history_happy_with_messages(session, repo_service):
     """Test fetching chat history - in conversation there are messages
     Args:
@@ -171,6 +220,23 @@ def test_chat_history_happy_no_conversation(session, repo_service):
         repo_service.chat_history(conversation_id=1)
 
 
+def test_chat_history_error():
+    """
+    Test fetching chat history with DB error
+    """
+    db_session_mock = Mock()
+    db_session_mock.query.side_effect = SQLAlchemyError()
+
+    repo_mock = ChatRepository(db_session=db_session_mock)
+
+    with pytest.raises(DataBaseError):
+        repo_mock.chat_history(conversation_id=1)
+    db_session_mock.rollback.assert_called_once()
+
+
+#! user_lates_conversations_ids
+
+
 def test_user_lates_conversations_ids_happy(session, repo_service):
     """Test fetching user lates conversations.
     Args:
@@ -220,3 +286,15 @@ def test_user_lates_conversations_ids_less_than_10_conversetions(session, repo_s
     ids = repo_service.user_lates_conversations_ids()
     assert ids is not None
     assert ids == [5, 4, 3, 2, 1]
+
+
+def test_user_lates_conversations_ids_error():
+    db_sesson_mock = Mock()
+    db_sesson_mock.query.side_effect = SQLAlchemyError()
+
+    repo_mock = ChatRepository(db_session=db_sesson_mock)
+
+    with pytest.raises(DataBaseError):
+        repo_mock.user_lates_conversations_ids()
+
+    db_sesson_mock.rollback.assert_called_once()

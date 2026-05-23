@@ -25,8 +25,8 @@ class ChatRepository:
             int: conversation ID to frontend
         """
         new_conversation = Conversations()
-        self.db.add(new_conversation)
         try:
+            self.db.add(new_conversation)
             self.db.commit()
             self.db.refresh(new_conversation)
         except SQLAlchemyError as error:
@@ -45,18 +45,21 @@ class ChatRepository:
             DataBaseError: Custom exception that FastAPI error handler will catch
         """
         mess = Messages(conversation_id=conversation_id, role="user", content=input)
-        conversation = (
-            self.db.query(Conversations)
-            .where(Conversations.id == conversation_id)
-            .first()
-        )
-        if conversation is None:
-            self.db.rollback()
-            raise DataBaseResourceNotFound()
-        conversation.updated_at = dt.now(tz=UTC)
-        self.db.add(mess)
-        self.db.add(conversation)
         try:
+            conversation = (
+                self.db.query(Conversations)
+                .where(Conversations.id == conversation_id)
+                .first()
+            )
+
+            if conversation is None:
+                self.db.rollback()
+                raise DataBaseResourceNotFound()
+
+            conversation.updated_at = dt.now(tz=UTC)
+            self.db.add(mess)
+            self.db.add(conversation)
+
             self.db.commit()
         except SQLAlchemyError as error:
             self.db.rollback()
@@ -75,19 +78,19 @@ class ChatRepository:
         bot_mess = Messages(
             conversation_id=conversation_id, role="assistant", content=output
         )
-
-        conversation = (
-            self.db.query(Conversations)
-            .where(Conversations.id == conversation_id)
-            .first()
-        )
-        if conversation is None:
-            raise DataBaseResourceNotFound()
-        conversation.updated_at = dt.now(tz=UTC)
-        self.db.add(bot_mess)
-        self.db.add(conversation)
-
         try:
+            conversation = (
+                self.db.query(Conversations)
+                .where(Conversations.id == conversation_id)
+                .first()
+            )
+            if conversation is None:
+                raise DataBaseResourceNotFound()
+
+            conversation.updated_at = dt.now(tz=UTC)
+            self.db.add(bot_mess)
+            self.db.add(conversation)
+
             self.db.commit()
         except SQLAlchemyError as error:
             self.db.rollback()
@@ -127,6 +130,15 @@ class ChatRepository:
         return conversation.messages
 
     def user_lates_conversations_ids(self):
+        """Function fetches last 10 updated user conversations
+
+        Raises:
+            DataBaseError: Custom exception that FastAPI error handler will catch
+            DataBaseResourceNotFound: Did not found the resource. Custom exception that FastAPI error handler will catch.
+
+        Returns:
+            _type_:list[int], Returns conversations IDs
+        """
         try:
             conversations = (
                 self.db.query(Conversations.id)

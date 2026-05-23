@@ -10,7 +10,6 @@ from backend.configuration.settings import get_settings
 from backend.database.db import Base
 from backend.database.repository import ChatRepository
 from backend.main import create_app
-from backend.database.models import Messages
 
 
 @pytest.fixture

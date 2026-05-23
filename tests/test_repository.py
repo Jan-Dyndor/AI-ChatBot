@@ -58,7 +58,7 @@ def test_save_user_input_happy(repo_service, session):
     assert mess.conversation_id == 1
     assert mess.role == "user"
     assert mess.content == "test"
-    assert session.query(Conversations).first is not None
+    assert session.query(Conversations).first() is not None
     assert conv_result.id == 1
 
 
@@ -73,7 +73,7 @@ def test_save_user_input_error():
     repo_mock_session = ChatRepository(db_session=db_session_mock)
 
     with pytest.raises(DataBaseError):
-        repo_mock_session.create_conversation()
+        repo_mock_session.save_user_input(input="test", conversation_id=1)
     db_session_mock.rollback.assert_called_once()
 
 

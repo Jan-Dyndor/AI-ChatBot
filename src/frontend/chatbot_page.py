@@ -42,10 +42,11 @@ def init_session_state() -> None:
                     f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
                     timeout=120,
                 )
-                messages = chat_history.json()
+
                 chat_history.raise_for_status()
+                messages = chat_history.json()
                 if messages:
-                    for message in chat_history.json():
+                    for message in messages:
                         st.session_state.messages.append(message)
                 else:
                     st.session_state.messages = [
@@ -60,9 +61,9 @@ def init_session_state() -> None:
                 st.session_state.messages = [
                     {
                         "role": "assistant",
-                        "content": "Hi! I could not fetch data from our previous conversation. Issue occured (details in FastAPI server logs or Streamlit logs). New conversation has started. How can I help you today?",
+                        "content": "[ERROR] Hi! I could not fetch data from our previous conversation. Issue occured, chech app logs",
                     }
-                ]  # TODO check if it really starts new conversetion or not
+                ]
 
 
 def get_conversation_history_ids() -> list[int] | int | None:

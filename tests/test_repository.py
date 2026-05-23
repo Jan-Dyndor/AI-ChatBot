@@ -167,12 +167,56 @@ def test_chat_history_happy_no_conversation(session, repo_service):
     assert session.query(Messages).first() is None
     assert session.query(Conversations).first() is None
 
-    conv = Conversations()
+    with pytest.raises(DataBaseResourceNotFound):
+        repo_service.chat_history(conversation_id=1)
 
-    session.add(conv)
-    session.commit()
 
-    # Test body
-    messages = repo_service.chat_history(conversation_id=1)
+def test_user_lates_conversations_ids_happy(session, repo_service):
+    """Test fetching user lates conversations.
+    Args:
+       session (_type_): db session from sessionmaker
+        repo_service (_type_): ChatRepository object initialized with session
+    """
+    assert session.query(Conversations).first() is None
+    assert session.query(Messages).first() is None
+    # Create 11 Conversation
+    for _ in range(11):
+        session.add(Conversations())
+        session.commit()
 
-    assert messages == []
+    ids = repo_service.user_lates_conversations_ids()
+
+    assert len(ids) == 10
+    assert (
+        1 not in ids
+    )  # Sorting by updated_at so first conversation is the oldest one and wont be displayed
+
+
+def test_user_lates_conversations_ids_no_conversations(session, repo_service):
+    """Test fetching user lates conversations. No conversations scenerio
+    Args:
+       session (_type_): db session from sessionmaker
+        repo_service (_type_): ChatRepository object initialized with session
+    """
+    assert session.query(Conversations).first() is None
+    assert session.query(Messages).first() is None
+
+    with pytest.raises(DataBaseResourceNotFound):
+        repo_service.user_lates_conversations_ids()
+
+
+def test_user_lates_conversations_ids_less_than_10_conversetions(session, repo_service):
+    """Test fetching user lates conversations. Less than 10 conversations
+    Args:
+       session (_type_): db session from sessionmaker
+        repo_service (_type_): ChatRepository object initialized with session
+    """
+    assert session.query(Conversations).first() is None
+    assert session.query(Messages).first() is None
+
+    for _ in range(5):
+        session.add(Conversations())
+        session.commit()
+    ids = repo_service.user_lates_conversations_ids()
+    assert ids is not None
+    assert ids == [5, 4, 3, 2, 1]

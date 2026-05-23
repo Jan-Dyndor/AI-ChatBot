@@ -42,10 +42,11 @@ def init_session_state() -> None:
                     f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
                     timeout=120,
                 )
-                messages = chat_history.json()
+
                 chat_history.raise_for_status()
+                messages = chat_history.json()
                 if messages:
-                    for message in chat_history.json():
+                    for message in messages:
                         st.session_state.messages.append(message)
                 else:
                     st.session_state.messages = [
@@ -60,9 +61,9 @@ def init_session_state() -> None:
                 st.session_state.messages = [
                     {
                         "role": "assistant",
-                        "content": "Hi! I could not fetch data from our previous conversation. Issue occured (details in FastAPI server logs or Streamlit logs). New conversation has started. How can I help you today?",
+                        "content": "[ERROR] Hi! I could not fetch data from our previous conversation. Issue occured, chech app logs",
                     }
-                ]  # TODO check if it really starts new conversetion or not
+                ]
 
 
 def get_conversation_history_ids() -> list[int] | int | None:
@@ -156,8 +157,13 @@ def get_ai_response(
         if response.status_code == 422:
             response_json = response.json()
             logger.error(response.json())
-            yield f"\n\n\n\n\n[ERROR] {response_json["detail"][0]["msg"]}"
+            yield f"\n\n\n\n\n[ERROR] {response_json['detail'][0]['msg']}"
             return
+        if response.status_code == 404:
+            logger.exception(response.json())
+            yield "\n\n\n\n\n[ERROR] DataBase error occured. Check logs"
+            return
+
         response.raise_for_status()
 
         for chunk in response.iter_content(chunk_size=1024):
@@ -210,7 +216,10 @@ def main() -> None:
                 placeholder = st.empty()
                 ai_response = ""
                 for chunk in get_ai_response(
-                    user_input, model_name, st.session_state.messages, st.session_state.conversation_id  # type: ignore
+                    user_input,
+                    model_name,  # type: ignore
+                    st.session_state.messages,
+                    st.session_state.conversation_id,  # type: ignore
                 ):
                     ai_response += chunk
                     placeholder.markdown(ai_response)

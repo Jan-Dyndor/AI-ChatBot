@@ -61,6 +61,9 @@ class ChatRepository:
             self.db.add(conversation)
 
             self.db.commit()
+            logger.debug(
+                f"Saved user input to DB with conversation_id = {conversation_id}"
+            )
         except SQLAlchemyError as error:
             self.db.rollback()
             raise DataBaseError() from error
@@ -92,6 +95,9 @@ class ChatRepository:
             self.db.add(conversation)
 
             self.db.commit()
+            logger.debug(
+                f"Saved LLM output to DB with conversation_id = {conversation_id}"
+            )
         except SQLAlchemyError as error:
             self.db.rollback()
             raise DataBaseError() from error
@@ -126,7 +132,9 @@ class ChatRepository:
             logger.info(
                 f"Conversation with ID {conversation_id} does not yet stores data"
             )
-
+        logger.debug(
+            f"Returning chat messages from conversation_id = {conversation_id}"
+        )
         return conversation.messages
 
     def user_lates_conversations_ids(self):
@@ -153,4 +161,5 @@ class ChatRepository:
 
         if not conversations_ids:
             raise DataBaseResourceNotFound()
+        logger.debug("Returning user latest conversations IDs")
         return conversations_ids

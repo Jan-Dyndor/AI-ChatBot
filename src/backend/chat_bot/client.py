@@ -11,6 +11,7 @@ class ChatBotClient:
         model: str,
     ) -> None:
         self.model: str = model
+        logger.debug(f"Created LLM client with model {model}")
 
     def stream_response(self, chat_history: list):
         """Function streams responses from LLM using Ollama
@@ -31,20 +32,26 @@ class ChatBotClient:
                     continue
                 else:
                     yield content_chunk
-        except httpx.ConnectError as error:
-            logger.exception(error)
+        # Unforunatelly this is StreamingResponse = generator. Before it starts sending data FastAPI already sends response as 200
+        # It does not make sens to raise exception there so only info to frontend will be this yeld messages
+        except httpx.ConnectError:
+            logger.exception("Ollama in unavaliable")
             yield "\n\n\n\n\n[ERROR] Ollama is not available. Check if its running on your system"
             return
         except ollama.ResponseError as error:
             if error.status_code == 404:
-                logger.exception(error)
+                logger.exception(
+                    f"Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
+                )
                 yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
                 return
             else:
-                logger.exception(error)
+                logger.exception(f"Ollama error {error.status_code}")
                 yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}."
                 return
-        except httpx.RemoteProtocolError as error:
+        except httpx.RemoteProtocolError:
+            logger.exception(
+                "Ollama stopped responding and is unavailable. Check if its running on your system"
+            )
             yield "\n\n\n\n\n [ERROR] Ollama stopped responding and is unavailable. Check if its running on your system"
-            logger.exception(error)
             return

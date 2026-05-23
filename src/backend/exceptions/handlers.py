@@ -8,9 +8,15 @@ def register_exception_handlers(app: FastAPI):
 
     @app.exception_handler(AppExceptions)
     async def app_exception_handler(request: Request, exc: AppExceptions):
-        logger.opt(exception=exc).error(
-            f"Application error: {exc.status_code} - {exc.message}. Path - {request.url.path},  method - {request.method}"
-        )
+        if exc.status_code in range(400, 500):
+            logger.warning(  # just info no traceback
+                f"Application error: {exc.status_code} - {exc.message}. Path - {request.url.path},  method - {request.method}"
+            )
+        else:
+            # info + traceback
+            logger.opt(exception=exc).error(
+                f"Application error: {exc.status_code} - {exc.message}. Path - {request.url.path},  method - {request.method}"
+            )
         return JSONResponse(
             status_code=exc.status_code, content={"message": exc.message}
         )

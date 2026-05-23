@@ -1,8 +1,9 @@
+import time
+
 from fastapi import Request
+from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
-from loguru import logger
-import time
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -22,8 +23,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
 
             duration = (time.perf_counter() - start) * 1000
-
-            logger.info(
-                f"Response started for  {method} {path} with status {response.status_code} in {duration:.2f}"
-            )
+            if response.status_code == 422:  # To catch Pydantic validation errors
+                logger.warning(
+                    f" Outgoing HTTP {method} {path} -> {response.status_code} response created in {duration:.2f} ms "
+                )
+            else:
+                logger.info(
+                    f"Outgoing HTTP {method} {path} -> {response.status_code} response created in {duration:.2f} ms "
+                )
             return response

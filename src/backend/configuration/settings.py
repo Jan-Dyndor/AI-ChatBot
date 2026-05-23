@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     api_url_chat_history: str = Field(validation_alias="API_CHAT_HISTORY")
     db_url: str = Field(validation_alias="DB_URL")
     api_url_create_conversation: str = Field(validation_alias="API_CREATE_CONVERSATION")
+    api_url_latest_conversations_ids: str = Field(
+        validation_alias="API_LATEST_CONVERSATIONS_IDS"
+    )
 
     model_config = SettingsConfigDict(
         env_file=root / ".env",

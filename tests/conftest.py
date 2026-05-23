@@ -10,7 +10,6 @@ from backend.configuration.settings import get_settings
 from backend.database.db import Base
 from backend.database.repository import ChatRepository
 from backend.main import create_app
-from backend.database.models import Messages
 
 
 @pytest.fixture
@@ -200,6 +199,9 @@ def test_env(monkeypatch):
     monkeypatch.setenv("DB_URL", "sqlite:///:memory:")
     monkeypatch.setenv("API_CHAT_HISTORY", "test_history_url")
     monkeypatch.setenv("API_CREATE_CONVERSATION", "create_conversation_url_test")
+    monkeypatch.setenv(
+        "API_LATEST_CONVERSATIONS_IDS", "test_latest_conversations_ids_url"
+    )
 
     get_settings.cache_clear()
 

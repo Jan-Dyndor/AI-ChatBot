@@ -21,8 +21,14 @@ This project was created to explore and understand:
 Create a `.env` file in the root of the repository and define:
 
 ```env
-API_URL=http://localhost:8000/v1/chat
+API_URL="http://localhost:8000/v1/chat"
 API_CHAT_HISTORY="http://localhost:8000/v1/chat_history"
+API_CREATE_CONVERSATION="http://localhost:8000/v1/create_conversation"
+API_LATEST_CONVERSATIONS_IDS="http://localhost:8000/v1/get_conversations_ids"
+
+# Example SQLite database URL.
+# You can change this path if you want to store the database elsewhere.
+DB_URL="sqlite:///data/data.db"
 ```
 
 The application uses Pydantic Settings to load environment variables from the `.env` file.
@@ -66,20 +72,35 @@ Infrastructure (planned):
 Monitoring (planned):
 - Grafana + Loki + Prometheus
 
-```cmd
-src/
-├── backend/
-│   ├── api/
-│   ├── service/
-│   ├── middleware/
-│   ├── configuration/
-│   ├── exceptions/
-│   └── chat_bot/
+## Project Structure
+
+```text
+AI-ChatBot/
+├── .github/
+│   └── workflows/              # GitHub Actions workflows
 │
-├── frontend/
-│   └── chatbot_page.py
+├── src/
+│   ├── backend/
+│   │   ├── api/                # FastAPI routers and API endpoints
+│   │   ├── chat_bot/           # LLM/Ollama communication logic
+│   │   ├── configuration/      # Settings and logging configuration
+│   │   ├── database/           # SQLAlchemy models, engine and DB setup
+│   │   ├── dependencies/       # FastAPI dependencies
+│   │   ├── exceptions/         # Custom exceptions and handlers
+│   │   ├── middleware/         # Request ID and logging middleware
+│   │   ├── service/            # Business logic and orchestration layer
+│   │   ├── __init__.py
+│   │   └── main.py             # FastAPI application entrypoint
+│   │
+│   └── frontend/
+│       └── chatbot_page.py     # Streamlit frontend application
 │
-└── tests/
+├── tests/                      # Unit and integration tests
+├── .gitignore
+├── .python-version
+├── README.md
+├── pyproject.toml              # Project configuration and dependencies
+└── uv.lock                     # Locked dependency versions
 ```
 
 ## Streaming Responses
@@ -104,14 +125,14 @@ The Streamlit frontend consumes streamed chunks in real-time to simulate ChatGPT
 - Installed as editable Python package
 - Basic test suite
 - Layered backend architecture
+- Persistent chat history (SQLite)
+- Multi-chat support (for one user -> user based after adding authentication)
 
 ## Planned Features
 
 - JWT/O2Auth authentication
-- Persistent chat history
 - PostgreSQL integration
 - Redis-based conversational memory
-- Multi-chat support
 - Voice input (speech-to-text)
 - AI text-to-speech responses
 - User metrics dashboard

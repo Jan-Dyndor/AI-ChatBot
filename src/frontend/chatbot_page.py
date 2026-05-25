@@ -13,7 +13,9 @@ def init_session_state() -> None:
 
     if "conversation_id" not in st.session_state:
         try:
-            response = requests.get(settings.api_url_create_conversation)
+            response = requests.get(
+                "http://localhost:8000/v1/create_conversation?user_id_input=1"
+            )
             response.raise_for_status()
             conversetion_id_int = response.json()
             logger.debug(
@@ -43,7 +45,7 @@ def init_session_state() -> None:
             st.session_state.messages = []
             try:
                 response = requests.get(
-                    f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
+                    f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}&user_id_input=1",
                     timeout=120,
                 )
 
@@ -85,7 +87,7 @@ def get_conversation_history_ids() -> list[int] | int | None:
     """
     try:
         response = requests.get(
-            settings.api_url_latest_conversations_ids,
+            "http://localhost:8000/v1/get_conversations_ids?user_id_input=1",
             timeout=120,
         )
         logger.debug(
@@ -163,7 +165,7 @@ def get_ai_response(
 ):
     try:
         response = requests.post(
-            settings.api_url_ai_chat,
+            "http://localhost:8000/v1/chat?user_id_input=1",
             json={
                 "input": user_input,
                 "model": model,

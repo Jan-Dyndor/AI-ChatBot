@@ -4,7 +4,7 @@ from datetime import datetime as dt
 from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.database.models import Conversations, Messages
+from backend.database.models import Conversations, Messages, Users
 from backend.exceptions.exc import (
     DataBaseError,
     DataBaseResourceNotFound,
@@ -15,7 +15,22 @@ class ChatRepository:
     def __init__(self, db_session) -> None:
         self.db = db_session
 
-    def create_conversation(self) -> int:
+    def create_user(self, email, password) -> str:
+        """Function will create user
+
+        Args:
+            email (str)
+            password (str): password_hash
+
+        Returns:
+            str: User email
+        """
+        user = Users(email=email, password_hash=password)
+        self.db.add(user)
+        self.db.commit()
+        return user.email
+
+    def create_conversation(self, user_id: int) -> int:
         """Function creates new conversation and saves it into DB
 
         Raises:
@@ -23,8 +38,10 @@ class ChatRepository:
 
         Returns:
             int: conversation ID to frontend
+
         """
-        new_conversation = Conversations()
+
+        new_conversation = Conversations(user_id=user_id)
         try:
             self.db.add(new_conversation)
             self.db.commit()
@@ -34,7 +51,7 @@ class ChatRepository:
             raise DataBaseError() from error
         return new_conversation.id
 
-    def save_user_input(self, input: str, conversation_id: int):
+    def save_user_input(self, input: str, conversation_id: int, user_id: int):
         """Function saves user query to ChatBot
 
         Args:
@@ -48,13 +65,16 @@ class ChatRepository:
         try:
             conversation = (
                 self.db.query(Conversations)
-                .where(Conversations.id == conversation_id)
+                .where(
+                    Conversations.id == conversation_id,
+                    Conversations.user_id == user_id,
+                )
                 .first()
             )
 
             if conversation is None:
                 self.db.rollback()
-                raise DataBaseResourceNotFound()
+                raise DataBaseResourceNotFound()  # TODO later check if its needed to add different error now
 
             conversation.updated_at = dt.now(tz=UTC)
             self.db.add(mess)
@@ -68,7 +88,7 @@ class ChatRepository:
             self.db.rollback()
             raise DataBaseError() from error
 
-    def save_bot_output(self, output: str, conversation_id: int):
+    def save_bot_output(self, output: str, conversation_id: int, user_id: int):
         """Function saves Bot answer to user query and updates Conversation 'update_at' column in ordrer to better filter data
 
         Args:
@@ -84,7 +104,10 @@ class ChatRepository:
         try:
             conversation = (
                 self.db.query(Conversations)
-                .where(Conversations.id == conversation_id)
+                .where(
+                    Conversations.id == conversation_id,
+                    Conversations.user_id == user_id,
+                )
                 .first()
             )
             if conversation is None:
@@ -102,7 +125,7 @@ class ChatRepository:
             self.db.rollback()
             raise DataBaseError() from error
 
-    def chat_history(self, conversation_id):
+    def chat_history(self, conversation_id: int, user_id: int):
         """Function returns chat history between User and Bot
 
         Args:
@@ -118,7 +141,10 @@ class ChatRepository:
         try:
             conversation = (
                 self.db.query(Conversations)
-                .where(Conversations.id == conversation_id)
+                .where(
+                    Conversations.id == conversation_id,
+                    Conversations.user_id == user_id,
+                )
                 .first()
             )
         except SQLAlchemyError as error:
@@ -137,7 +163,7 @@ class ChatRepository:
         )
         return conversation.messages
 
-    def user_lates_conversations_ids(self):
+    def user_lates_conversations_ids(self, user_id: int):
         """Function fetches last 10 updated user conversations
 
         Raises:
@@ -150,6 +176,7 @@ class ChatRepository:
         try:
             conversations = (
                 self.db.query(Conversations.id)
+                .where(Conversations.user_id == user_id)
                 .order_by(Conversations.updated_at.desc())
                 .limit(10)
             ).all()  # TODO Temporary limit 10

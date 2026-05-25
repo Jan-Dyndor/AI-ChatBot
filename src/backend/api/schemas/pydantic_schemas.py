@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 
 class ChatMessage(BaseModel):
@@ -13,3 +13,12 @@ class UserInput(BaseModel):
     model: Literal["llama3:8b"]
     chat_history: list[ChatMessage]
     conversation_id: int
+
+
+class CreateUserRequest(BaseModel):
+    email: EmailStr = Field(max_length=100)
+    password: str = Field(max_length=100)
+
+
+class CreateUserResponse(BaseModel):
+    user_email: str

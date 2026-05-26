@@ -20,17 +20,20 @@ class ChatService:
         model: str,
         chat_history: list,
         user_input: str,
-        conversation_id,
+        conversation_id: int,
         user_id: int,
     ):
         """Function creates ChatBotClient object with choosen model, and stream responses from LLM using yield. It also creates full model response to save it in DB.
 
         Args:
-            model (str): LLM model name
-            chat_history (list): user chat history
+            model (str): AI model name
+            chat_history (list): list of previous conversations
+            user_input (str): user current message
+            conversation_id (int): ID of conversation
+            user_id (int): ID of User
 
-        Returns:
-            _type_: yields chunks of LLM responses
+        Yields:
+            str: LLM yields chunks of response
         """
         full_llm_response: str = ""
         client = ChatBotClient(model)
@@ -44,7 +47,10 @@ class ChatService:
         )
 
     def create_conversation(self, user_id: int) -> int:
-        """Function creates new conversation, saves it to DB and returns conversation ID so frontend cas attach new messages to it
+        """Function creates new conversation on behalf od User with User ID, saves it to DB and returns conversation ID so frontend cas attach new messages to it
+
+        Args:
+            user_id (int): user ID
 
         Returns:
             int: Conversation ID

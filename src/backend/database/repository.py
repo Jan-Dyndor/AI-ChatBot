@@ -40,6 +40,11 @@ class ChatRepository:
             int: conversation ID to frontend
 
         """
+        # TODO crete conversation only oif USER with this ID exists! check other functions
+
+        user = self.db.query(Users).where(Users.id == user_id).first()
+        if not user:
+            raise DataBaseResourceNotFound()  # TODO Here differen error type liek User not found
 
         new_conversation = Conversations(user_id=user_id)
         try:
@@ -52,14 +57,16 @@ class ChatRepository:
         return new_conversation.id
 
     def save_user_input(self, input: str, conversation_id: int, user_id: int):
-        """Function saves user query to ChatBot
+        """Function creates Message object, adds user input to it and attach this Message to User Conversation
 
         Args:
-            input (str): user query
-            conversation_id (int): ID of conversation the User and Bot participate in
+            input (str): User message
+            conversation_id (int): ID of conversation
+            user_id (int): User ID
 
         Raises:
-            DataBaseError: Custom exception that FastAPI error handler will catch
+            DataBaseResourceNotFound: Custom exception that FastAPI error handler will catch. Occures when query result is None
+            DataBaseError: Genral SQLAlchemy error
         """
         mess = Messages(conversation_id=conversation_id, role="user", content=input)
         try:
@@ -89,14 +96,16 @@ class ChatRepository:
             raise DataBaseError() from error
 
     def save_bot_output(self, output: str, conversation_id: int, user_id: int):
-        """Function saves Bot answer to user query and updates Conversation 'update_at' column in ordrer to better filter data
+        """Function creates Message object, adds LLm output to it and attach this Message to User Conversation
 
         Args:
-            output (str): Bot answer
-            conversation_id (int): ID of conversation the User and Bot participate in
+            output (str): LLM message
+            conversation_id (int): ID of conversation
+            user_id (int): User ID
 
         Raises:
-            DataBaseError: Custom exception that FastAPI error handler will catch
+            DataBaseResourceNotFound: Custom exception that FastAPI error handler will catch. Occures when query result is None
+            DataBaseError: Genral SQLAlchemy error
         """
         bot_mess = Messages(
             conversation_id=conversation_id, role="assistant", content=output
@@ -108,7 +117,7 @@ class ChatRepository:
                     Conversations.id == conversation_id,
                     Conversations.user_id == user_id,
                 )
-                .first()
+                .first()  # TODO this can be done simpler with SQLAlchemy relations. Check that later on
             )
             if conversation is None:
                 raise DataBaseResourceNotFound()
@@ -125,25 +134,27 @@ class ChatRepository:
             self.db.rollback()
             raise DataBaseError() from error
 
-    def chat_history(self, conversation_id: int, user_id: int):
+    def chat_history(self, conversation_id: int, user_id: int) -> list[Messages]:
         """Function returns chat history between User and Bot
 
         Args:
-            conversation_id (int): ID of conversation the User and Bot participate in
+            conversation_id (int): ID of conversation
+            user_id (int): User ID
 
         Raises:
-            DataBaseError: Custom exception that FastAPI error handler will catch
-            DataBaseResourceNotFound: Did not found the resource. Custom exception that FastAPI error handler will catch.
+            DataBaseResourceNotFound: Custom exception that FastAPI error handler will catch. Occures when query result is None
+            DataBaseError: Genral SQLAlchemy error
 
         Returns:
-            _type_: _description_
+            list[Messages]: list of SQLAlchemy DB models. Later converted by Pydantic
         """
         try:
             conversation = (
                 self.db.query(Conversations)
                 .where(
                     Conversations.id == conversation_id,
-                    Conversations.user_id == user_id,
+                    Conversations.user_id
+                    == user_id,  # TODO this can be done simpler with SQLAlchemy relations. Check that later on
                 )
                 .first()
             )
@@ -163,7 +174,7 @@ class ChatRepository:
         )
         return conversation.messages
 
-    def user_lates_conversations_ids(self, user_id: int):
+    def user_lates_conversations_ids(self, user_id: int) -> list[int]:
         """Function fetches last 10 updated user conversations
 
         Raises:
@@ -171,7 +182,7 @@ class ChatRepository:
             DataBaseResourceNotFound: Did not found the resource. Custom exception that FastAPI error handler will catch.
 
         Returns:
-            _type_:list[int], Returns conversations IDs
+            list[int]: list of latest 10 users conversations
         """
         try:
             conversations = (

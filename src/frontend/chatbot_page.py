@@ -5,6 +5,7 @@ from backend.configuration.logging_config import logger
 from backend.configuration.settings import get_settings
 
 settings = get_settings()
+TEST_USER_ID: int = 13
 
 
 def init_session_state() -> None:
@@ -14,7 +15,7 @@ def init_session_state() -> None:
     if "conversation_id" not in st.session_state:
         try:
             response = requests.get(
-                "http://localhost:8000/v1/create_conversation?user_id_input=1"
+                f"http://localhost:8000/v1/create_conversation?user_id={TEST_USER_ID}"
             )
             response.raise_for_status()
             conversetion_id_int = response.json()
@@ -45,7 +46,7 @@ def init_session_state() -> None:
             st.session_state.messages = []
             try:
                 response = requests.get(
-                    f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}&user_id_input=1",
+                    f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}&user_id={TEST_USER_ID}",
                     timeout=120,
                 )
 
@@ -87,7 +88,7 @@ def get_conversation_history_ids() -> list[int] | int | None:
     """
     try:
         response = requests.get(
-            "http://localhost:8000/v1/get_conversations_ids?user_id_input=1",
+            f"http://localhost:8000/v1/get_conversations_ids?user_id={TEST_USER_ID}",
             timeout=120,
         )
         logger.debug(
@@ -165,7 +166,7 @@ def get_ai_response(
 ):
     try:
         response = requests.post(
-            "http://localhost:8000/v1/chat?user_id_input=1",
+            f"http://localhost:8000/v1/chat?user_id={TEST_USER_ID}",  # TODO later change that user_id is in path param. Rethink that! But later on we will have JWT instead...
             json={
                 "input": user_input,
                 "model": model,

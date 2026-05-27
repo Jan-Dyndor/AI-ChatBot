@@ -5,10 +5,7 @@ from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.models import Conversations, Messages, Users
-from backend.exceptions.exc import (
-    DataBaseError,
-    DataBaseResourceNotFound,
-)
+from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound, UserNotFound
 
 
 class ChatRepository:
@@ -28,6 +25,7 @@ class ChatRepository:
         user = Users(email=email, password_hash=password)
         self.db.add(user)
         self.db.commit()
+        logger.debug(f"Created user with ID {user.id}")
         return user.email
 
     def create_conversation(self, user_id: int) -> int:
@@ -40,11 +38,13 @@ class ChatRepository:
             int: conversation ID to frontend
 
         """
-        # TODO crete conversation only oif USER with this ID exists! check other functions
+        try:
+            user = self.db.query(Users).where(Users.id == user_id).first()
+        except SQLAlchemyError as ex:
+            raise DataBaseError() from ex
 
-        user = self.db.query(Users).where(Users.id == user_id).first()
         if not user:
-            raise DataBaseResourceNotFound()  # TODO Here differen error type liek User not found
+            raise UserNotFound(user_id=user_id)
 
         new_conversation = Conversations(user_id=user_id)
         try:
@@ -54,6 +54,9 @@ class ChatRepository:
         except SQLAlchemyError as error:
             self.db.rollback()
             raise DataBaseError() from error
+        logger.debug(
+            f"Created conversation with ID {new_conversation.id} attached to user {user.id}"
+        )
         return new_conversation.id
 
     def save_user_input(self, input: str, conversation_id: int, user_id: int):
@@ -81,7 +84,7 @@ class ChatRepository:
 
             if conversation is None:
                 self.db.rollback()
-                raise DataBaseResourceNotFound()  # TODO later check if its needed to add different error now
+                raise DataBaseResourceNotFound()
 
             conversation.updated_at = dt.now(tz=UTC)
             self.db.add(mess)
@@ -89,7 +92,7 @@ class ChatRepository:
 
             self.db.commit()
             logger.debug(
-                f"Saved user input to DB with conversation_id = {conversation_id}"
+                f"Saved user {user_id} input  to conversation {conversation_id}"
             )
         except SQLAlchemyError as error:
             self.db.rollback()
@@ -128,7 +131,7 @@ class ChatRepository:
 
             self.db.commit()
             logger.debug(
-                f"Saved LLM output to DB with conversation_id = {conversation_id}"
+                f"Saved LLM output with to conversation {conversation_id} connected to user {user_id}"
             )
         except SQLAlchemyError as error:
             self.db.rollback()
@@ -170,7 +173,7 @@ class ChatRepository:
                 f"Conversation with ID {conversation_id} does not yet stores data"
             )
         logger.debug(
-            f"Returning chat messages from conversation_id = {conversation_id}"
+            f"Returning chat messages from conversation {conversation_id} attached to user {user_id}"
         )
         return conversation.messages
 
@@ -199,5 +202,5 @@ class ChatRepository:
 
         if not conversations_ids:
             raise DataBaseResourceNotFound()
-        logger.debug("Returning user latest conversations IDs")
+        logger.debug(f"Returning user {user_id} latest conversations IDs")
         return conversations_ids

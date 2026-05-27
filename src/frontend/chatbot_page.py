@@ -5,10 +5,17 @@ from backend.configuration.logging_config import logger
 from backend.configuration.settings import get_settings
 
 settings = get_settings()
-TEST_USER_ID: int = 13
+TEST_USER_ID: int = 1
 
 
 def init_session_state() -> None:
+    """
+    Streamlit session init
+
+    - disabled in sesstion state - this parameter dictas if User is able to write new message
+    - conversation_id - if absent we create new conversation if present system fetches messages from this conversation. If conversation was absent then system creates it and returns None (no previous conversations)
+
+    """
     if "disabled" not in st.session_state:
         st.session_state.disabled = False
 
@@ -82,7 +89,8 @@ def init_session_state() -> None:
 
 
 def get_conversation_history_ids() -> list[int] | int | None:
-    """Function send GET request to DB and gives back defoult value of latest user conversations IDs
+    """Function send GET request to DB and gives back default vanumber of latest user conversations IDs
+
     Returns:
         list[int] | int | None: When 200 response it gives back list of converssations. If 404 - no conversetions yet found return 0 to inform user. If Error occured return None.
     """
@@ -115,26 +123,6 @@ def render_sidebar() -> None:
             options=["llama3:8b"],
             index=0,
         )
-        conversations = get_conversation_history_ids()
-        if conversations:
-            st.subheader("Go back to previous conversations (Latest 10 by default)")
-            for conversation_id_history in conversations:  # type: ignore
-                if st.button(str(conversation_id_history)):
-                    st.session_state.clear()
-                    st.session_state.conversation_id = conversation_id_history
-                    logger.debug(
-                        f"User choose old conversation with ID {conversation_id_history}"
-                    )
-                    init_session_state()
-                    st.rerun()
-        elif conversations == 0:
-            st.subheader("No previous conversations found")
-        else:
-            st.subheader(
-                "Exception occured - could not download the chat history. Check logs"
-            )
-
-        st.markdown("---")
 
         if st.button("Start new chat"):
             logger.debug("Starting new chat")
@@ -148,14 +136,36 @@ def render_sidebar() -> None:
             ]
 
             st.rerun()
-
         st.markdown("---")
-        st.caption("MVP version - Streamlit UI + FastAPI backend")
+
+        conversations = get_conversation_history_ids()
+        if conversations:
+            st.subheader("Go back to previous conversations (Latest 10 by default)")
+            for conversation_id_history in conversations:  # type: ignore
+                if st.button(str(conversation_id_history)):
+                    st.session_state.clear()
+                    st.session_state.conversation_id = conversation_id_history
+                    logger.debug(
+                        f"User choose old conversation with ID {conversation_id_history}"
+                    )
+                    init_session_state()
+                    st.rerun()
+        elif (
+            conversations == 0
+        ):  # DB returend 404 - User does not have previous conversations
+            st.subheader("No previous conversations found")
+        else:
+            st.subheader(
+                "Exception occured - could not download the chat history. Check logs"
+            )
+
+        st.caption("MVP version - Streamlit UI + FastAPI backend + DB Persistance")
 
     return model_name  # type: ignore
 
 
 def render_chat_history() -> None:
+    """Display chat messages"""
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
@@ -164,6 +174,18 @@ def render_chat_history() -> None:
 def get_ai_response(
     user_input: str, model: str, chat_history: list[dict], conversation_id: int
 ):
+    """
+
+
+    Args:
+        user_input (str): user new message
+        model (str): LLM model
+        chat_history (list[dict]): list of current chats
+        conversation_id (int): ID of conversation
+
+    Yields:
+        str: LLM yields chunks
+    """
     try:
         response = requests.post(
             f"http://localhost:8000/v1/chat?user_id={TEST_USER_ID}",  # TODO later change that user_id is in path param. Rethink that! But later on we will have JWT instead...

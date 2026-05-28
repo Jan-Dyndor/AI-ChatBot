@@ -44,6 +44,7 @@ class ChatRepository:
             raise DataBaseError() from ex
 
         if not user:
+            logger.warning(f"user with ID {user_id} not found")
             raise UserNotFound(user_id=user_id)
 
         new_conversation = Conversations(user_id=user_id)
@@ -71,7 +72,9 @@ class ChatRepository:
             DataBaseResourceNotFound: Custom exception that FastAPI error handler will catch. Occures when query result is None
             DataBaseError: Genral SQLAlchemy error
         """
+
         mess = Messages(conversation_id=conversation_id, role="user", content=input)
+
         try:
             conversation = (
                 self.db.query(Conversations)
@@ -83,7 +86,9 @@ class ChatRepository:
             )
 
             if conversation is None:
-                self.db.rollback()
+                logger.warning(
+                    f"Conversation not found or not owned by user. user_id={user_id}, conversation_id={conversation_id}"
+                )
                 raise DataBaseResourceNotFound()
 
             conversation.updated_at = dt.now(tz=UTC)
@@ -110,9 +115,11 @@ class ChatRepository:
             DataBaseResourceNotFound: Custom exception that FastAPI error handler will catch. Occures when query result is None
             DataBaseError: Genral SQLAlchemy error
         """
+
         bot_mess = Messages(
             conversation_id=conversation_id, role="assistant", content=output
         )
+
         try:
             conversation = (
                 self.db.query(Conversations)
@@ -123,6 +130,9 @@ class ChatRepository:
                 .first()  # TODO this can be done simpler with SQLAlchemy relations. Check that later on
             )
             if conversation is None:
+                logger.warning(
+                    f"Conversation not found or not owned by user. user_id={user_id}, conversation_id={conversation_id}"
+                )
                 raise DataBaseResourceNotFound()
 
             conversation.updated_at = dt.now(tz=UTC)
@@ -151,6 +161,7 @@ class ChatRepository:
         Returns:
             list[Messages]: list of SQLAlchemy DB models. Later converted by Pydantic
         """
+
         try:
             conversation = (
                 self.db.query(Conversations)
@@ -195,12 +206,14 @@ class ChatRepository:
                 .limit(10)
             ).all()  # TODO Temporary limit 10
 
-            conversations_ids = [db_object[0] for db_object in conversations]
         except SQLAlchemyError as error:
             self.db.rollback()
             raise DataBaseError() from error
 
+        conversations_ids = [db_object[0] for db_object in conversations]
         if not conversations_ids:
+            logger.warning(f"User {user_id} does not stores any conversations")
             raise DataBaseResourceNotFound()
+
         logger.debug(f"Returning user {user_id} latest conversations IDs")
         return conversations_ids

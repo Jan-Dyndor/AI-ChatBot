@@ -10,6 +10,7 @@ from backend.configuration.settings import get_settings
 from backend.database.db import Base
 from backend.database.repository import ChatRepository
 from backend.main import create_app
+from backend.database.models import Users
 
 
 @pytest.fixture
@@ -34,7 +35,7 @@ def wrong_user_input_too_long():
 def happy_test_user_input_short():
     return UserInput(
         input="What are you?",
-        chat_history=[ChatMessage(role="assistant", content="What are you")],
+        chat_history=[ChatMessage(role="assistant", content="What are you?")],
         model="llama3:8b",
         conversation_id=1,
     ).model_dump()
@@ -137,7 +138,6 @@ def session_maker(create_db):
 
 @pytest.fixture
 def session(session_maker):
-    # def get_db():
     db = session_maker()
     try:
         yield db
@@ -145,50 +145,19 @@ def session(session_maker):
         db.close()
 
 
-# return get_db
-
-
 @pytest.fixture
 def repo_service(session):
     return ChatRepository(session)
 
 
-# @pytest.fixture
-# def create_db_fixture():
-#     engine_in_memory = create_engine(
-#         "sqlite:///:memory:",
-#         poolclass=StaticPool,
-#         connect_args={"check_same_thread": False},
-#     )
-#     Base.metadata.create_all(bind=engine_in_memory)
-#     session_factory = sessionmaker(
-#         bind=engine_in_memory, autoflush=False, autocommit=False
-#     )
+@pytest.fixture
+def test_user_db() -> Users:
+    """Function creates User object with ID = 1
 
-#     return session_factory
-
-
-# @pytest.fixture()
-# def db_session_override(create_db_fixture):
-#     """When Pytest sees yield it do all the code  before yield in fixture even before the code in test runs.
-#     That leads to situation when
-#         client.app.dependency_overrides[get_db] = db_session_override is equal  to
-#         client.app.dependency_overrides[get_db] = db
-#     And FastAPI expects Dependes to be callable and tries to call db() but its not callable.
-
-#     We need to wrap function that yields db_session and return it so FastAPI will get a callable and that collable will return yield bd
-
-
-#     """
-
-#     def get_db_session():
-#         db = create_db_fixture()
-#         try:
-#             yield db
-#         finally:
-#             db.close()
-
-#     return get_db_session
+    Returns:
+        Users: SQLAlchemy object ready to be added to DB by session
+    """
+    return Users(id=1, email="test", password_hash="test_yet_not_hash")
 
 
 # ============ FIXTURES FOR INTEGRATION tests with request from TestClient

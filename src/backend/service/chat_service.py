@@ -38,7 +38,6 @@ class ChatService:
         full_llm_response: str = ""
         client = ChatBotClient(model)
         self.db.save_user_input(user_input, conversation_id, user_id)
-        print(chat_history)
 
         for chunk in client.stream_response(chat_history=chat_history):
             full_llm_response += chunk

@@ -9,6 +9,7 @@ dependencies = [
     "loguru>=0.7.3",
     "ollama>=0.6.1",
     "pydantic-settings>=2.14.0",
+    "pydantic[email]>=2.13.1",
     "pytest>=9.0.3",
     "ruff>=0.15.11",
     "sqlalchemy>=2.0.49",

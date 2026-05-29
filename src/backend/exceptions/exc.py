@@ -49,3 +49,10 @@ class DataBaseResourceNotFound(AppExceptions):
         super().__init__(
             message="Database cound not find given resource", status_code=404
         )
+
+
+class UserNotFound(AppExceptions):
+    def __init__(self, user_id) -> None:
+        super().__init__(
+            message=f"User with ID {user_id} not found in DB", status_code=404
+        )

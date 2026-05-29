@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from backend.chat_bot.client import ChatBotClient
-from backend.database.models import Conversations
+from backend.database.models import Conversations, Messages, Users
 
 
 def test_chat_wrong_user_input(client, wrong_user_input_empty):
@@ -21,17 +21,22 @@ def test_chat_streaming(
     happy_test_user_input_short,
     happy_model_stream_response,
     model_stream_response,
-    # db_session_override,
+    test_user_db,
 ):
-    # client.app.dependency_overrides[get_db] = db_session_override
+
     chatbot_mock.side_effect = happy_model_stream_response
-    conversation_example = Conversations()
+
     db_session = client.app.state.session_maker()
+    db_session.add(test_user_db)
+    db_session.commit()
+
+    conversation_example = Conversations(user_id=test_user_db.id)
     db_session.add(conversation_example)
     db_session.commit()
-    db_session.refresh(conversation_example)
 
-    response = client.post("v1/chat", json=happy_test_user_input_short)
+    response = client.post(
+        "v1/chat?user_id=1", json=happy_test_user_input_short
+    )  #! Temporarly user_id is part of URL later after AUTH module implementation it will be changed
 
     chunks = []
     for chunk in response.iter_text():
@@ -42,35 +47,12 @@ def test_chat_streaming(
     chatbot_mock.assert_called_once()
     client.app.dependency_overrides.clear()
 
+    # DB
 
-@patch.object(ChatBotClient, "stream_response")
-def test_chat_streaming_with_dependecy_override(
-    chatbot_mock,
-    client,
-    happy_test_user_input_short,
-    # db_session_override,
-    happy_model_stream_response,
-):
-    """Functioon will test streaming with dependency override. It does not go so deep like above function"""
-    # client.app.dependency_overrides[get_db] = db_session_override
-    conversation_example = Conversations()
-    db_session = client.app.state.session_maker()
-    db_session.add(conversation_example)
-    db_session.commit()
-    db_session.refresh(conversation_example)
+    mess = db_session.query(Messages).all()
 
-    chatbot_mock.side_effect = happy_model_stream_response
-
-    result = client.post("/v1/chat", json=happy_test_user_input_short)
-    chunks = []
-
-    for chunk in result.iter_text():
-        chunks.append(chunk)
-
-    assert result.status_code == 200
+    assert mess[0].content == "What are you?"
     assert (
-        "".join(chunks).strip()
+        mess[1].content.strip()
         == "I am powerfull AI! I am here to destroy you! ".strip()
     )
-    # client.app.dependency_overrides.clear()
-    db_session.close()

@@ -1,3 +1,4 @@
+# App Error
 class AppExceptions(Exception):
     def __init__(self, message, status_code) -> None:
         self.message = message
@@ -5,6 +6,7 @@ class AppExceptions(Exception):
         super().__init__(message)
 
 
+# Ollama Errors
 class OllamaError(AppExceptions):
     def __init__(self) -> None:
         super().__init__(message="Ollama clent encountered error", status_code=500)
@@ -45,7 +47,9 @@ class DataBaseError(AppExceptions):
 
 
 class DataBaseResourceNotFound(AppExceptions):
-    def __init__(self):
+    def __init__(
+        self,
+    ):
         super().__init__(
             message="Database cound not find given resource", status_code=404
         )
@@ -56,3 +60,8 @@ class UserNotFound(AppExceptions):
         super().__init__(
             message=f"User with ID {user_id} not found in DB", status_code=404
         )
+
+
+class UserAlreadyExists(AppExceptions):
+    def __init__(self) -> None:
+        super().__init__(message="User with this email already exists", status_code=409)

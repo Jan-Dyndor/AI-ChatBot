@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.models import Conversations, Messages, Users
 from backend.database.repository import ChatRepository

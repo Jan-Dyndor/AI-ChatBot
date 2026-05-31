@@ -5,7 +5,12 @@ from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.models import Conversations, Messages, Users
-from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound, UserNotFound
+from backend.exceptions.exc import (
+    DataBaseError,
+    DataBaseResourceNotFound,
+    UserNotFound,
+    UserAlreadyExists,
+)
 
 
 class ChatRepository:
@@ -22,11 +27,24 @@ class ChatRepository:
         Returns:
             str: User email
         """
-        user = Users(email=email, password_hash=password)
-        self.db.add(user)
-        self.db.commit()
-        logger.debug(f"Created user with ID {user.id}")
-        return user.email
+        try:
+            user = self.db.query(Users).where(Users.email == email).first()
+        except SQLAlchemyError as err:
+            raise DataBaseError() from err
+
+        if user is not None:
+            logger.warning(f"User with email {email} already exists")
+            raise UserAlreadyExists()
+
+        new_user = Users(email=email, password_hash=password)
+
+        try:
+            self.db.add(new_user)
+            self.db.commit()
+            logger.debug(f"Created user with ID {new_user.id}")
+            return new_user.email
+        except SQLAlchemyError as err:
+            raise DataBaseError() from err
 
     def create_conversation(self, user_id: int) -> int:
         """Function creates new conversation and saves it into DB
@@ -167,8 +185,7 @@ class ChatRepository:
                 self.db.query(Conversations)
                 .where(
                     Conversations.id == conversation_id,
-                    Conversations.user_id
-                    == user_id,  # TODO this can be done simpler with SQLAlchemy relations. Check that later on
+                    Conversations.user_id == user_id,
                 )
                 .first()
             )
@@ -204,7 +221,7 @@ class ChatRepository:
                 .where(Conversations.user_id == user_id)
                 .order_by(Conversations.updated_at.desc())
                 .limit(10)
-            ).all()  # TODO Temporary limit 10
+            ).all()  #  Temporary limit 10
 
         except SQLAlchemyError as error:
             self.db.rollback()

@@ -8,9 +8,9 @@ from sqlalchemy.orm import sessionmaker
 from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
 from backend.configuration.settings import get_settings
 from backend.database.db import Base
+from backend.database.models import Users
 from backend.database.repository import ChatRepository
 from backend.main import create_app
-from backend.database.models import Users
 
 
 @pytest.fixture
@@ -164,6 +164,7 @@ def test_user_db() -> Users:
 # DB creation is in create_app function
 @pytest.fixture
 def test_env(monkeypatch):
+    get_settings.cache_clear()
     monkeypatch.setenv("API_URL", "test_url")
     monkeypatch.setenv("DB_URL", "sqlite:///:memory:")
     monkeypatch.setenv("API_CHAT_HISTORY", "test_history_url")

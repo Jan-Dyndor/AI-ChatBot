@@ -1,7 +1,9 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from backend.chat_bot.client import ChatBotClient
-from backend.database.models import Conversations, Messages, Users
+from backend.database.models import Conversations, Messages
+from backend.dependencies.depends import get_chat_repo
+from backend.exceptions.exc import DataBaseResourceNotFound
 
 
 def test_chat_wrong_user_input(client, wrong_user_input_empty):
@@ -15,7 +17,7 @@ def test_chat_wrong_user_input_long(client, wrong_user_input_too_long):
 
 
 @patch.object(ChatBotClient, "stream_response")
-def test_chat_streaming(
+def test_chat_streaming_happy(
     chatbot_mock,
     client,
     happy_test_user_input_short,
@@ -23,6 +25,21 @@ def test_chat_streaming(
     model_stream_response,
     test_user_db,
 ):
+    """Full happy apth of /chat endpint. Saving user and bot mess to DB
+
+    Args:
+        chatbot_mock (Mock): Mock of LLM response.
+
+        client (TestClient): TestClient from FastAPI. It invoked create_app function (creates DB, saves sessionmaker object in app.state, attaches middleware and router)
+
+        happy_test_user_input_short (UserInput): ficxture tyo store user input and chat histroy, successfully converted into Pydantic models
+
+        happy_model_stream_response (str): Generator that yields chunks of str as LLM response
+
+        model_stream_response (str): LLM model response , whole message how it should look like
+
+        test_user_db (Users): object instance of Users
+    """
 
     chatbot_mock.side_effect = happy_model_stream_response
 
@@ -56,3 +73,45 @@ def test_chat_streaming(
         mess[1].content.strip()
         == "I am powerfull AI! I am here to destroy you! ".strip()
     )
+
+
+def test_chat_streaming_save_user_input_error(client, happy_test_user_input_short):
+    """Function tests API response when there is an error within save_user_input_function
+
+    Args:
+        client (TestClient): TestClient from FastAPI. It invoked create_app function (creates DB, saves sessionmaker object in app.state, attaches middleware and router)
+
+        happy_test_user_input_short (UserInput): ficxture tyo store user input and chat histroy, successfully converted into Pydantic models
+    """
+    repo_mock = Mock()
+    repo_mock.save_user_input.side_effect = DataBaseResourceNotFound()
+
+    client.app.dependency_overrides[get_chat_repo] = lambda: repo_mock
+
+    response = client.post("v1/chat?user_id=1", json=happy_test_user_input_short)
+
+    assert response.status_code == 404
+    assert response.json().get("message") == "Database cound not find given resource"
+    client.app.dependency_overrides.clear()
+
+
+def test_chat_streaming_save_bot_output_error(client, happy_test_user_input_short):
+    """Function tests API response when there is an error within save_bot_output.
+    Since function save_bot_output is inside StreamingResponse it can not riase an error and I can not let this error go to FastAPI exception handler since there is no wayt o change HTTP response. Otherwise I will get raise RuntimeError("Caught handled exception, but response already started.")
+
+    Args:
+        client (TestClient): TestClient from FastAPI. It invoked create_app function (creates DB, saves sessionmaker object in app.state, attaches middleware and router)
+
+        happy_test_user_input_short (UserInput): ficxture tyo store user input and chat histroy, successfully converted into Pydantic models
+    """
+    repo_mock = Mock()
+    repo_mock.save_bot_output.side_effect = DataBaseResourceNotFound()
+
+    client.app.dependency_overrides[get_chat_repo] = lambda: repo_mock
+
+    response = client.post("v1/chat?user_id=1", json=happy_test_user_input_short)
+
+    assert (
+        response.status_code == 200
+    )  # ! Even when error occured , StreamingResponse has already started so HTTP response is 200. Error is visible in logs only
+    client.app.dependency_overrides.clear()

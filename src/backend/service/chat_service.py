@@ -51,7 +51,7 @@ class ChatService:
         for chunk in client.stream_response(chat_history=chat_history):
             full_llm_response += chunk
             yield chunk
-        #! Save bot output - I can not raise errors and let them go to FastAPI exception handler, since StreamingResponse already started and I can not change HTTP status code. Otherwise I Will get errors.
+        #! Save bot output - I can not raise errors and let them go to FastAPI exception handler, since StreamingResponse already started and I can not change HTTP status code. Otherwise I Will get errors like below:
         # raise RuntimeError("Caught handled exception, but response already started.")
         try:
             self.db.save_bot_output(

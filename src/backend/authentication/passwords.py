@@ -1,9 +1,9 @@
-import jwt
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pwdlib import PasswordHash
 
 password_hash_obj = PasswordHash.recommended()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/token")
+DUMMY_HASH: str = password_hash_obj.hash(
+    "DUMMY HASH TO MAKE SURE AUTH PROCESS TAKES ON AVG SAME AMOUNT OF TIME"
+)
 
 
 def hash_password(password: str) -> str:

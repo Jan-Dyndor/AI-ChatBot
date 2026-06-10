@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     api_url_latest_conversations_ids: str = Field(
         validation_alias="API_LATEST_CONVERSATIONS_IDS"
     )
+    secret_key_jwt: str = Field(validation_alias="SECRET_KEY")
+    algorythm_jwt: str = Field(validation_alias="ALGORITHM")
 
     model_config = SettingsConfigDict(
         env_file=root / ".env",

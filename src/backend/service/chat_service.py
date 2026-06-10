@@ -1,16 +1,13 @@
 from loguru import logger
 
 from backend.chat_bot.client import ChatBotClient
-from backend.database.repository import ChatRepository
+from backend.database.chat_repository import ChatRepository
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound
 
 
 class ChatService:
     def __init__(self, db: ChatRepository) -> None:
         self.db = db
-
-    def create_user(self, email, password):
-        return self.db.create_user(email, password)
 
     def lates_conversations_ids(self, user_id: int):
         return self.db.user_lates_conversations_ids(user_id)

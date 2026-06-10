@@ -1,7 +1,10 @@
 from fastapi import Depends, Request
 
-from backend.database.repository import ChatRepository
+from backend.authentication.auth import AuthService, oauth2_scheme
+from backend.database.chat_repository import ChatRepository
+from backend.database.user_repository import UserRepository
 from backend.service.chat_service import ChatService
+from backend.service.user_service import UserService
 
 
 def get_db(request: Request):
@@ -43,3 +46,28 @@ def get_chat_service(repository=Depends(get_chat_repo)) -> ChatService:
         ChatService: object that contains all business logic
     """
     return ChatService(db=repository)
+
+
+#! User Repository
+
+
+def get_user_repo(db=Depends(get_db)):
+    return UserRepository(db_session=db)
+
+
+#! AUTH
+
+
+def get_auth_service(user_repo=Depends(get_user_repo)):
+    return AuthService(user_repository=user_repo)
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme), auth_service=Depends(get_auth_service)
+):
+    return auth_service.get_current_user_data(token)
+
+
+#! User Service
+def get_user_service(user_repo=Depends(get_user_repo)):
+    return UserService(UserRepository=user_repo)

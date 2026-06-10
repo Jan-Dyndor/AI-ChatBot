@@ -9,7 +9,7 @@ from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
 from backend.configuration.settings import get_settings
 from backend.database.db import Base
 from backend.database.models import Users
-from backend.database.repository import ChatRepository
+from backend.database.chat_repository import ChatRepository
 from backend.main import create_app
 
 

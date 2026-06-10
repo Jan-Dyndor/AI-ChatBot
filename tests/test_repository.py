@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.models import Conversations, Messages, Users
-from backend.database.repository import ChatRepository
+from backend.database.chat_repository import ChatRepository
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound, UserNotFound
 
 

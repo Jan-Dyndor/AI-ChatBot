@@ -1,5 +1,6 @@
 from typing import Literal
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class ChatMessage(BaseModel):
@@ -16,9 +17,21 @@ class UserInput(BaseModel):
 
 
 class CreateUserRequest(BaseModel):
-    email: EmailStr = Field(max_length=100)
-    password: str = Field(max_length=100)
+    email: EmailStr = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1, max_length=100)
 
 
 class CreateUserResponse(BaseModel):
-    user_email: str
+    email: EmailStr
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class UserDB(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    email: EmailStr
+    password_hash: str

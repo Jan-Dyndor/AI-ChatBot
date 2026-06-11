@@ -23,12 +23,8 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
 
             duration = (time.perf_counter() - start) * 1000
-            if response.status_code == 422:  # To catch Pydantic validation errors
-                logger.warning(
-                    f" Outgoing HTTP {method} {path} -> {response.status_code} response created in {duration:.2f} ms "
-                )
-            else:
-                logger.info(
-                    f"Outgoing HTTP {method} {path} -> {response.status_code} response created in {duration:.2f} ms "
-                )
+
+            logger.info(
+                f"Outgoing HTTP {method} {path} -> {response.status_code} response created in {duration:.2f} ms "
+            )
             return response

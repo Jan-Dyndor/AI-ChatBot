@@ -7,9 +7,9 @@ from loguru import logger
 
 from backend.api.schemas.pydantic_schemas import UserDB
 from backend.authentication.passwords import DUMMY_HASH, verify_password
+from backend.configuration.settings import get_settings
 from backend.database.user_repository import UserRepository
 from backend.exceptions.exc import InvalidCredentials
-from backend.configuration.settings import get_settings
 
 settings = get_settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/token")
@@ -70,9 +70,11 @@ class AuthService:
         else:
             expire = datetime.now(tz=timezone.utc) + timedelta(minutes=15)
         to_encode.update({"exp": expire})
+
         encode_jwt = jwt.encode(
             to_encode, settings.secret_key_jwt, settings.algorythm_jwt
         )
+
         return encode_jwt
 
     def get_current_user_data(self, token: str) -> UserDB:

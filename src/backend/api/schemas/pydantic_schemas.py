@@ -25,6 +25,11 @@ class CreateUserResponse(BaseModel):
     email: EmailStr
 
 
+class UserLogin(BaseModel):
+    email: EmailStr = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1, max_length=100)
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

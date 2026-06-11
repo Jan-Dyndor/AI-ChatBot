@@ -2,27 +2,28 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from fastapi.security import OAuth2PasswordRequestForm
 
 from backend.api.schemas.pydantic_schemas import (
     ChatMessage,
     CreateUserRequest,
     CreateUserResponse,
     Token,
-    UserInput,
     UserDB,
+    UserInput,
+    UserLogin,
 )
-
 from backend.authentication.auth import AuthService
+from backend.configuration.settings import get_settings
 from backend.dependencies.depends import (
     get_auth_service,
     get_chat_service,
-    get_user_service,
     get_current_user,
+    get_user_service,
 )
 from backend.service.chat_service import ChatService
 from backend.service.user_service import UserService
 
+settings = get_settings()
 router = APIRouter(prefix="/v1", tags=["v1"])
 
 
@@ -93,16 +94,15 @@ def create_user(
     return CreateUserResponse(email=email)
 
 
-#! Nie wiem czy nie trzeba zmienci na query params zeby frontend mogl wysalc info
 @router.post("/token")
 def login_for_access_token(
-    form_data=Depends(OAuth2PasswordRequestForm),
+    user_data: UserLogin,
     auth_service: AuthService = Depends(get_auth_service),
 ) -> Token:
     user = auth_service.authenticate_user(
-        user_email=form_data.username, password=form_data.password
+        user_email=user_data.email, password=user_data.password
     )
-    access_token_expires = timedelta(minutes=30)  #! Potem do zmiany z settings
+    access_token_expires = timedelta(minutes=settings.token_expires_minutes)
     token = auth_service.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )

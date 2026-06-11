@@ -29,7 +29,6 @@ class UserRepository:
             raise DataBaseError() from err
 
         if user is not None:
-            logger.warning(f"User with email {email} already exists")
             raise UserAlreadyExists()
 
         new_user = Users(email=email, password_hash=password)

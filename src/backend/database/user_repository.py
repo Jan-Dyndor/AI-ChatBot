@@ -4,8 +4,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend.database.models import Users
 from backend.exceptions.exc import DataBaseError, UserAlreadyExists
 
-# from backend.authentication.auth import password_hash_obj
-
 
 class UserRepository:
     """Class responisble for connection with DB. Consist of methods to work with AUTH, login, registry of users"""

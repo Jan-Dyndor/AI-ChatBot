@@ -1,7 +1,9 @@
-from backend.database.models import Users
 from unittest.mock import Mock
-from backend.dependencies.depends import get_db
+
 from sqlalchemy.exc import SQLAlchemyError
+
+from backend.database.models import Users
+from backend.dependencies.depends import get_db
 
 
 def test_create_user_happy(client):
@@ -20,7 +22,7 @@ def test_create_user_happy(client):
 
     assert response.status_code == 201
     assert session.query(Users).first() is not None
-    assert response.json().get("user_email") == "test@gmail.com"
+    assert response.json().get("email") == "test@gmail.com"
 
 
 def test_create_user_user_already_exists(client):
@@ -53,4 +55,3 @@ def test_create_user_DB_error(client):
 
     assert response.status_code == 500
     client.app.dependency_overrides.clear()
-

@@ -7,18 +7,18 @@ from loguru import logger
 
 from backend.api.schemas.pydantic_schemas import UserDB
 from backend.authentication.passwords import DUMMY_HASH, verify_password
-from backend.configuration.settings import get_settings
+from backend.configuration.settings import Settings
 from backend.database.user_repository import UserRepository
 from backend.exceptions.exc import InvalidCredentials
 
-settings = get_settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/token")
 
 
 class AuthService:
 
-    def __init__(self, user_repository: UserRepository) -> None:
+    def __init__(self, user_repository: UserRepository, settings: Settings) -> None:
         self.db = user_repository
+        self.settings = settings
 
     def get_user(self, user_email: str) -> UserDB | None:
         """Function call UserRepository to check if User with email exists in DB
@@ -72,7 +72,7 @@ class AuthService:
         to_encode.update({"exp": expire})
 
         encode_jwt = jwt.encode(
-            to_encode, settings.secret_key_jwt, settings.algorythm_jwt
+            to_encode, self.settings.secret_key_jwt, self.settings.algorythm_jwt
         )
 
         return encode_jwt
@@ -88,10 +88,12 @@ class AuthService:
         """
         try:
             payload = jwt.decode(
-                token, settings.secret_key_jwt, algorithms=[settings.algorythm_jwt]
+                token,
+                self.settings.secret_key_jwt,
+                algorithms=[self.settings.algorythm_jwt],
             )  #! tutaj chyba co jak toke jest expired czy cos weic tu tez w try cathc trzeba zebrac
         except InvalidTokenError as err:
-            raise InvalidCredentials() from err  # ! zmien error jaki wychodzi tutaj!
+            raise InvalidCredentials() from err
         user_email = payload.get("sub", None)
         if not user_email:
             raise InvalidTokenError()

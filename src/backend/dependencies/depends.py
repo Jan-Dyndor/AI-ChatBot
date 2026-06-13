@@ -48,6 +48,11 @@ def get_chat_service(repository=Depends(get_chat_repo)) -> ChatService:
     return ChatService(db=repository)
 
 
+#! Settings
+def get_settings(request: Request):
+    return request.app.state.settings
+
+
 #! User Repository
 
 
@@ -58,8 +63,8 @@ def get_user_repo(db=Depends(get_db)):
 #! AUTH
 
 
-def get_auth_service(user_repo=Depends(get_user_repo)):
-    return AuthService(user_repository=user_repo)
+def get_auth_service(user_repo=Depends(get_user_repo), settings=Depends(get_settings)):
+    return AuthService(user_repository=user_repo, settings=settings)
 
 
 def get_current_user(

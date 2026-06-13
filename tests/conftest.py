@@ -1,5 +1,7 @@
 import time
+from datetime import datetime, timedelta, timezone
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import StaticPool, create_engine
@@ -7,9 +9,9 @@ from sqlalchemy.orm import sessionmaker
 
 from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
 from backend.configuration.settings import get_settings
+from backend.database.chat_repository import ChatRepository
 from backend.database.db import Base
 from backend.database.models import Users
-from backend.database.chat_repository import ChatRepository
 from backend.main import create_app
 
 
@@ -167,11 +169,16 @@ def test_env(monkeypatch):
     get_settings.cache_clear()
     monkeypatch.setenv("API_URL", "test_url")
     monkeypatch.setenv("DB_URL", "sqlite:///:memory:")
-    monkeypatch.setenv("API_CHAT_HISTORY", "test_history_url")
-    monkeypatch.setenv("API_CREATE_CONVERSATION", "create_conversation_url_test")
+    monkeypatch.setenv("API_CHAT_HISTORY_URL", "test_history_url")
+    monkeypatch.setenv("API_CREATE_CONVERSATION_URL", "create_conversation_url_test")
     monkeypatch.setenv(
-        "API_LATEST_CONVERSATIONS_IDS", "test_latest_conversations_ids_url"
+        "API_LATEST_CONVERSATIONS_IDS_URL", "test_latest_conversations_ids_url"
     )
+    monkeypatch.setenv("API_TOKEN_URL", "api_token_url_test")
+    monkeypatch.setenv("API_CREATE_USER", "api_create_user_test")
+    monkeypatch.setenv("SECRET_KEY", "123456789")
+    monkeypatch.setenv("ALGORITHM", "HS256")
+    monkeypatch.setenv("JWT_EXPIRES_TIME_MINUTES", "10")
 
     get_settings.cache_clear()
 
@@ -187,3 +194,32 @@ def client(
         yield client
 
     get_settings.cache_clear()
+
+
+#! AUTH Frixtures
+
+
+@pytest.fixture
+def valid_token():
+    token = jwt.encode(
+        {
+            "sub": "test@gmail.com",
+            "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
+        },
+        "123456789",
+        "HS256",
+    )
+    return token
+
+
+@pytest.fixture
+def invalid_token():
+    token = jwt.encode(
+        {
+            "sub": "test@gmail.com",
+            "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
+        },
+        "INVALID SECRET KEY",
+        "HS256",
+    )
+    return token

@@ -13,7 +13,7 @@ from backend.api.schemas.pydantic_schemas import (
     UserLogin,
 )
 from backend.authentication.auth import AuthService
-from backend.configuration.settings import get_settings
+from backend.configuration.settings import get_settings, Settings
 from backend.dependencies.depends import (
     get_auth_service,
     get_chat_service,
@@ -23,7 +23,6 @@ from backend.dependencies.depends import (
 from backend.service.chat_service import ChatService
 from backend.service.user_service import UserService
 
-settings = get_settings()
 router = APIRouter(prefix="/v1", tags=["v1"])
 
 
@@ -98,6 +97,7 @@ def create_user(
 @router.post("/token")
 def login_for_access_token(
     user_data: UserLogin,
+    settings: Settings = Depends(get_settings),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> Token:
     user = auth_service.authenticate_user(

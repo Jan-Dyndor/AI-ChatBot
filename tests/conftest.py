@@ -176,7 +176,7 @@ def test_env(monkeypatch):
     )
     monkeypatch.setenv("API_TOKEN_URL", "api_token_url_test")
     monkeypatch.setenv("API_CREATE_USER", "api_create_user_test")
-    monkeypatch.setenv("SECRET_KEY", "123456789")
+    monkeypatch.setenv("SECRET_KEY", "123456789123456789123456789123456789")
     monkeypatch.setenv("ALGORITHM", "HS256")
     monkeypatch.setenv("JWT_EXPIRES_TIME_MINUTES", "10")
 
@@ -206,7 +206,7 @@ def valid_token():
             "sub": "test@gmail.com",
             "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
         },
-        "123456789",
+        "123456789123456789123456789123456789",  # JWT does throw InsecureKeyLengthWarning if too small
         "HS256",
     )
     return token
@@ -219,7 +219,8 @@ def invalid_token():
             "sub": "test@gmail.com",
             "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
         },
-        "INVALID SECRET KEY",
+        "INVALID SECRET KEY"
+        * 5,  # make it longer so in test JWT does not throw InsecureKeyLengthWarning
         "HS256",
     )
     return token

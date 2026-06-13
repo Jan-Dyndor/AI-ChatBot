@@ -1,7 +1,10 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.chat_repository import ChatRepository
 from backend.database.models import Conversations, Users
+from backend.dependencies.depends import get_db
 from backend.exceptions.exc import DataBaseError
 
 
@@ -72,7 +75,7 @@ def test_create_conversation_db_error(
     assert result.status_code == 500
 
 
-# In above test I can not mock get_db since AUTH is using it .
+# In above test I can not mock get_db since AUTH is using it
 # I can not also mock get_chat_repo since I would have to return ChatRepository object not raise an error
 # So the only option is to mock a function in ChatRepository that will return my custom DataBaseError htat occures when SQLAlchemyError happens
 

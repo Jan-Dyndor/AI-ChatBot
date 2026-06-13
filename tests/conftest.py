@@ -157,9 +157,9 @@ def test_user_db() -> Users:
     """Function creates User object with ID = 1
 
     Returns:
-        Users: SQLAlchemy object ready to be added to DB by session
+        Users: SQLAlchemy object ready to be added to DB by session. It also work well with Valid token Fixture
     """
-    return Users(id=1, email="test", password_hash="test_yet_not_hash")
+    return Users(email="test@gmail.com", password_hash="test")
 
 
 # ============ FIXTURES FOR INTEGRATION tests with request from TestClient

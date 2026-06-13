@@ -40,6 +40,7 @@ def chat(
     user: UserDB = Depends(get_current_user),
 ):
     # Check User data before streaming response starts - after it starts it will not be possible to change status code + save user input to DB
+
     service.save_user_input(
         user_input=user_input.input,
         conversation_id=user_input.conversation_id,

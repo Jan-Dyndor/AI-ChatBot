@@ -1,11 +1,10 @@
 import requests
 import streamlit as st
 
-from backend.configuration.logging_config import logger
+from loguru import logger
 from backend.configuration.settings import get_settings
 
 settings = get_settings()
-TEST_USER_ID: int = 1
 
 
 def init_session_state() -> None:
@@ -16,13 +15,19 @@ def init_session_state() -> None:
     - conversation_id - if absent we create new conversation if present system fetches messages from this conversation. If conversation was absent then system creates it and returns None (no previous conversations)
 
     """
+
+    if "access_token" not in st.session_state or not st.session_state.access_token:
+        st.warning("You need to log in first.")
+        st.switch_page("pages/login_page.py")
+
     if "disabled" not in st.session_state:
         st.session_state.disabled = False
 
     if "conversation_id" not in st.session_state:
         try:
             response = requests.get(
-                f"http://localhost:8000/v1/create_conversation?user_id={TEST_USER_ID}"
+                "http://localhost:8000/v1/create_conversation",
+                headers={"Authorization": f"Bearer {st.session_state.access_token}"},
             )
             response.raise_for_status()
             conversetion_id_int = response.json()
@@ -53,7 +58,10 @@ def init_session_state() -> None:
             st.session_state.messages = []
             try:
                 response = requests.get(
-                    f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}&user_id={TEST_USER_ID}",
+                    f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
+                    headers={
+                        "Authorization": f"Bearer {st.session_state.access_token}"
+                    },
                     timeout=120,
                 )
 
@@ -96,7 +104,8 @@ def get_conversation_history_ids() -> list[int] | int | None:
     """
     try:
         response = requests.get(
-            f"http://localhost:8000/v1/get_conversations_ids?user_id={TEST_USER_ID}",
+            "http://localhost:8000/v1/get_conversations_ids",
+            headers={"Authorization": f"Bearer {st.session_state.access_token}"},
             timeout=120,
         )
         logger.debug(
@@ -126,7 +135,7 @@ def render_sidebar() -> None:
 
         if st.button("Start new chat"):
             logger.debug("Starting new chat")
-            st.session_state.clear()
+            del st.session_state.conversation_id
             init_session_state()
             st.session_state.messages = [
                 {
@@ -138,12 +147,18 @@ def render_sidebar() -> None:
             st.rerun()
         st.markdown("---")
 
+        if st.button("Logout"):
+            st.session_state.clear()
+            st.switch_page("pages/login_page.py")
+            print(st.session_state.conversation_id)
+
         conversations = get_conversation_history_ids()
         if conversations:
             st.subheader("Go back to previous conversations (Latest 10 by default)")
             for conversation_id_history in conversations:  # type: ignore
                 if st.button(str(conversation_id_history)):
-                    st.session_state.clear()
+                    del st.session_state.conversation_id
+                    del st.session_state.messages
                     st.session_state.conversation_id = conversation_id_history
                     logger.debug(
                         f"User choose old conversation with ID {conversation_id_history}"
@@ -188,13 +203,14 @@ def get_ai_response(
     """
     try:
         response = requests.post(
-            f"http://localhost:8000/v1/chat?user_id={TEST_USER_ID}",  # TODO later change that user_id is in path param. Rethink that! But later on we will have JWT instead...
+            "http://localhost:8000/v1/chat",
             json={
                 "input": user_input,
                 "model": model,
                 "chat_history": chat_history,
                 "conversation_id": conversation_id,
             },
+            headers={"Authorization": f"Bearer {st.session_state.access_token}"},
             timeout=120,
             stream=True,
         )
@@ -204,13 +220,16 @@ def get_ai_response(
         if response.status_code == 422:
             response_json = response.json()
             logger.error(
-                f"Error by Pydantic: {response_json["detail"][0]["msg"]}. With RquestID {response.headers.get("request-id")} in conversation ID {st.session_state.conversation_id}"
+                f"Error by Pydantic: {response_json}. With RquestID {response.headers.get("request-id")} in conversation ID {st.session_state.conversation_id}"
             )
-            yield f"\n\n\n\n\n[ERROR] {response_json['detail'][0]['msg']}"
+            yield f"\n\n\n\n\n[ERROR] {response_json}"
             return
         if response.status_code == 404:
             logger.exception(response.json())
             yield "\n\n\n\n\n[ERROR] DataBase error occured. Check logs"
+            return
+        if response.status_code == 401:
+            yield "\n\n\n\n\n[ERROR] Could not validate credentials. Token might be outdated. Login."
             return
 
         response.raise_for_status()

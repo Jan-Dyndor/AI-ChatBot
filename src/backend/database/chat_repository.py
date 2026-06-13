@@ -9,42 +9,12 @@ from backend.exceptions.exc import (
     DataBaseError,
     DataBaseResourceNotFound,
     UserNotFound,
-    UserAlreadyExists,
 )
 
 
 class ChatRepository:
     def __init__(self, db_session) -> None:
         self.db = db_session
-
-    def create_user(self, email, password) -> str:
-        """Function will create user
-
-        Args:
-            email (str)
-            password (str): password_hash
-
-        Returns:
-            str: User email
-        """
-        try:
-            user = self.db.query(Users).where(Users.email == email).first()
-        except SQLAlchemyError as err:
-            raise DataBaseError() from err
-
-        if user is not None:
-            logger.warning(f"User with email {email} already exists")
-            raise UserAlreadyExists()
-
-        new_user = Users(email=email, password_hash=password)
-
-        try:
-            self.db.add(new_user)
-            self.db.commit()
-            logger.debug(f"Created user with ID {new_user.id}")
-            return new_user.email
-        except SQLAlchemyError as err:
-            raise DataBaseError() from err
 
     def create_conversation(self, user_id: int) -> int:
         """Function creates new conversation and saves it into DB
@@ -145,7 +115,7 @@ class ChatRepository:
                     Conversations.id == conversation_id,
                     Conversations.user_id == user_id,
                 )
-                .first()  # TODO this can be done simpler with SQLAlchemy relations. Check that later on
+                .first()
             )
             if conversation is None:
                 logger.warning(

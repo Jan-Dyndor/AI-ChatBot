@@ -65,3 +65,11 @@ class UserNotFound(AppExceptions):
 class UserAlreadyExists(AppExceptions):
     def __init__(self) -> None:
         super().__init__(message="User with this email already exists", status_code=409)
+
+
+class InvalidCredentials(AppExceptions):
+    def __init__(self) -> None:
+        super().__init__(
+            message="Could not validate credentials",
+            status_code=401,
+        )

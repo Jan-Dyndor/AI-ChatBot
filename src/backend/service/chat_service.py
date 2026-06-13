@@ -1,16 +1,13 @@
 from loguru import logger
 
 from backend.chat_bot.client import ChatBotClient
-from backend.database.repository import ChatRepository
+from backend.database.chat_repository import ChatRepository
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound
 
 
 class ChatService:
     def __init__(self, db: ChatRepository) -> None:
         self.db = db
-
-    def create_user(self, email, password):
-        return self.db.create_user(email, password)
 
     def lates_conversations_ids(self, user_id: int):
         return self.db.user_lates_conversations_ids(user_id)
@@ -51,7 +48,7 @@ class ChatService:
         for chunk in client.stream_response(chat_history=chat_history):
             full_llm_response += chunk
             yield chunk
-        #! Save bot output - I can not raise errors and let them go to FastAPI exception handler, since StreamingResponse already started and I can not change HTTP status code. Otherwise I Will get errors.
+        #! Save bot output - I can not raise errors and let them go to FastAPI exception handler, since StreamingResponse already started and I can not change HTTP status code. Otherwise I Will get errors like below:
         # raise RuntimeError("Caught handled exception, but response already started.")
         try:
             self.db.save_bot_output(

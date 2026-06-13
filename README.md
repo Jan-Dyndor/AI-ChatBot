@@ -25,6 +25,9 @@ API_URL="http://localhost:8000/v1/chat"
 API_CHAT_HISTORY="http://localhost:8000/v1/chat_history"
 API_CREATE_CONVERSATION="http://localhost:8000/v1/create_conversation"
 API_LATEST_CONVERSATIONS_IDS="http://localhost:8000/v1/get_conversations_ids"
+SECRET_KEY = "SOME VALUE"
+ALGORITHM = "HS256"
+
 
 # Example SQLite database URL.
 # You can change this path if you want to store the database elsewhere.

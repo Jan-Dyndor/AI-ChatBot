@@ -18,6 +18,7 @@ async def lifespan(app: FastAPI):
     get_settings.cache_clear()
     # Before app starts
     settings = get_settings()  # read .env file
+    app.state.settings = settings
     engine = get_engine(settings.db_url)
     Base.metadata.create_all(bind=engine)
     session_maker = session_factory(engine)

@@ -36,7 +36,7 @@ SECRET_KEY = "SOME SECRET VALUE"
 ALGORITHM = "HS256"
 # Example 180 minutes
 JWT_EXPIRES_TIME_MINUTES=180
-```
+
 
 # Example SQLite database URL.
 # You can change this path if you want to store the database elsewhere.

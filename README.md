@@ -21,13 +21,22 @@ This project was created to explore and understand:
 Create a `.env` file in the root of the repository and define:
 
 ```env
-API_URL="http://localhost:8000/v1/chat"
-API_CHAT_HISTORY="http://localhost:8000/v1/chat_history"
-API_CREATE_CONVERSATION="http://localhost:8000/v1/create_conversation"
-API_LATEST_CONVERSATIONS_IDS="http://localhost:8000/v1/get_conversations_ids"
-SECRET_KEY = "SOME VALUE"
-ALGORITHM = "HS256"
+API_URL = "http://localhost:8000/v1/chat"
+API_CHAT_HISTORY_URL = "http://localhost:8000/v1/chat_history"
+API_CREATE_CONVERSATION_URL = "http://localhost:8000/v1/create_conversation"
+API_LATEST_CONVERSATIONS_IDS_URL= "http://localhost:8000/v1/get_conversations_ids"
+API_TOKEN_URL = "http://localhost:8000/v1/token"
+API_CREATE_USER = "http://localhost:8000/v1/create_user"
 
+# Example SQLite database URL.
+# You can change this path if you want to store the database elsewhere.
+DB_URL = "sqlite:///data/data.db"
+
+SECRET_KEY = "SOME SECRET VALUE"
+ALGORITHM = "HS256"
+# Example 180 minutes
+JWT_EXPIRES_TIME_MINUTES=180
+```
 
 # Example SQLite database URL.
 # You can change this path if you want to store the database elsewhere.
@@ -44,7 +53,7 @@ uv run uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000 --no-acc
 
 ### Frontend
 ```cmd
-uv run streamlit run src/frontend/chatbot_page.py
+ uv run streamlit run src/frontend/main.py
 ```
 ## Architecture
 
@@ -84,22 +93,27 @@ AI-ChatBot/
 │
 ├── src/
 │   ├── backend/
-│   │   ├── api/                # FastAPI routers and API endpoints
+│   │   ├── api/                # FastAPI routers and API endpoints and Pydantic schemas
+│   │   ├── authorization/      # Auth service class responsible for authorization and JWT creation
 │   │   ├── chat_bot/           # LLM/Ollama communication logic
 │   │   ├── configuration/      # Settings and logging configuration
-│   │   ├── database/           # SQLAlchemy models, engine and DB setup
+│   │   ├── database/           # SQLAlchemy models, engine and DB setup, repository class setup
 │   │   ├── dependencies/       # FastAPI dependencies
 │   │   ├── exceptions/         # Custom exceptions and handlers
 │   │   ├── middleware/         # Request ID and logging middleware
 │   │   ├── service/            # Business logic and orchestration layer
-│   │   ├── __init__.py
 │   │   └── main.py             # FastAPI application entrypoint
 │   │
 │   └── frontend/
-│       └── chatbot_page.py     # Streamlit frontend application
+│       └── main.py             # Entry point of Streamlit applications 
+│       ├── pages/              # Streamlit frontend pages
+│           └── chatbot_page.py 
+│           └── login_page.py 
+│           └── register_page.py            
 │
 ├── tests/                      # Unit and integration tests
 ├── .gitignore
+├── .env                        # Env file with env variables
 ├── .python-version
 ├── README.md
 ├── pyproject.toml              # Project configuration and dependencies
@@ -130,10 +144,11 @@ The Streamlit frontend consumes streamed chunks in real-time to simulate ChatGPT
 - Layered backend architecture
 - Persistent chat history (SQLite)
 - Multi-chat support (for one user -> user based after adding authentication)
+- JWT/O2Auth authentication
+
 
 ## Planned Features
 
-- JWT/O2Auth authentication
 - PostgreSQL integration
 - Redis-based conversational memory
 - Voice input (speech-to-text)

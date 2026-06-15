@@ -1,7 +1,9 @@
+from uuid import uuid4
+
 import requests
 import streamlit as st
-
 from loguru import logger
+
 from backend.configuration.settings import get_settings
 
 settings = get_settings()
@@ -24,76 +26,83 @@ def init_session_state() -> None:
         st.session_state.disabled = False
 
     if "conversation_id" not in st.session_state:
-        try:
-            response = requests.get(
-                "http://localhost:8000/v1/create_conversation",
-                headers={"Authorization": f"Bearer {st.session_state.access_token}"},
-            )
-            response.raise_for_status()
-            conversetion_id_int = response.json()
-            logger.debug(
-                f"Created conversation with ID {conversetion_id_int} from RequestID {response.headers.get("request-id")}"
-            )
+        REQUEST_ID: str = str(uuid4())
+        with logger.contextualize(request_id=REQUEST_ID):
 
-            st.session_state.conversation_id = conversetion_id_int
-            st.session_state.messages = [
-                {
-                    "role": "assistant",
-                    "content": "Hi! How can I help you today?",
-                }
-            ]
+            try:
+                response = requests.get(
+                    "http://localhost:8000/v1/create_conversation",
+                    headers={
+                        "Authorization": f"Bearer {st.session_state.access_token}",
+                        "Request-ID": f"{REQUEST_ID}",
+                    },
+                )
+                response.raise_for_status()
+                conversetion_id_int = response.json()
+                logger.debug(f"Created conversation with ID {conversetion_id_int}")
 
-        except requests.RequestException as error:
-            disable_conversation()
-            logger.exception(error)
-            st.session_state.messages = [
-                {
-                    "role": "assistant",
-                    "content": "Hello. Could not create new conversation - check the logs of application. For now your are unable to write.",
-                }
-            ]
+                st.session_state.conversation_id = conversetion_id_int
+                st.session_state.messages = [
+                    {
+                        "role": "assistant",
+                        "content": "Hi! How can I help you today?",
+                    }
+                ]
+
+            except requests.RequestException as error:
+                disable_conversation()
+                logger.exception(error)
+                st.session_state.messages = [
+                    {
+                        "role": "assistant",
+                        "content": "Hello. Could not create new conversation - check the logs of application. For now your are unable to write.",
+                    }
+                ]
 
     else:
         if "messages" not in st.session_state:
             st.session_state.messages = []
-            try:
-                response = requests.get(
-                    f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
-                    headers={
-                        "Authorization": f"Bearer {st.session_state.access_token}"
-                    },
-                    timeout=120,
-                )
+            REQUEST_ID: str = str(uuid4())
+            with logger.contextualize(request_id=REQUEST_ID):
+                try:
+                    response = requests.get(
+                        f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
+                        headers={
+                            "Authorization": f"Bearer {st.session_state.access_token}",
+                            "Request-ID": f"{REQUEST_ID}",
+                        },
+                        timeout=120,
+                    )
 
-                logger.debug(
-                    f"Fetched chat history for conversation ID {st.session_state.conversation_id} from {response.url} based on request ID {response.headers.get("request-id")} with status {response.status_code}"
-                )
-                response.raise_for_status()
-                messages = response.json()
-                if messages:
-                    for message in messages:
-                        st.session_state.messages.append(message)
-                else:
                     logger.debug(
-                        f"Conversation with ID {st.session_state.conversation_id} has no old messages"
+                        f"Fetched chat history for conversation ID {st.session_state.conversation_id} with status {response.status_code}"
+                    )
+                    response.raise_for_status()
+                    messages = response.json()
+                    if messages:
+                        for message in messages:
+                            st.session_state.messages.append(message)
+                    else:
+                        logger.debug(
+                            f"Conversation with ID {st.session_state.conversation_id} has no old messages"
+                        )
+                        st.session_state.messages = [
+                            {
+                                "role": "assistant",
+                                "content": "Hi! How can I help you today?",
+                            }
+                        ]
+
+                except requests.RequestException:
+                    logger.exception(
+                        f"Could not fetch chat history for conversation {st.session_state.conversation_id}"
                     )
                     st.session_state.messages = [
                         {
                             "role": "assistant",
-                            "content": "Hi! How can I help you today?",
+                            "content": "[ERROR] Hi! I could not fetch data from our previous conversation. Issue occured, chech app logs",
                         }
                     ]
-
-            except requests.RequestException:
-                logger.exception(
-                    f"Could not fetch chat history for conversation {st.session_state.conversation_id}"
-                )
-                st.session_state.messages = [
-                    {
-                        "role": "assistant",
-                        "content": "[ERROR] Hi! I could not fetch data from our previous conversation. Issue occured, chech app logs",
-                    }
-                ]
 
 
 def get_conversation_history_ids() -> list[int] | int | None:
@@ -102,23 +111,29 @@ def get_conversation_history_ids() -> list[int] | int | None:
     Returns:
         list[int] | int | None: When 200 response it gives back list of converssations. If 404 - no conversetions yet found return 0 to inform user. If Error occured return None.
     """
-    try:
-        response = requests.get(
-            "http://localhost:8000/v1/get_conversations_ids",
-            headers={"Authorization": f"Bearer {st.session_state.access_token}"},
-            timeout=120,
-        )
-        logger.debug(
-            f"Latest conversations IDs response received: status={response.status_code}, request_id={response.headers.get("request-id")}"
-        )
-        if response.status_code == 404:
-            return 0
-        response.raise_for_status()
-        ids_result = response.json()
-        return ids_result
-    except requests.RequestException:
-        logger.exception("Could not fetch latest conversations IDs from frontend")
-        return None
+    REQUEST_ID: str = str(uuid4())
+    with logger.contextualize(request_id=REQUEST_ID):
+        try:
+            response = requests.get(
+                "http://localhost:8000/v1/get_conversations_ids",
+                headers={
+                    "Authorization": f"Bearer {st.session_state.access_token}",
+                    "Request-ID": f"{REQUEST_ID}",
+                },
+                timeout=120,
+            )
+
+            if response.status_code == 404:
+                return 0
+            response.raise_for_status()
+            ids_result = response.json()
+            logger.debug(
+                f"Latest conversations IDs response received: status={response.status_code}"
+            )
+            return ids_result
+        except requests.RequestException:
+            logger.exception("Could not fetch latest conversations IDs from frontend")
+            return None
 
 
 def render_sidebar() -> None:
@@ -160,9 +175,6 @@ def render_sidebar() -> None:
                     del st.session_state.conversation_id
                     del st.session_state.messages
                     st.session_state.conversation_id = conversation_id_history
-                    logger.debug(
-                        f"User choose old conversation with ID {conversation_id_history}"
-                    )
                     init_session_state()
                     st.rerun()
         elif (
@@ -201,46 +213,51 @@ def get_ai_response(
     Yields:
         str: LLM yields chunks
     """
-    try:
-        response = requests.post(
-            "http://localhost:8000/v1/chat",
-            json={
-                "input": user_input,
-                "model": model,
-                "chat_history": chat_history,
-                "conversation_id": conversation_id,
-            },
-            headers={"Authorization": f"Bearer {st.session_state.access_token}"},
-            timeout=120,
-            stream=True,
-        )
-        logger.debug(
-            f"LLM response recived from RequestID {response.headers.get("request-id")}, with status {response.status_code}"
-        )
-        if response.status_code == 422:
-            response_json = response.json()
-            logger.error(
-                f"Error by Pydantic: {response_json}. With RquestID {response.headers.get("request-id")} in conversation ID {st.session_state.conversation_id}"
+
+    REQUEST_ID: str = str(uuid4())
+    with logger.contextualize(request_id=REQUEST_ID):
+        logger.debug("Sending user input to LLM")
+        try:
+            response = requests.post(
+                "http://localhost:8000/v1/chat",
+                json={
+                    "input": user_input,
+                    "model": model,
+                    "chat_history": chat_history,
+                    "conversation_id": conversation_id,
+                },
+                headers={
+                    "Authorization": f"Bearer {st.session_state.access_token}",
+                    "Request-ID": f"{REQUEST_ID}",
+                },
+                timeout=120,
+                stream=True,
             )
-            yield f"\n\n\n\n\n[ERROR] {response_json}"
-            return
-        if response.status_code == 404:
-            logger.exception(response.json())
-            yield "\n\n\n\n\n[ERROR] DataBase error occured. Check logs"
-            return
-        if response.status_code == 401:
-            yield "\n\n\n\n\n[ERROR] Could not validate credentials. Token might be outdated. Login."
-            return
+            logger.debug(f"LLM response recived with status {response.status_code}")
+            if response.status_code == 422:
+                response_json = response.json()
+                logger.error(
+                    f"Error by Pydantic: {response_json}. With RquestID {response.headers.get("REQUEST-ID")} in conversation ID {st.session_state.conversation_id}"
+                )
+                yield f"\n\n\n\n\n[ERROR] {response_json}"
+                return
+            if response.status_code == 404:
+                logger.exception(response.json())
+                yield "\n\n\n\n\n[ERROR] DataBase error occured. Check logs"
+                return
+            if response.status_code == 401:
+                yield "\n\n\n\n\n[ERROR] Could not validate credentials. Token might be outdated. Login."
+                return
 
-        response.raise_for_status()
+            response.raise_for_status()
 
-        for chunk in response.iter_content(chunk_size=1024):
-            yield chunk.decode("utf-8")
+            for chunk in response.iter_content(chunk_size=1024):
+                yield chunk.decode("utf-8")
 
-    except requests.RequestException:
-        logger.exception("Could not fetch LLM response")
-        yield "\n\n\n\n\n[ERROR] Backend is unavailable or stream was interrupted."
-        return
+        except requests.RequestException:
+            logger.exception("Could not fetch LLM response")
+            yield "\n\n\n\n\n[ERROR] Backend is unavailable or stream was interrupted."
+            return
 
 
 def disable_conversation():
@@ -267,7 +284,6 @@ def main() -> None:
         disabled=st.session_state.disabled,
         on_submit=disable_conversation,
     )
-
     if user_input:
         st.session_state.messages.append(
             {

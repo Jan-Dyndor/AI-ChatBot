@@ -39,7 +39,7 @@ def test_chat_history_happy(client, valid_token):
     # Test Body
 
     response = client.get(
-        url="v1/chat_history?conversation_id=1",
+        url="v1/conversations/1/messages",
         headers={"Authorization": f"Bearer {valid_token}"},
     )
     resp = response.json()
@@ -68,7 +68,7 @@ def test_chat_history_no_messages(client, valid_token):
     session.commit()
 
     response = client.get(
-        url="v1/chat_history?conversation_id=1",
+        url="v1/conversations/1/messages",
         headers={"Authorization": f"Bearer {valid_token}"},
     )
 
@@ -89,7 +89,7 @@ def test_chat_history_co_conversation_or_wrong_userID(client, valid_token):
     session.commit()
 
     response = client.get(
-        url="v1/chat_history?conversation_id=1",
+        url="v1/conversations/1/messages",
         headers={"Authorization": f"Bearer {valid_token}"},
     )
     assert response.status_code == 404
@@ -115,7 +115,7 @@ def test_chat_history_DB_error(client, valid_token):
     client.app.dependency_overrides[get_db] = lambda: session_mock
 
     response = client.get(
-        url="v1/chat_history?conversation_id=1",
+        url="v1/conversations/1/messages",
         headers={"Authorization": f"Bearer {valid_token}"},
     )
     assert response.status_code == 500
@@ -132,7 +132,7 @@ def test_chat_history_invalid_token(client, invalid_token):
     """
 
     response = client.get(
-        url="v1/chat_history?conversation_id=1",
+        url="v1/conversations/1/messages",
         headers={"Authorization": f"Bearer {invalid_token}"},
     )
 

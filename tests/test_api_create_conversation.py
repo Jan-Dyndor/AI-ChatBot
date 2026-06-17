@@ -24,8 +24,8 @@ def test_create_conversation_happy(client, valid_token, test_user_db):
 
     assert session.query(Conversations).first() is None
     # Test
-    result = client.get(
-        "v1/create_conversation", headers={"Authorization": f"Bearer {valid_token}"}
+    result = client.post(
+        "v1/conversations", headers={"Authorization": f"Bearer {valid_token}"}
     )
     conv = session.query(Conversations).first()
 
@@ -44,8 +44,8 @@ def test_create_conversation_no_user(client, valid_token):
         test_user_db (Users): user
     """
 
-    result = client.get(
-        "v1/create_conversation", headers={"Authorization": f"Bearer {valid_token}"}
+    result = client.post(
+        "v1/conversations", headers={"Authorization": f"Bearer {valid_token}"}
     )
     assert result.status_code == 401
 
@@ -68,8 +68,8 @@ def test_create_conversation_db_error(
     session.add(test_user_db)
     session.commit()
 
-    result = client.get(
-        "v1/create_conversation", headers={"Authorization": f"Bearer {valid_token}"}
+    result = client.post(
+        "v1/conversations", headers={"Authorization": f"Bearer {valid_token}"}
     )
 
     assert result.status_code == 500
@@ -94,7 +94,7 @@ def test_invalid_token(client, invalid_token, test_user_db):
     session.add(test_user_db)
     session.commit()
 
-    result = client.get(
-        "v1/create_conversation", headers={"Authorization": f"Bearer {invalid_token}"}
+    result = client.post(
+        "v1/conversations", headers={"Authorization": f"Bearer {invalid_token}"}
     )
     assert result.status_code == 401

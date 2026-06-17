@@ -30,8 +30,8 @@ def init_session_state() -> None:
         with logger.contextualize(request_id=REQUEST_ID):
 
             try:
-                response = requests.get(
-                    "http://localhost:8000/v1/create_conversation",
+                response = requests.post(
+                    "http://localhost:8000/v1/conversations",
                     headers={
                         "Authorization": f"Bearer {st.session_state.access_token}",
                         "Request-ID": f"{REQUEST_ID}",
@@ -66,7 +66,7 @@ def init_session_state() -> None:
             with logger.contextualize(request_id=REQUEST_ID):
                 try:
                     response = requests.get(
-                        f"http://localhost:8000/v1/chat_history?conversation_id={st.session_state.conversation_id}",
+                        f"http://localhost:8000/v1/conversations/{st.session_state.conversation_id}/messages",
                         headers={
                             "Authorization": f"Bearer {st.session_state.access_token}",
                             "Request-ID": f"{REQUEST_ID}",
@@ -115,7 +115,7 @@ def get_conversation_history_ids() -> list[int] | int | None:
     with logger.contextualize(request_id=REQUEST_ID):
         try:
             response = requests.get(
-                "http://localhost:8000/v1/get_conversations_ids",
+                "http://localhost:8000/v1/conversations",
                 headers={
                     "Authorization": f"Bearer {st.session_state.access_token}",
                     "Request-ID": f"{REQUEST_ID}",

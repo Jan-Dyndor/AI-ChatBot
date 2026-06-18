@@ -17,7 +17,7 @@ def test_create_user_happy(client):
     assert session.query(Users).first() is None
 
     response = client.post(
-        "/v1/create_user", json={"email": "test@gmail.com", "password": "test_pass"}
+        "/v1/users", json={"email": "test@gmail.com", "password": "test_pass"}
     )
 
     assert response.status_code == 201
@@ -37,7 +37,7 @@ def test_create_user_user_already_exists(client):
     session.commit()
 
     response = client.post(
-        "/v1/create_user", json={"email": "test@gmail.com", "password": "test_pass"}
+        "/v1/users", json={"email": "test@gmail.com", "password": "test_pass"}
     )
 
     assert response.status_code == 409
@@ -50,7 +50,7 @@ def test_create_user_DB_error(client):
     client.app.dependency_overrides[get_db] = lambda: session_mock
 
     response = client.post(
-        "/v1/create_user", json={"email": "test@gmail.com", "password": "test_pass"}
+        "/v1/users", json={"email": "test@gmail.com", "password": "test_pass"}
     )
 
     assert response.status_code == 500

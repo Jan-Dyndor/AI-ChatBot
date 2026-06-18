@@ -27,7 +27,7 @@ def test_get_conversations_ids_happy(client, test_user_db, valid_token):
         session.commit()
 
     response = client.get(
-        "v1/get_conversations_ids", headers={"Authorization": f"Bearer {valid_token}"}
+        "v1/conversations", headers={"Authorization": f"Bearer {valid_token}"}
     )
     assert response.status_code == 200
     assert response.json() == [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]
@@ -54,7 +54,7 @@ def test_get_conversations_ids_less_than_10(client, test_user_db, valid_token):
         session.commit()
 
     response = client.get(
-        "v1/get_conversations_ids", headers={"Authorization": f"Bearer {valid_token}"}
+        "v1/conversations", headers={"Authorization": f"Bearer {valid_token}"}
     )
     assert response.status_code == 200
     assert response.json() == [5, 4, 3, 2, 1]
@@ -74,7 +74,7 @@ def test_get_conversations_ids_no_conversations(client, valid_token, test_user_d
     session.commit()
 
     response = client.get(
-        "v1/get_conversations_ids", headers={"Authorization": f"Bearer {valid_token}"}
+        "v1/conversations", headers={"Authorization": f"Bearer {valid_token}"}
     )
     assert response.status_code == 404
 
@@ -101,7 +101,7 @@ def test_get_conversations_ids_DB_error(
 
     # Test
     response = client.get(
-        "v1/get_conversations_ids", headers={"Authorization": f"Bearer {valid_token}"}
+        "v1/conversations", headers={"Authorization": f"Bearer {valid_token}"}
     )
 
     assert response.status_code == 500

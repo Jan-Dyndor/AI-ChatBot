@@ -61,7 +61,9 @@ def chat(
     # After streaming
 
 
-@router.get("/chat_history", response_model=list[ChatMessage])
+@router.get(
+    "/conversations/{conversation_id}/messages", response_model=list[ChatMessage]
+)
 def chat_history(
     conversation_id: int,
     user: UserDB = Depends(get_current_user),
@@ -70,7 +72,7 @@ def chat_history(
     return service.show_chat_history(conversation_id, user_id=user.id)
 
 
-@router.get("/create_conversation")
+@router.post("/conversations")
 def create_conversation(
     user: UserDB = Depends(get_current_user),
     service: ChatService = Depends(get_chat_service),
@@ -78,7 +80,9 @@ def create_conversation(
     return service.create_conversation(user_id=user.id)
 
 
-@router.get("/get_conversations_ids")
+@router.get(
+    "/conversations"
+)  # Here was be default 10 lat updated conversations later I will add pagination so user can request more
 def get_conversetions_ids(
     user: UserDB = Depends(get_current_user),
     service: ChatService = Depends(get_chat_service),
@@ -86,7 +90,7 @@ def get_conversetions_ids(
     return service.lates_conversations_ids(user_id=user.id)
 
 
-@router.post("/create_user", response_model=CreateUserResponse, status_code=201)
+@router.post("/users", response_model=CreateUserResponse, status_code=201)
 def create_user(
     user_data: CreateUserRequest, user_service: UserService = Depends(get_user_service)
 ):

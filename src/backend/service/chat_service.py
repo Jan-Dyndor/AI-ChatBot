@@ -20,6 +20,27 @@ class ChatService:
             input=user_input, conversation_id=conversation_id, user_id=user_id
         )
 
+    # ! work in progress
+    def conversation_summary(self, user_input, conversation_id, user_id, model: str):
+        client = ChatBotClient(model)
+        conversation_summary = self.db.conversation_summary_presence(
+            conversation_id=conversation_id, user_id=user_id
+        )
+
+        if not conversation_summary:
+            generated_summary = client.create_conversation_sumamry(
+                user_input=user_input
+            )
+            print(generated_summary)
+            self.db.save_conversation_summary(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                generated_summary=generated_summary,
+            )
+        else:
+            print("PASS")
+            pass
+
     def save_bot_output(self, output, conversation_id, user_id):
         return self.db.save_bot_output(output, conversation_id, user_id)
 

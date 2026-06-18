@@ -1,15 +1,11 @@
 from datetime import UTC
 from datetime import datetime as dt
-
+from sqlalchemy import update
 from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.models import Conversations, Messages, Users
-from backend.exceptions.exc import (
-    DataBaseError,
-    DataBaseResourceNotFound,
-    UserNotFound,
-)
+from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound, UserNotFound
 
 
 class ChatRepository:
@@ -204,3 +200,44 @@ class ChatRepository:
 
         logger.debug(f"Returning user {user_id} latest conversations IDs")
         return conversations_ids
+
+    # ! ADD ERROR handling + logging
+    def conversation_summary_presence(self, conversation_id, user_id):
+        """Check if conversation has summary - return True if yes adn False if not
+
+        Args:
+            conversation_id (_type_): _description_
+            user_id (_type_): _description_
+
+        Raises:
+            DataBaseResourceNotFound: _description_
+
+        Returns:
+            _type_: _description_
+        """
+        conversation: tuple | None = (
+            self.db.query(Conversations.summary)
+            .where(
+                Conversations.user_id == user_id, Conversations.id == conversation_id
+            )
+            .first()
+        )
+
+        if not conversation:
+            raise DataBaseResourceNotFound()
+
+        if conversation[0] is None:
+            return False
+        else:
+            return True
+
+    def save_conversation_summary(self, conversation_id, user_id, generated_summary):
+        summary_db = (
+            update(Conversations)
+            .where(
+                Conversations.id == conversation_id, Conversations.user_id == user_id
+            )
+            .values(summary=generated_summary)
+        )
+        self.db.execute(summary_db)
+        self.db.commit()

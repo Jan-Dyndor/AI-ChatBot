@@ -38,7 +38,7 @@ def chat(
     service: ChatService = Depends(get_chat_service),
     user: UserDB = Depends(get_current_user),
 ):
-    # Check User data before streaming response starts - after it starts it will not be possible to change status code + save user input to DB
+    # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB
 
     service.save_user_input(
         user_input=user_input.input,
@@ -117,3 +117,13 @@ def login_for_access_token(
 @router.get("/me", response_model=CreateUserResponse)
 def me(user: UserDB = Depends(get_current_user)):
     return user
+
+
+# === test
+
+
+@router.post("/summary")
+def sum(service: ChatService = Depends(get_chat_service)):
+    service.conversation_summary(
+        user_id=1, user_input="Tell me a story", conversation_id=1, model="llama3:8b"
+    )

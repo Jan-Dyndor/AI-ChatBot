@@ -1,6 +1,6 @@
 import httpx
 import ollama
-from ollama import chat
+from ollama import chat, generate
 
 from backend.configuration.logging_config import logger
 
@@ -55,3 +55,12 @@ class ChatBotClient:
             )
             yield "\n\n\n\n\n [ERROR] Ollama stopped responding and is unavailable. Check if its running on your system"
             return
+
+    def create_conversation_sumamry(self, user_input: str):
+        system_prompt: str = (
+            "You are AI assistan. Your job is to summarize user input in conversational AI caht applicaiton. Sumamriaze user input into one short sentences what is this conversation gooing to be about."
+        )
+        response = generate(
+            model=self.model, prompt=user_input, system=system_prompt, stream=False
+        )
+        return response["response"]

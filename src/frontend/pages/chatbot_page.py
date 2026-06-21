@@ -105,11 +105,11 @@ def init_session_state() -> None:
                     ]
 
 
-def get_conversation_history_ids() -> list[tuple] | int | None:
+def get_conversation_history_ids() -> list[list] | int | None:
     """Function send GET request to DB and gives back default vanumber of latest user conversations IDs
 
     Returns:
-        list[int] | int | None: When 200 response it gives back list of converssations. If 404 - no conversetions yet found return 0 to inform user. If Error occured return None.
+        list[list] | int | None: When 200 response it gives back list of converssations IDs + title. If 404 - no conversetions yet found return 0 to inform user. If Error occured return None.
     """
     REQUEST_ID: str = str(uuid4())
     with logger.contextualize(request_id=REQUEST_ID):
@@ -125,7 +125,12 @@ def get_conversation_history_ids() -> list[tuple] | int | None:
 
             if response.status_code == 404:
                 return 0
+
             response.raise_for_status()
+
+            if response.json() == []:
+                return 0
+
             ids_result = response.json()
             logger.debug(
                 f"Latest conversations IDs response received: status={response.status_code}"

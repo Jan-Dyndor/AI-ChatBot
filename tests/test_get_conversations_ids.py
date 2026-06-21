@@ -22,15 +22,28 @@ def test_get_conversations_ids_happy(client, test_user_db, valid_token):
     session.commit()
 
     for _ in range(11):
-        c = Conversations(user_id=test_user_db.id)
+        c = Conversations(user_id=test_user_db.id, summary=f"{_+1} test")
         session.add(c)
         session.commit()
 
     response = client.get(
         "v1/conversations", headers={"Authorization": f"Bearer {valid_token}"}
     )
+
     assert response.status_code == 200
-    assert response.json() == [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]
+    # in backend this is list[tuple] but after JSON HTTP response it is list[list]
+    assert response.json() == [
+        [11, "11 test"],
+        [10, "10 test"],
+        [9, "9 test"],
+        [8, "8 test"],
+        [7, "7 test"],
+        [6, "6 test"],
+        [5, "5 test"],
+        [4, "4 test"],
+        [3, "3 test"],
+        [2, "2 test"],
+    ]
 
 
 def test_get_conversations_ids_less_than_10(client, test_user_db, valid_token):
@@ -49,7 +62,7 @@ def test_get_conversations_ids_less_than_10(client, test_user_db, valid_token):
     session.commit()
 
     for _ in range(5):
-        c = Conversations(user_id=test_user_db.id)
+        c = Conversations(user_id=test_user_db.id, summary=f"{_+1} test")
         session.add(c)
         session.commit()
 
@@ -57,7 +70,13 @@ def test_get_conversations_ids_less_than_10(client, test_user_db, valid_token):
         "v1/conversations", headers={"Authorization": f"Bearer {valid_token}"}
     )
     assert response.status_code == 200
-    assert response.json() == [5, 4, 3, 2, 1]
+    assert response.json() == [
+        [5, "5 test"],
+        [4, "4 test"],
+        [3, "3 test"],
+        [2, "2 test"],
+        [1, "1 test"],
+    ]
 
 
 def test_get_conversations_ids_no_conversations(client, valid_token, test_user_db):
@@ -105,3 +124,17 @@ def test_get_conversations_ids_DB_error(
     )
 
     assert response.status_code == 500
+
+
+#! Invalid token
+def test_conversations_ids_invalid_token(client, invalid_token):
+    """Function tests invalid token to endpoint GET conversations
+
+    Args:
+        client (_type_): TestClient from FastAPI. It invoked create_app function (creates DB, saves sessionmaker object in app.state, attaches middleware and router)
+        invalid_token (_type_): JWT
+    """
+    response = client.get(
+        "v1/conversations", headers={"Authorization": f"Bearer {invalid_token}"}
+    )
+    assert response.status_code == 401

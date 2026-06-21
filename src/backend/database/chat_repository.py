@@ -190,20 +190,21 @@ class ChatRepository:
                 .limit(10)
             ).all()  #  Temporary limit 10
 
+            print(conversation_id_sumamry)
+
         except SQLAlchemyError as error:
             self.db.rollback()
             raise DataBaseError() from error
         if not conversation_id_sumamry:
             logger.warning(f"User {user_id} does not stores any conversations")
             raise DataBaseResourceNotFound()
-        # ! Work in progress - creaste custom error taht will indicate that user do not have previous conversatons - its his first and do not use below error
         if len(conversation_id_sumamry) == 1:
-            raise DataBaseResourceNotFound()
+            logger.debug(f"User {user_id} does not possess previous conversations")
+            return []
 
         logger.debug(f"Returning user {user_id} latest conversations IDs")
         return conversation_id_sumamry
 
-    # ! ADD ERROR handling + logging
     def conversation_summary_presence(self, conversation_id: int, user_id: int) -> bool:
         """Function checks user conversation if it already has SUMMARY field populated in DB
 
@@ -267,5 +268,8 @@ class ChatRepository:
 
             self.db.execute(summary_db)
             self.db.commit()
+            logger.debug(
+                f"Saving user {user_id} summary to conversation {conversation_id}"
+            )
         except SQLAlchemyError as error:
             raise DataBaseError() from error

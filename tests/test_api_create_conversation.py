@@ -1,10 +1,8 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.chat_repository import ChatRepository
-from backend.database.models import Conversations, Users
-from backend.dependencies.depends import get_db
+from backend.database.models import Conversations
 from backend.exceptions.exc import DataBaseError
 
 

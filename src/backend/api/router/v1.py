@@ -124,13 +124,3 @@ def login_for_access_token(
 @router.get("/me", response_model=CreateUserResponse)
 def me(user: UserDB = Depends(get_current_user)):
     return user
-
-
-# === test
-
-
-@router.post("/summary")
-def sum(service: ChatService = Depends(get_chat_service)):
-    service.conversation_summary(
-        user_id=1, user_input="Tell me a story", conversation_id=1, model="llama3:8b"
-    )

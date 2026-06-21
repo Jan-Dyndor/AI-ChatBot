@@ -170,7 +170,6 @@ def render_sidebar() -> None:
             print(st.session_state.conversation_id)
 
         conversations = get_conversation_history_ids()
-        #! Errors ! with streamlit.errors.StreamlitDuplicateElementId:
         if conversations:
             st.subheader("Go back to previous conversations (Latest 10 by default)")
             for conversation_id_history in conversations:  # type: ignore

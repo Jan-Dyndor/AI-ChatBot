@@ -56,7 +56,6 @@ class ChatBotClient:
             yield "\n\n\n\n\n [ERROR] Ollama stopped responding and is unavailable. Check if its running on your system"
             return
 
-    #! Work in progress
     def create_conversation_title(self, user_input: str) -> str:
         """Function generated conversation summary based on user prompt
 
@@ -64,7 +63,7 @@ class ChatBotClient:
             user_input (str): user prompt to AI
 
         Returns:
-            str: conversation summary
+            str: conversation title
         """
         system_prompt = """
             You generate short conversation titles for a conversational AI app.

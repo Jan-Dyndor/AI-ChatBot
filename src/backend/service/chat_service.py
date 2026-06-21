@@ -21,17 +21,25 @@ class ChatService:
         )
 
     # ! work in progress
-    def conversation_summary(self, user_input, conversation_id, user_id, model: str):
+    def conversation_summary(
+        self, user_input: str, conversation_id: int, user_id: int, model: str
+    ):
+        """Function is responsible for conversation summary logic.
+
+        Args:
+            user_input (str):
+            conversation_id (int):
+            user_id (int):
+            model (str):
+        """
         client = ChatBotClient(model)
+
         conversation_summary = self.db.conversation_summary_presence(
             conversation_id=conversation_id, user_id=user_id
         )
 
         if not conversation_summary:
-            generated_summary = client.create_conversation_sumamry(
-                user_input=user_input
-            )
-            print(generated_summary)
+            generated_summary = client.create_conversation_title(user_input=user_input)
             self.db.save_conversation_summary(
                 conversation_id=conversation_id,
                 user_id=user_id,

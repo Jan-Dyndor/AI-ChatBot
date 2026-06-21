@@ -1,7 +1,7 @@
 import httpx
 import ollama
 from ollama import chat, generate
-
+from backend.exceptions.exc import OllamaConnectionError, OllamaModelError, OllamaError
 from backend.configuration.logging_config import logger
 
 
@@ -56,11 +56,69 @@ class ChatBotClient:
             yield "\n\n\n\n\n [ERROR] Ollama stopped responding and is unavailable. Check if its running on your system"
             return
 
-    def create_conversation_sumamry(self, user_input: str):
-        system_prompt: str = (
-            "You are AI assistan. Your job is to summarize user input in conversational AI caht applicaiton. Sumamriaze user input into one short sentences what is this conversation gooing to be about."
-        )
-        response = generate(
-            model=self.model, prompt=user_input, system=system_prompt, stream=False
-        )
-        return response["response"]
+    #! Work in progress
+    def create_conversation_title(self, user_input: str) -> str:
+        """Function generated conversation summary based on user prompt
+
+        Args:
+            user_input (str): user prompt to AI
+
+        Returns:
+            str: conversation summary
+        """
+        system_prompt = """
+            You generate short conversation titles for a conversational AI app.
+
+            Based only on the user's first message, create a concise title for the conversation.
+
+            Rules:
+            - Return only the title.
+            - Use the same language as the user's message.
+            - Maximum 6 words.
+            - Prefer 2 to 4 words.
+            - Do not use quotation marks.
+            - Do not add a period.
+            - Do not answer the user's message.
+            - If the message is too vague, create a generic but useful title.
+
+            Examples:
+            User: "How do I set up a debugger in FastAPI?"
+            Title: "FastAPI Debugging"
+
+            User: "Can you explain JWT authentication?"
+            Title: "JWT Authentication"
+
+            User: "I have a problem with a 422 error in requests"
+            Title: "API 422 Error"
+
+            User: "Hi"
+            Title: "New Conversation"
+
+            User: "How should I structure my FastAPI project?"
+            Title: "FastAPI Project Structure"
+
+            User: "Why is my database query returning None?"
+            Title: "Database Query Issue"
+
+            User: "Explain the difference between REST and GraphQL"
+            Title: "REST vs GraphQL"
+            """
+
+        try:
+            response = generate(
+                model=self.model,
+                prompt=f"Create a short conversation title for the following USER MESSAGE: {user_input}. Return only the title.",
+                system=system_prompt,
+                stream=False,
+                options={"temperature": 0, "num_predict": 15, "stop": ["\n"]},
+            )
+            return response["response"]
+
+        except ConnectionError as error:
+            raise OllamaConnectionError() from error
+
+        except ollama.ResponseError as error:
+            if error.status_code == 404:
+                raise OllamaModelError()
+            else:
+                raise OllamaError()

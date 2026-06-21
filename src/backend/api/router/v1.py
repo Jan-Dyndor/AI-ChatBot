@@ -46,6 +46,13 @@ def chat(
         user_id=user.id,
     )
 
+    service.conversation_summary(
+        user_input=user_input.input,
+        conversation_id=user_input.conversation_id,
+        model=user_input.model,
+        user_id=user.id,
+    )
+
     # Start Streaming response
     return StreamingResponse(
         service.stream_response_from_client(
@@ -86,7 +93,7 @@ def create_conversation(
 def get_conversetions_ids(
     user: UserDB = Depends(get_current_user),
     service: ChatService = Depends(get_chat_service),
-) -> list[int]:
+) -> list[tuple]:
     return service.lates_conversations_ids(user_id=user.id)
 
 

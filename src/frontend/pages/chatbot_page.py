@@ -93,9 +93,9 @@ def init_session_state() -> None:
                             }
                         ]
 
-                except requests.RequestException:
+                except requests.RequestException as error:
                     logger.exception(
-                        f"Could not fetch chat history for conversation {st.session_state.conversation_id}"
+                        f" {error}. Could not fetch chat history for conversation {st.session_state.conversation_id}"
                     )
                     st.session_state.messages = [
                         {
@@ -105,11 +105,11 @@ def init_session_state() -> None:
                     ]
 
 
-def get_conversation_history_ids() -> list[int] | int | None:
+def get_conversation_history_ids() -> list[list] | int | None:
     """Function send GET request to DB and gives back default vanumber of latest user conversations IDs
 
     Returns:
-        list[int] | int | None: When 200 response it gives back list of converssations. If 404 - no conversetions yet found return 0 to inform user. If Error occured return None.
+        list[list] | int | None: When 200 response it gives back list of converssations IDs + title. If 404 - no conversetions yet found return 0 to inform user. If Error occured return None.
     """
     REQUEST_ID: str = str(uuid4())
     with logger.contextualize(request_id=REQUEST_ID):
@@ -125,14 +125,21 @@ def get_conversation_history_ids() -> list[int] | int | None:
 
             if response.status_code == 404:
                 return 0
+
             response.raise_for_status()
+
+            if response.json() == []:
+                return 0
+
             ids_result = response.json()
             logger.debug(
                 f"Latest conversations IDs response received: status={response.status_code}"
             )
             return ids_result
-        except requests.RequestException:
-            logger.exception("Could not fetch latest conversations IDs from frontend")
+        except requests.RequestException as error:
+            logger.exception(
+                f"{error}. Could not fetch latest conversations IDs from frontend"
+            )
             return None
 
 
@@ -171,10 +178,13 @@ def render_sidebar() -> None:
         if conversations:
             st.subheader("Go back to previous conversations (Latest 10 by default)")
             for conversation_id_history in conversations:  # type: ignore
-                if st.button(str(conversation_id_history)):
+                if st.button(
+                    label=str(conversation_id_history[1]),
+                    key=int(conversation_id_history[0]),
+                ):
                     del st.session_state.conversation_id
                     del st.session_state.messages
-                    st.session_state.conversation_id = conversation_id_history
+                    st.session_state.conversation_id = conversation_id_history[0]
                     init_session_state()
                     st.rerun()
         elif (
@@ -233,20 +243,28 @@ def get_ai_response(
                 timeout=120,
                 stream=True,
             )
+
             logger.debug(f"LLM response recived with status {response.status_code}")
+
             if response.status_code == 422:
                 response_json = response.json()
-                logger.error(
-                    f"Error by Pydantic: {response_json}. With RquestID {response.headers.get("REQUEST-ID")} in conversation ID {st.session_state.conversation_id}"
-                )
-                yield f"\n\n\n\n\n[ERROR] {response_json}"
+                logger.error(f"Input error by Pydantic: {response_json.get("message")}")
+                yield f"\n\n\n\n\n[ERROR] {response_json.get("message")}"
                 return
-            if response.status_code == 404:
-                logger.exception(response.json())
+            elif response.status_code == 404:
+                response_json = response.json()
+                logger.error(response_json.get("message"))
                 yield "\n\n\n\n\n[ERROR] DataBase error occured. Check logs"
                 return
-            if response.status_code == 401:
+            elif response.status_code == 401:
+                response_json = response.json()
+                logger.error(response_json.get("message"))
                 yield "\n\n\n\n\n[ERROR] Could not validate credentials. Token might be outdated. Login."
+                return
+            elif response.status_code == 502:
+                response_json = response.json()
+                logger.error(response_json.get("message"))
+                yield "\n\n\n\n\n[ERROR] Ollama might not be working on your machine."
                 return
 
             response.raise_for_status()
@@ -254,8 +272,8 @@ def get_ai_response(
             for chunk in response.iter_content(chunk_size=1024):
                 yield chunk.decode("utf-8")
 
-        except requests.RequestException:
-            logger.exception("Could not fetch LLM response")
+        except requests.RequestException as error:
+            logger.exception(f"Could not fetch LLM response. {error}")
             yield "\n\n\n\n\n[ERROR] Backend is unavailable or stream was interrupted."
             return
 

@@ -44,9 +44,11 @@ def test_chat_wrong_user_input_long(client, wrong_user_input_too_long, valid_tok
     assert response.status_code == 422
 
 
+@patch.object(ChatBotClient, "create_conversation_title")
 @patch.object(ChatBotClient, "stream_response")
 def test_chat_streaming_happy(
-    chatbot_mock,
+    mock_stream_response,
+    mock_create_conversation_title,
     client,
     happy_test_user_input_short,
     happy_model_stream_response,
@@ -56,9 +58,9 @@ def test_chat_streaming_happy(
     """Full happy apth of /chat endpint. Saving user and bot mess to DB
 
     Args:
-        chatbot_mock (Mock): Mock of LLM response.
-
-        client (TestClient): TestClient from FastAPI. It invoked create_app function (creates DB, saves sessionmaker object in app.state, attaches middleware and router)
+        mock_stream_response (Mock): Mock of LLM streaming response.
+        mock_create_conversation_title (Mock): Mock of LLM title generation
+         client (TestClient): TestClient from FastAPI. It invoked create_app function (creates DB, saves sessionmaker object in app.state, attaches middleware and router)
 
         happy_test_user_input_short (UserInput): ficxture tyo store user input and chat histroy, successfully converted into Pydantic models
 
@@ -69,7 +71,8 @@ def test_chat_streaming_happy(
         test_user_db (Users): object instance of Users
     """
 
-    chatbot_mock.side_effect = happy_model_stream_response
+    mock_stream_response.side_effect = happy_model_stream_response
+    mock_create_conversation_title.return_value = "test title"
 
     session = client.app.state.session_maker()
     user = Users(email="test@gmail.com", password_hash="test")
@@ -92,7 +95,7 @@ def test_chat_streaming_happy(
 
     full_response_txt = "".join(chunks)
     assert full_response_txt.strip() == model_stream_response
-    chatbot_mock.assert_called_once()
+    mock_stream_response.assert_called_once()
     client.app.dependency_overrides.clear()
 
     # DB
@@ -104,6 +107,9 @@ def test_chat_streaming_happy(
         mess[1].content.strip()
         == "I am powerfull AI! I am here to destroy you! ".strip()
     )
+
+    conv = session.query(Conversations).where(Conversations.user_id == user.id).first()
+    assert conv.summary == "test title"
 
 
 def test_chat_streaming_save_user_input_error(

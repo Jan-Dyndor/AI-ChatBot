@@ -30,4 +30,4 @@ def register_exception_handlers(app: FastAPI):
         logger.warning(
             f"Validation error: - {error_mess} Path - {request.url.path},  method - {request.method}"
         )
-        return JSONResponse(status_code=422, content=error_mess)
+        return JSONResponse(status_code=422, content={"message": error_mess})

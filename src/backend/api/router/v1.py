@@ -38,11 +38,18 @@ def chat(
     service: ChatService = Depends(get_chat_service),
     user: UserDB = Depends(get_current_user),
 ):
-    # Check User data before streaming response starts - after it starts it will not be possible to change status code + save user input to DB
+    # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB
 
     service.save_user_input(
         user_input=user_input.input,
         conversation_id=user_input.conversation_id,
+        user_id=user.id,
+    )
+
+    service.conversation_summary(
+        user_input=user_input.input,
+        conversation_id=user_input.conversation_id,
+        model=user_input.model,
         user_id=user.id,
     )
 
@@ -86,7 +93,7 @@ def create_conversation(
 def get_conversetions_ids(
     user: UserDB = Depends(get_current_user),
     service: ChatService = Depends(get_chat_service),
-) -> list[int]:
+) -> list[tuple]:
     return service.lates_conversations_ids(user_id=user.id)
 
 

@@ -3,8 +3,8 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.database.models import Conversations, Messages, Users
 from backend.database.chat_repository import ChatRepository
+from backend.database.models import Conversations, Messages, Users
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound, UserNotFound
 
 
@@ -332,7 +332,7 @@ def test_user_lates_conversations_ids_no_conversations(
 def test_user_lates_conversations_ids_less_than_10_conversetions(
     session, repo_service, test_user_db
 ):
-    """Test fetching user lates conversations. Less than 10 conversations
+    """Test fetching user lates conversations. Less than 10 conversations with summaries
     Args:
        session (_type_): db session from sessionmaker
         repo_service (_type_): ChatRepository object initialized with session
@@ -343,11 +343,17 @@ def test_user_lates_conversations_ids_less_than_10_conversetions(
     session.add(test_user_db)
     session.commit()
     for _ in range(5):
-        session.add(Conversations(user_id=test_user_db.id))
+        session.add(Conversations(user_id=test_user_db.id, summary=f"{_+1} test"))
         session.commit()
     ids = repo_service.user_lates_conversations_ids(user_id=test_user_db.id)
     assert ids is not None
-    assert ids == [5, 4, 3, 2, 1]
+    assert ids == [
+        (5, "5 test"),
+        (4, "4 test"),
+        (3, "3 test"),
+        (2, "2 test"),
+        (1, "1 test"),
+    ]
 
 
 def test_user_lates_conversations_ids_error():

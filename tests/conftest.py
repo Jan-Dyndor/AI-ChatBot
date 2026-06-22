@@ -1,5 +1,6 @@
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import jwt
 import pytest
@@ -189,7 +190,9 @@ def client(
 ):
     get_settings.cache_clear()
 
-    app = create_app()
+    app = create_app(
+        env_file_location=Path(__file__).resolve().parents[1] / ".env.tests"
+    )
     with TestClient(app=app) as client:
         yield client
 

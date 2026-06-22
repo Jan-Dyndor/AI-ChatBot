@@ -15,6 +15,20 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      API_CHAT_HISTORY_URL: ${{ vars.TEST_API_CHAT_HISTORY_URL }}
+      API_CREATE_CONVERSATION_URL:  ${{ vars.TEST_API_CREATE_CONVERSATION_URL }}
+      API_CREATE_USER: ${{ vars.TEST_API_CREATE_USER }}
+      API_LATEST_CONVERSATIONS_IDS_URL: ${{ vars.TEST_API_LATEST_CONVERSATIONS_IDS_URL }}
+      API_TOKEN_URL:  ${{ vars.TEST_API_TOKEN_URL }}
+      API_URL: ${{ vars.TEST_API_URL }}
+      DB_URL: ${{ vars.TEST_DB_URL }}
+      JWT_EXPIRES_TIME_MINUTES: ${{ vars.TEST_JWT_EXPIRES_TIME_MINUTES }}
+
+      SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
+      ALGORITHM:  ${{ secrets.TEST_ALGORITHM }}
+      
+
     steps:
     - uses: actions/checkout@v4
     - name: Install UV

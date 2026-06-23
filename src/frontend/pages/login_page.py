@@ -63,9 +63,9 @@ with st.form("login_form"):
                         st.stop()
                     elif response.status_code == 422:
                         logger.warning(
-                            f"User {email} entered wrongly formated input data - {data}"
+                            f"User {email} entered wrongly formated input data - {data.get("message")}"
                         )
-                        st.error(f"Invalid data provided: {data}")
+                        st.error(f"Invalid data provided: {data.get("message")}")
                         st.stop()
 
                     response.raise_for_status()

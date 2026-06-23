@@ -100,7 +100,7 @@ def init_session_state() -> None:
                     st.session_state.messages = [
                         {
                             "role": "assistant",
-                            "content": "[ERROR] Hi! I could not fetch data from our previous conversation. Issue occured, chech app logs",
+                            "content": "[ERROR] Hi! I could not fetch data from our previous conversation. Issue occured, check app logs",
                         }
                     ]
 
@@ -131,11 +131,11 @@ def get_conversation_history_ids() -> list[list] | int | None:
             if response.json() == []:
                 return 0
 
-            ids_result = response.json()
+            ids_summary_result = response.json()
             logger.debug(
                 f"Latest conversations IDs response received: status={response.status_code}"
             )
-            return ids_result
+            return ids_summary_result
         except requests.RequestException as error:
             logger.exception(
                 f"{error}. Could not fetch latest conversations IDs from frontend"

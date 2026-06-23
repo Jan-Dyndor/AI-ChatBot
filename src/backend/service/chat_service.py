@@ -20,11 +20,11 @@ class ChatService:
             input=user_input, conversation_id=conversation_id, user_id=user_id
         )
 
-    # ! work in progress
     def conversation_summary(
         self, user_input: str, conversation_id: int, user_id: int, model: str
     ):
         """Function is responsible for conversation summary logic.
+        If summary not present - creates it.
 
         Args:
             user_input (str):
@@ -45,9 +45,6 @@ class ChatService:
                 user_id=user_id,
                 generated_summary=generated_summary,
             )
-        else:
-            print("PASS")
-            pass
 
     def save_bot_output(self, output, conversation_id, user_id):
         return self.db.save_bot_output(output, conversation_id, user_id)

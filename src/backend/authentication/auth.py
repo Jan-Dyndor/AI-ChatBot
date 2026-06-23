@@ -91,7 +91,7 @@ class AuthService:
                 token,
                 self.settings.secret_key_jwt,
                 algorithms=[self.settings.algorythm_jwt],
-            )  #! tutaj chyba co jak toke jest expired czy cos weic tu tez w try cathc trzeba zebrac
+            )
         except InvalidTokenError as err:
             raise InvalidCredentials() from err
         user_email = payload.get("sub", None)

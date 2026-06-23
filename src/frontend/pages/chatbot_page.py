@@ -135,6 +135,7 @@ def get_conversation_history_ids() -> list[list] | int | None:
             logger.debug(
                 f"Latest conversations IDs response received: status={response.status_code}"
             )
+
             return ids_summary_result
         except requests.RequestException as error:
             logger.exception(

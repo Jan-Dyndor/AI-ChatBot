@@ -1,5 +1,6 @@
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import jwt
 import pytest
@@ -162,34 +163,13 @@ def test_user_db() -> Users:
     return Users(email="test@gmail.com", password_hash="test")
 
 
-# ============ FIXTURES FOR INTEGRATION tests with request from TestClient
-# DB creation is in create_app function
 @pytest.fixture
-def test_env(monkeypatch):
+def client():
     get_settings.cache_clear()
-    monkeypatch.setenv("API_URL", "test_url")
-    monkeypatch.setenv("DB_URL", "sqlite:///:memory:")
-    monkeypatch.setenv("API_CHAT_HISTORY_URL", "test_history_url")
-    monkeypatch.setenv("API_CREATE_CONVERSATION_URL", "create_conversation_url_test")
-    monkeypatch.setenv(
-        "API_LATEST_CONVERSATIONS_IDS_URL", "test_latest_conversations_ids_url"
+
+    app = create_app(
+        env_file_location=Path(__file__).resolve().parents[1] / ".env.tests"
     )
-    monkeypatch.setenv("API_TOKEN_URL", "api_token_url_test")
-    monkeypatch.setenv("API_CREATE_USER", "api_create_user_test")
-    monkeypatch.setenv("SECRET_KEY", "123456789123456789123456789123456789")
-    monkeypatch.setenv("ALGORITHM", "HS256")
-    monkeypatch.setenv("JWT_EXPIRES_TIME_MINUTES", "10")
-
-    get_settings.cache_clear()
-
-
-@pytest.fixture
-def client(
-    test_env,
-):
-    get_settings.cache_clear()
-
-    app = create_app()
     with TestClient(app=app) as client:
         yield client
 

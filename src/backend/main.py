@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-
+from pathlib import Path
 from fastapi import FastAPI
 
 from backend.api.router.v1 import router
@@ -13,23 +13,26 @@ from backend.middleware.request_id_middleware import RequestIDMiddleware
 set_up_logging()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    get_settings.cache_clear()
-    # Before app starts
-    settings = get_settings()  # read .env file
-    app.state.settings = settings
-    engine = get_engine(settings.db_url)
-    Base.metadata.create_all(bind=engine)
-    session_maker = session_factory(engine)
-    app.state.session_maker = session_maker
-    yield
-    # After shutdown
-    engine.dispose()
+def create_lifespan(env_file_location: str | Path | None = None):
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        get_settings.cache_clear()
+        # Before app starts
+        settings = get_settings(env_file_location)  # read .env file
+        app.state.settings = settings
+        engine = get_engine(settings.db_url)
+        Base.metadata.create_all(bind=engine)
+        session_maker = session_factory(engine)
+        app.state.session_maker = session_maker
+        yield
+        # After shutdown
+        engine.dispose()
+
+    return lifespan
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(lifespan=lifespan)
+def create_app(env_file_location: str | Path | None = None) -> FastAPI:
+    app = FastAPI(lifespan=create_lifespan(env_file_location))
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(RequestIDMiddleware)
     app.include_router(router)

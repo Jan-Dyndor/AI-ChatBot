@@ -31,5 +31,8 @@ class Settings(BaseSettings):
 
 
 @lru_cache
-def get_settings() -> Settings:
-    return Settings()  # type: ignore
+def get_settings(env_file_location: str | Path | None = None) -> Settings:
+    if not env_file_location:
+        return Settings()  # type: ignore
+    else:
+        return Settings(_env_file=env_file_location, _env_file_encoding="utf-8")  # type: ignore

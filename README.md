@@ -18,32 +18,21 @@ This project was created to explore and understand:
 - AI system design without abstraction-heavy frameworks
 
 ## How to run (Docker planned later on)
-Create a `.env` file in the root of the repository and define:
+Create a `.env` file in the root of the repository for local development. Use `.env.example` as a template for the required variables.
+
+If you want to run tests locally, create a separate `.env.tests` file with test-only values.
+
 
 ```env
-API_URL = "http://localhost:8000/v1/chat"
-API_CHAT_HISTORY_URL = "http://localhost:8000/v1/chat_history"
-API_CREATE_CONVERSATION_URL = "http://localhost:8000/v1/create_conversation"
-API_LATEST_CONVERSATIONS_IDS_URL= "http://localhost:8000/v1/get_conversations_ids"
-API_TOKEN_URL = "http://localhost:8000/v1/token"
-API_CREATE_USER = "http://localhost:8000/v1/create_user"
-
-# Example SQLite database URL.
-# You can change this path if you want to store the database elsewhere.
+# SQLite database URL used for local development. # If you use a nested path such as data/data.db, make sure the data directory exists first. 
 DB_URL = "sqlite:///data/data.db"
 
-SECRET_KEY = "SOME SECRET VALUE"
-ALGORITHM = "HS256"
-# Example 180 minutes
-JWT_EXPIRES_TIME_MINUTES=180
-
-
-# Example SQLite database URL.
+# TEST Example SQLite database URL.
 # You can change this path if you want to store the database elsewhere.
-DB_URL="sqlite:///data/data.db"
+DB_URL="sqlite:///:memory:"
 ```
 
-The application uses Pydantic Settings to load environment variables from the `.env` file.
+The application uses Pydantic Settings to load environment variables from the `.env`s files.
 
 Follow the command from root of the repo
 ### Backend
@@ -114,6 +103,8 @@ AI-ChatBot/
 ├── tests/                      # Unit and integration tests
 ├── .gitignore
 ├── .env                        # Env file with env variables
+├── .env.tests                  # Env file with env variables for tests purposes 
+├── .env.example                # Example env file with env variables that application needs
 ├── .python-version
 ├── README.md
 ├── pyproject.toml              # Project configuration and dependencies
@@ -145,6 +136,7 @@ The Streamlit frontend consumes streamed chunks in real-time to simulate ChatGPT
 - Persistent chat history (SQLite)
 - Multi-chat support (for one user -> user based after adding authentication)
 - JWT/O2Auth authentication
+- CI with GitHub Actions
 
 
 ## Planned Features

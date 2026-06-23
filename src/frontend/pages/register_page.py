@@ -65,10 +65,10 @@ with st.form("register_form"):
                         )
                         st.stop()
                     elif response.status_code == 422:
-                        error = response.json()
-                        st.error(f"Invalid data provided {error}")
+                        data = response.json()
+                        st.error(f"Invalid data provided {data.get("message")}")
                         logger.warning(
-                            f"Register User  {email} response with wrongly formated input data. Status code: {response.status_code} . Error: {error}"
+                            f"Register User  {email} response with wrongly formated input data. Status code: {response.status_code} . Error: {data.get("message")}"
                         )
                         st.stop()
 

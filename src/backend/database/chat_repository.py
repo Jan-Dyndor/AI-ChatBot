@@ -173,7 +173,8 @@ class ChatRepository:
         return conversation.messages
 
     def user_lates_conversations_ids(self, user_id: int) -> list[tuple]:
-        """Function fetches last 10 updated user conversations
+        """Function fetches last 10 updated user conversations.
+        If conversation has not yet title (summary filed in table is NULL) it uses a placeholder to populate that value for better user experience
 
         Raises:
             DataBaseError: Custom exception that FastAPI error handler will catch
@@ -190,8 +191,6 @@ class ChatRepository:
                 .limit(10)
             ).all()  #  Temporary limit 10
 
-            print(conversation_id_sumamry)
-
         except SQLAlchemyError as error:
             self.db.rollback()
             raise DataBaseError() from error
@@ -202,8 +201,14 @@ class ChatRepository:
             logger.debug(f"User {user_id} does not possess previous conversations")
             return []
 
+        id_summary: list[tuple] = []
+        for id, summary in conversation_id_sumamry:
+            if summary is None:
+                summary = "New Conversation"
+            id_summary.append((id, summary))
+
         logger.debug(f"Returning user {user_id} latest conversations IDs")
-        return conversation_id_sumamry
+        return id_summary
 
     def conversation_summary_presence(self, conversation_id: int, user_id: int) -> bool:
         """Function checks user conversation if it already has SUMMARY field populated in DB

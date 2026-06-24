@@ -1,8 +1,9 @@
 import httpx
 import ollama
 from ollama import chat, generate
-from backend.exceptions.exc import OllamaConnectionError, OllamaModelError, OllamaError
+
 from backend.configuration.logging_config import logger
+from backend.exceptions.exc import OllamaConnectionError, OllamaError, OllamaModelError
 
 
 class ChatBotClient:
@@ -78,7 +79,8 @@ class ChatBotClient:
             - Do not use quotation marks.
             - Do not add a period.
             - Do not answer the user's message.
-            - If the message is too vague, create a generic but useful title.
+            - If the message is only a greeting, small talk, thanks, or too vague to identify a topic, return a casual conversation title.
+            - Do not return "New Conversation"; that value is reserved for the app UI placeholder before a title is generated.
 
             Examples:
             User: "How do I set up a debugger in FastAPI?"
@@ -91,7 +93,7 @@ class ChatBotClient:
             Title: "API 422 Error"
 
             User: "Hi"
-            Title: "New Conversation"
+            Title: "Casual Conversation"
 
             User: "How should I structure my FastAPI project?"
             Title: "FastAPI Project Structure"

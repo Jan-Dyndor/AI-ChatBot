@@ -34,7 +34,6 @@ def health():
 @router.post("/chat")
 def chat(
     user_input: UserInput,
-    # user_id: int,
     service: ChatService = Depends(get_chat_service),
     user: UserDB = Depends(get_current_user),
 ):
@@ -60,6 +59,12 @@ def chat(
             chat_history=user_input.chat_history,
             conversation_id=user_input.conversation_id,
             user_id=user.id,
+            temperature=user_input.model_parameters.temperature,
+            top_k=user_input.model_parameters.top_k,
+            top_p=user_input.model_parameters.top_p,
+            num_ctx=user_input.model_parameters.num_ctx,
+            num_predict=user_input.model_parameters.num_predict,
+            repeat_penalty=user_input.model_parameters.repeat_penalty,
         ),
         media_type="text/plain",
         headers={"Content-Type": "text/event-stream"},

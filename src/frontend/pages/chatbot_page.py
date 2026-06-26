@@ -144,16 +144,73 @@ def get_conversation_history_ids() -> list[list] | int | None:
             return None
 
 
-def render_sidebar() -> None:
+def render_sidebar():
     with st.sidebar:
         st.title("🤖 AI Chatbot")
-        st.markdown("---")
 
         st.subheader("Settings")
         model_name = st.selectbox(
             "Model",
             options=["llama3:8b"],
             index=0,
+        )
+
+        temperature = st.slider(
+            label="Temperature",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.8,
+            step=0.1,
+            key="temperature",
+            help="Controls randomness. Lower = more focused, higher = more creative.",
+        )
+
+        top_k = st.slider(
+            label="Top K",
+            min_value=1,
+            max_value=100,
+            value=40,
+            step=1,
+            key="top_k",
+            help="Limits token selection to the K most likely tokens.",
+        )
+
+        top_p = st.slider(
+            label="Top P",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.9,
+            step=0.05,
+            key="top_p",
+            help="Nucleus sampling. Lower = more focused, higher = more diverse.",
+        )
+
+        num_ctx = st.selectbox(
+            label="Context length",
+            options=[2048, 4096, 8192],
+            index=1,
+            key="num_ctx",
+            help="How much text the model can keep in memory.",
+        )
+
+        num_predict = st.slider(
+            label="Max response tokens",
+            min_value=50,
+            max_value=2000,
+            value=300,
+            step=50,
+            key="num_predict",
+            help="Maximum number of tokens the model is allowed to generate.",
+        )
+
+        repeat_penalty = st.slider(
+            label="Repeat penalty",
+            min_value=0.8,
+            max_value=2.0,
+            value=1.1,
+            step=0.1,
+            key="repeat_penalty",
+            help="Penalizes repeated text. Higher values reduce repetition.",
         )
 
         if st.button("Start new chat"):
@@ -199,7 +256,7 @@ def render_sidebar() -> None:
 
         st.caption("MVP version - Streamlit UI + FastAPI backend + DB Persistance")
 
-    return model_name  # type: ignore
+    return model_name, temperature, top_k, top_p, num_ctx, num_predict, repeat_penalty
 
 
 def render_chat_history() -> None:
@@ -210,7 +267,16 @@ def render_chat_history() -> None:
 
 
 def get_ai_response(
-    user_input: str, model: str, chat_history: list[dict], conversation_id: int
+    user_input: str,
+    model: str,
+    chat_history: list[dict],
+    conversation_id: int,
+    temperature,
+    top_k,
+    top_p,
+    num_ctx,
+    num_predict,
+    repeat_penalty,
 ):
     """
 
@@ -236,6 +302,14 @@ def get_ai_response(
                     "model": model,
                     "chat_history": chat_history,
                     "conversation_id": conversation_id,
+                    "model_parameters": {
+                        "temperature": temperature,
+                        "top_k": top_k,
+                        "top_p": top_p,
+                        "num_ctx": num_ctx,
+                        "num_predict": num_predict,
+                        "repeat_penalty": repeat_penalty,
+                    },
                 },
                 headers={
                     "Authorization": f"Bearer {st.session_state.access_token}",
@@ -291,7 +365,9 @@ def enable_conversation():
 
 def main() -> None:
     init_session_state()
-    model_name = render_sidebar()
+    model_name, temperature, top_k, top_p, num_ctx, num_predict, repeat_penalty = (
+        render_sidebar()
+    )
 
     st.title("Conversational AI App")
     st.caption("Chat with your local LLM backend")
@@ -322,7 +398,13 @@ def main() -> None:
                     user_input,
                     model_name,  # type: ignore
                     st.session_state.messages,
-                    st.session_state.conversation_id,  # type: ignore
+                    st.session_state.conversation_id,  # type: ignore,
+                    temperature,
+                    top_k,
+                    top_p,
+                    num_ctx,
+                    num_predict,
+                    repeat_penalty,
                 ):
                     ai_response += chunk
                     placeholder.markdown(ai_response)

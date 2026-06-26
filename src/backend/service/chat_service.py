@@ -55,8 +55,14 @@ class ChatService:
         chat_history: list,
         conversation_id: int,
         user_id: int,
+        temperature: float,
+        top_k: int,
+        top_p: float,
+        num_ctx: int,
+        num_predict: int,
+        repeat_penalty: float,
     ):
-        """Function creates ChatBotClient object with choosen model, and stream responses from LLM using yield. It also creates full model response to save it in DB.
+        """Function creates ChatBotClient object with choosen model, and parameters, stream responses from LLM using yield. It also creates full model response to save it in DB.
 
         Args:
             model (str): AI model name
@@ -64,14 +70,29 @@ class ChatService:
             user_input (str): user current message
             conversation_id (int): ID of conversation
             user_id (int): ID of User
+            temperature (float):
+            top_k (int):
+            top_p (float):
+            num_ctx (int):
+            num_predict (int):
+            repeat_penalty (float):
 
         Yields:
             str: LLM yields chunks of response
         """
+
         full_llm_response: str = ""
         client = ChatBotClient(model)
 
-        for chunk in client.stream_response(chat_history=chat_history):
+        for chunk in client.stream_response(
+            chat_history=chat_history,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            num_ctx=num_ctx,
+            num_predict=num_predict,
+            repeat_penalty=repeat_penalty,
+        ):
             full_llm_response += chunk
             yield chunk
         #! Save bot output - I can not raise errors and let them go to FastAPI exception handler, since StreamingResponse already started and I can not change HTTP status code. Otherwise I Will get errors like below:

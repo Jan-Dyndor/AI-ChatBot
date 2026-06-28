@@ -14,7 +14,16 @@ class ChatBotClient:
         self.model: str = model
         logger.debug(f"Created LLM client with model {model}")
 
-    def stream_response(self, chat_history: list):
+    def stream_response(
+        self,
+        chat_history: list,
+        temperature,
+        top_k,
+        top_p,
+        num_ctx,
+        num_predict,
+        repeat_penalty,
+    ):
         """Function streams responses from LLM using Ollama
 
         Args:
@@ -25,7 +34,19 @@ class ChatBotClient:
         """
 
         try:
-            stream_response = chat(model=self.model, messages=chat_history, stream=True)
+            stream_response = chat(
+                model=self.model,
+                messages=chat_history,
+                stream=True,
+                options={
+                    "temperature": temperature,
+                    "top_k": top_k,
+                    "top_p": top_p,
+                    "num_ctx": num_ctx,
+                    "num_predict": num_predict,
+                    "repeat_penalty": repeat_penalty,
+                },
+            )
 
             for chunk in stream_response:
                 content_chunk = chunk.message.content

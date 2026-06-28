@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput
+from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput, ModelParameters
 from backend.configuration.settings import get_settings
 from backend.database.chat_repository import ChatRepository
 from backend.database.db import Base
@@ -41,6 +41,14 @@ def happy_test_user_input_short():
         chat_history=[ChatMessage(role="assistant", content="What are you?")],
         model="llama3:8b",
         conversation_id=1,
+        model_parameters=ModelParameters(
+            temperature=0,
+            top_k=1,
+            num_ctx=512,
+            num_predict=1,
+            top_p=1,
+            repeat_penalty=0.8,
+        ),
     ).model_dump()
 
 
@@ -48,7 +56,15 @@ def happy_test_user_input_short():
 def happy_model_stream_response():
     """Function mock the behaviour or Streaming Response from AI Ollama model"""
 
-    def streaming_generator(chat_history):
+    def streaming_generator(
+        chat_history,
+        temperature,
+        top_k,
+        top_p,
+        num_ctx,
+        num_predict,
+        repeat_penalty,
+    ):
         for word in [
             "I",
             "am",
@@ -85,6 +101,12 @@ def happy_test_user_input_long():
         ],
         model="llama3:8b",
         conversation_id=1,
+        model_parameters={  # type: ignore typechecker wants ModelParameters type not dict
+            "temperature": 1,
+            "top_k": 1,
+            "num_ctx": 1,
+            "num_predict": 1,
+        },
     )
 
 

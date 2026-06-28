@@ -44,10 +44,10 @@ def happy_test_user_input_short():
         model_parameters=ModelParameters(
             temperature=0,
             top_k=1,
-            num_ctx=1,
+            num_ctx=512,
             num_predict=1,
             top_p=1,
-            repeat_penalty=0.2,
+            repeat_penalty=0.8,
         ),
     ).model_dump()
 
@@ -56,7 +56,15 @@ def happy_test_user_input_short():
 def happy_model_stream_response():
     """Function mock the behaviour or Streaming Response from AI Ollama model"""
 
-    def streaming_generator(chat_history):
+    def streaming_generator(
+        chat_history,
+        temperature,
+        top_k,
+        top_p,
+        num_ctx,
+        num_predict,
+        repeat_penalty,
+    ):
         for word in [
             "I",
             "am",

@@ -1,5 +1,6 @@
 from unittest.mock import Mock, patch
-
+import os
+from pathlib import Path
 from backend.chat_bot.client import ChatBotClient
 from backend.database.models import Conversations, Messages, Users
 from backend.dependencies.depends import get_chat_repo
@@ -17,6 +18,14 @@ def test_chat_wrong_user_input(client, wrong_user_input_empty, valid_token):
     """
 
     session = client.app.state.session_maker()
+
+    print("OS DB_URL:", os.environ.get("DB_URL"))
+    print("TEST ENV PATH:", Path(__file__).resolve().parents[1] / ".env.tests")
+
+    users = session.query(Users).all()
+    for user in users:
+        print(user.email)
+
     user = Users(email="test@gmail.com", password_hash="test")
     session.add(user)
     session.commit()

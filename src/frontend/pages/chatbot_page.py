@@ -144,6 +144,39 @@ def get_conversation_history_ids() -> list[list] | int | None:
             return None
 
 
+def _conversation_ids(conversations: list[list] | int | None) -> list[int]:
+    """Return just the conversation IDs from the latest-conversations response."""
+    if not isinstance(conversations, list):
+        return []
+
+    return [int(conversation[0]) for conversation in conversations]
+
+
+def refresh_conversation_history_ids() -> list[list] | int | None:
+    """Fetch and cache latest conversation metadata in Streamlit session state."""
+    conversations = get_conversation_history_ids()
+    st.session_state.conversations_list_ids = _conversation_ids(conversations)
+    st.session_state.conversations_history = conversations
+    st.session_state.conversations_history_stale = False
+    return conversations
+
+
+def get_cached_conversation_history_ids() -> list[list] | int | None:
+    """Return cached latest conversations unless a chat action made them stale."""
+    if (
+        "conversations_history" not in st.session_state
+        or st.session_state.get("conversations_history_stale", False)
+    ):
+        return refresh_conversation_history_ids()
+
+    return st.session_state.conversations_history
+
+
+def mark_conversation_history_stale() -> None:
+    """Mark cached conversations stale so the next render refreshes them once."""
+    st.session_state.conversations_history_stale = True
+
+
 def render_sidebar():
     with st.sidebar:
         st.title("🤖 AI Chatbot")
@@ -217,6 +250,7 @@ def render_sidebar():
             logger.debug("Starting new chat")
             del st.session_state.conversation_id
             init_session_state()
+            mark_conversation_history_stale()
             st.session_state.messages = [
                 {
                     "role": "assistant",
@@ -230,9 +264,8 @@ def render_sidebar():
         if st.button("Logout"):
             st.session_state.clear()
             st.switch_page("pages/login_page.py")
-            print(st.session_state.conversation_id)
 
-        conversations = get_conversation_history_ids()
+        conversations = get_cached_conversation_history_ids()
         if conversations:
             st.subheader("Go back to previous conversations (Latest 10 by default)")
             for conversation_id_history in conversations:  # type: ignore
@@ -415,6 +448,7 @@ def main() -> None:
                 "content": ai_response,
             }
         )
+        mark_conversation_history_stale()
         enable_conversation()
         st.rerun()
 

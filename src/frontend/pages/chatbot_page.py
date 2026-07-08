@@ -157,7 +157,7 @@ def refresh_conversation_history_ids() -> list[list] | int | None:
     conversations = get_conversation_history_ids()
     st.session_state.conversations_list_ids = _conversation_ids(conversations)
     st.session_state.conversations_history = conversations
-    st.session_state.conversations_history_stale = False
+    st.session_state.conversations_history_stale = conversations is None
     return conversations
 
 

@@ -163,9 +163,8 @@ def refresh_conversation_history_ids() -> list[list] | int | None:
 
 def get_cached_conversation_history_ids() -> list[list] | int | None:
     """Return cached latest conversations unless a chat action made them stale."""
-    if (
-        "conversations_history" not in st.session_state
-        or st.session_state.get("conversations_history_stale", False)
+    if "conversations_history" not in st.session_state or st.session_state.get(
+        "conversations_history_stale", False
     ):
         return refresh_conversation_history_ids()
 
@@ -177,15 +176,54 @@ def mark_conversation_history_stale() -> None:
     st.session_state.conversations_history_stale = True
 
 
+def get_available_models() -> list[str]:
+    """Fetch available Ollama models once per Streamlit session."""
+    if "available_models" in st.session_state:
+        return st.session_state.available_models
+
+    REQUEST_ID: str = str(uuid4())
+    fallback_models = ["llama3:8b"]
+
+    with logger.contextualize(request_id=REQUEST_ID):
+        try:
+            response = requests.get(
+                "http://localhost:8000/v1/models",
+                headers={
+                    "Authorization": f"Bearer {st.session_state.access_token}",
+                    "Request-ID": f"{REQUEST_ID}",
+                },
+                timeout=120,
+            )
+            response.raise_for_status()
+
+            models = [
+                model["model"]
+                for model in response.json().get("models", [])
+                if model.get("model")
+            ]
+            st.session_state.available_models = models or fallback_models
+            logger.debug(
+                f"Fetched available models: {st.session_state.available_models}"
+            )
+
+        except requests.RequestException as error:
+            logger.exception(f"Could not fetch available models. {error}")
+            st.session_state.available_models = fallback_models
+
+    return st.session_state.available_models
+
+
 def render_sidebar():
     with st.sidebar:
         st.title("🤖 AI Chatbot")
 
         st.subheader("Settings")
+        available_models = get_available_models()
         model_name = st.selectbox(
             "Model",
-            options=["llama3:8b"],
+            options=available_models,
             index=0,
+            key="model_name",
         )
 
         temperature = st.slider(
@@ -382,7 +420,7 @@ def get_ai_response(
 
         except requests.RequestException as error:
             logger.exception(f"Could not fetch LLM response. {error}")
-            yield "\n\n\n\n\n[ERROR] Backend is unavailable or stream was interrupted."
+            yield "\n\n\n\n\n[ERROR] Backend is unavailable or stream was interrupted. Make sure you are not using embedding models to generate responses"
             return
 
 

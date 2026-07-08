@@ -10,10 +10,11 @@ from backend.api.schemas.pydantic_schemas import (
     Token,
     UserDB,
     UserInput,
+    Models,
     UserLogin,
 )
 from backend.authentication.auth import AuthService
-from backend.configuration.settings import get_settings, Settings
+from backend.configuration.settings import Settings, get_settings
 from backend.dependencies.depends import (
     get_auth_service,
     get_chat_service,
@@ -129,3 +130,10 @@ def login_for_access_token(
 @router.get("/me", response_model=CreateUserResponse)
 def me(user: UserDB = Depends(get_current_user)):
     return user
+
+
+@router.get("/models", response_model=Models)
+def show_models(service: ChatService = Depends(get_chat_service)):
+    return (
+        service.show_avaliable_models()
+    )  #! For now vlaue is by defoult. Later on in development - change how ChatBotClinet is passed to Service Layer - make it as composition

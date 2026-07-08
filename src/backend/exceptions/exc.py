@@ -25,6 +25,14 @@ class OllamaModelError(AppExceptions):
         )
 
 
+class OllamaEmbeddingModelError(AppExceptions):
+    def __init__(self) -> None:
+        super().__init__(
+            message="Ollama Embedding Models can not generate responses",
+            status_code=400,
+        )
+
+
 class OllamaConnectionStoppedError(AppExceptions):
     def __init__(self) -> None:
         super().__init__(

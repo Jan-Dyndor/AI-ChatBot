@@ -3,13 +3,18 @@ import ollama
 from ollama import chat, generate
 
 from backend.configuration.logging_config import logger
-from backend.exceptions.exc import OllamaConnectionError, OllamaError, OllamaModelError
+from backend.exceptions.exc import (
+    OllamaConnectionError,
+    OllamaEmbeddingModelError,
+    OllamaError,
+    OllamaModelError,
+)
 
 
 class ChatBotClient:
     def __init__(
         self,
-        model: str,
+        model: str = "llama3:8b",  # ! DEFAULT VALUE
     ) -> None:
         self.model: str = model
         logger.debug(f"Created LLM client with model {model}")
@@ -66,6 +71,12 @@ class ChatBotClient:
                     f"Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
                 )
                 yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
+                return
+            elif error.status_code == 400:
+                logger.exception(
+                    f"Ollama error: {error.status_code}. Embedding models like: {self.model} can not generate responses"
+                )
+                yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}. Embedding models like:  {self.model} can not generate responses"
                 return
             else:
                 logger.exception(f"Ollama error {error.status_code}")
@@ -141,6 +152,19 @@ class ChatBotClient:
 
         except ollama.ResponseError as error:
             if error.status_code == 404:
-                raise OllamaModelError()
+                raise OllamaModelError() from error
+            elif error.status_code == 400:
+                raise OllamaEmbeddingModelError() from error
             else:
                 raise OllamaError()
+
+    def show_avaliable_models(self):
+        """Function returns list of avaliable models via Ollama"""
+        try:
+            model_list = ollama.list()
+            logger.debug("Returning avaliable AI models")
+            return model_list
+        except ConnectionError as error:
+            raise OllamaConnectionError from error
+        except ollama.ResponseError as error:
+            raise OllamaError() from error

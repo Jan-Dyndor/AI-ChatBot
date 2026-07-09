@@ -56,7 +56,7 @@ class ModelParameters(BaseModel):
 
 class UserInput(BaseModel):
     input: str = Field(min_length=1, max_length=3000)
-    model: Literal["llama3:8b"]
+    model: str
     chat_history: list[ChatMessage]
     conversation_id: int
     model_parameters: ModelParameters
@@ -86,3 +86,11 @@ class UserDB(BaseModel):
     id: int
     email: EmailStr
     password_hash: str
+
+
+class Model(BaseModel):
+    model: str
+
+
+class Models(BaseModel):
+    models: list[Model]

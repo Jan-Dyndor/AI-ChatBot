@@ -122,3 +122,10 @@ class ChatService:
             int: Conversation ID
         """
         return self.db.create_conversation(user_id)
+
+    def show_avaliable_models(
+        self,
+    ):  #! here figure it ouit hwo to create ChatBotClient instance without model name. Use dependency injection and composition to create the object before using it. Now it does not make sense to create model just to show installe dmodels on machine
+        ollama = ChatBotClient()
+
+        return ollama.show_avaliable_models()

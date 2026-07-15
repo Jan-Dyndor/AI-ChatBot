@@ -85,9 +85,7 @@ class ChatBotClient:
             yield "\n\n\n\n\n [ERROR] Ollama stopped responding and is unavailable. Check if its running on your system"
             return
 
-    def create_conversation_title(
-        self, user_input: str, model: str = "llama3:8b"
-    ) -> str:
+    def create_conversation_title(self, user_input: str, model: str) -> str:
         """Function generated conversation summary based on user prompt
 
         Args:

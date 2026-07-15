@@ -40,7 +40,7 @@ class ChatService:
 
         if not conversation_summary:
             generated_summary = self.chat_bot_client.create_conversation_title(
-                user_input=user_input
+                user_input=user_input, model=model
             )
             self.db.save_conversation_summary(
                 conversation_id=conversation_id,

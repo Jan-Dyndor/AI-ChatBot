@@ -6,8 +6,9 @@ from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound
 
 
 class ChatService:
-    def __init__(self, db: ChatRepository) -> None:
+    def __init__(self, db: ChatRepository, chat_bot_client: ChatBotClient) -> None:
         self.db = db
+        self.chat_bot_client = chat_bot_client
 
     def lates_conversations_ids(self, user_id: int):
         return self.db.user_lates_conversations_ids(user_id)
@@ -32,14 +33,15 @@ class ChatService:
             user_id (int):
             model (str):
         """
-        client = ChatBotClient(model)
 
         conversation_summary = self.db.conversation_summary_presence(
             conversation_id=conversation_id, user_id=user_id
         )
 
         if not conversation_summary:
-            generated_summary = client.create_conversation_title(user_input=user_input)
+            generated_summary = self.chat_bot_client.create_conversation_title(
+                user_input=user_input
+            )
             self.db.save_conversation_summary(
                 conversation_id=conversation_id,
                 user_id=user_id,
@@ -82,9 +84,9 @@ class ChatService:
         """
 
         full_llm_response: str = ""
-        client = ChatBotClient(model)
 
-        for chunk in client.stream_response(
+        for chunk in self.chat_bot_client.stream_response(
+            model=model,
             chat_history=chat_history,
             temperature=temperature,
             top_k=top_k,
@@ -125,7 +127,5 @@ class ChatService:
 
     def show_avaliable_models(
         self,
-    ):  #! here figure it ouit hwo to create ChatBotClient instance without model name. Use dependency injection and composition to create the object before using it. Now it does not make sense to create model just to show installe dmodels on machine
-        ollama = ChatBotClient()
-
-        return ollama.show_avaliable_models()
+    ):
+        return self.chat_bot_client.show_avaliable_models()

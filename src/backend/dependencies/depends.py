@@ -1,6 +1,7 @@
 from fastapi import Depends, Request
 
 from backend.authentication.auth import AuthService, oauth2_scheme
+from backend.chat_bot.client import ChatBotClient
 from backend.database.chat_repository import ChatRepository
 from backend.database.user_repository import UserRepository
 from backend.service.chat_service import ChatService
@@ -34,7 +35,19 @@ def get_chat_repo(db=Depends(get_db)) -> ChatRepository:
     return ChatRepository(db_session=db)
 
 
-def get_chat_service(repository=Depends(get_chat_repo)) -> ChatService:
+def get_chat_bot_client() -> ChatBotClient:
+    """Function is used to create ChatBotClient object that has methods to communicate with Ollama.
+    It chains the Depends function of FastAPI
+
+    Returns:
+        ChatBotClient: Object of Ollama client
+    """
+    return ChatBotClient()
+
+
+def get_chat_service(
+    repository=Depends(get_chat_repo), chat_bot_client=Depends(get_chat_bot_client)
+) -> ChatService:
     """Function is used to create ChatService object that needs to have ChatRepository parameter whitch is provided by get_get_chat_repo  function.
     ChatService is required in endpoint since it contains all business logic.
     It chains the Depends function of FastAPI
@@ -45,7 +58,7 @@ def get_chat_service(repository=Depends(get_chat_repo)) -> ChatService:
     Returns:
         ChatService: object that contains all business logic
     """
-    return ChatService(db=repository)
+    return ChatService(db=repository, chat_bot_client=chat_bot_client)
 
 
 #! Settings

@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.api.schemas.pydantic_schemas import ChatMessage, UserInput, ModelParameters
+from backend.api.schemas.pydantic_schemas import ChatMessage, ModelParameters, UserInput
 from backend.configuration.settings import get_settings
 from backend.database.chat_repository import ChatRepository
 from backend.database.db import Base
@@ -57,6 +57,7 @@ def happy_model_stream_response():
     """Function mock the behaviour or Streaming Response from AI Ollama model"""
 
     def streaming_generator(
+        model,
         chat_history,
         temperature,
         top_k,

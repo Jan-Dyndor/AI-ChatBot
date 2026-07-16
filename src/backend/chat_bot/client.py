@@ -12,15 +12,11 @@ from backend.exceptions.exc import (
 
 
 class ChatBotClient:
-    def __init__(
-        self,
-        model: str = "llama3:8b",  # ! DEFAULT VALUE
-    ) -> None:
-        self.model: str = model
-        logger.debug(f"Created LLM client with model {model}")
+    """Stateless class to communicate with Ollama"""
 
     def stream_response(
         self,
+        model,
         chat_history: list,
         temperature,
         top_k,
@@ -40,7 +36,7 @@ class ChatBotClient:
 
         try:
             stream_response = chat(
-                model=self.model,
+                model=model,
                 messages=chat_history,
                 stream=True,
                 options={
@@ -74,9 +70,9 @@ class ChatBotClient:
                 return
             elif error.status_code == 400:
                 logger.exception(
-                    f"Ollama error: {error.status_code}. Embedding models like: {self.model} can not generate responses"
+                    f"Ollama error: {error.status_code}. Embedding models like: {model} can not generate responses"
                 )
-                yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}. Embedding models like:  {self.model} can not generate responses"
+                yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}. Embedding models like:  {model} can not generate responses"
                 return
             else:
                 logger.exception(f"Ollama error {error.status_code}")
@@ -89,7 +85,7 @@ class ChatBotClient:
             yield "\n\n\n\n\n [ERROR] Ollama stopped responding and is unavailable. Check if its running on your system"
             return
 
-    def create_conversation_title(self, user_input: str) -> str:
+    def create_conversation_title(self, user_input: str, model: str) -> str:
         """Function generated conversation summary based on user prompt
 
         Args:
@@ -139,7 +135,7 @@ class ChatBotClient:
 
         try:
             response = generate(
-                model=self.model,
+                model=model,
                 prompt=f"Create a short conversation title for the following USER MESSAGE: {user_input}. Return only the title.",
                 system=system_prompt,
                 stream=False,

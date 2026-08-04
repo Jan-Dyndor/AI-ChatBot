@@ -24,6 +24,7 @@ class ChatBotClient:
         num_ctx,
         num_predict,
         repeat_penalty,
+        is_thinking,
     ):
         """Function streams responses from LLM using Ollama
 
@@ -39,6 +40,7 @@ class ChatBotClient:
                 model=model,
                 messages=chat_history,
                 stream=True,
+                think=is_thinking,
                 options={
                     "temperature": temperature,
                     "top_k": top_k,
@@ -66,13 +68,11 @@ class ChatBotClient:
                 logger.exception(
                     f"Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
                 )
-                yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
+                yield "\n\n\n\n\n[ERROR] Ollama error. Ollama model might not exists or its not downloaded"
                 return
             elif error.status_code == 400:
-                logger.exception(
-                    f"Ollama error: {error.status_code}. Embedding models like: {model} can not generate responses"
-                )
-                yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}. Embedding models like:  {model} can not generate responses"
+                logger.exception(f"Ollama error: {error.status_code}. Error - {error}")
+                yield "\n\n\n\n\n[ERROR] Ollama error. Keep in mind that embedding models can not generate responses and some models do not support THINKING"
                 return
             else:
                 logger.exception(f"Ollama error {error.status_code}")
@@ -139,9 +139,10 @@ class ChatBotClient:
                 prompt=f"Create a short conversation title for the following USER MESSAGE: {user_input}. Return only the title.",
                 system=system_prompt,
                 stream=False,
-                options={"temperature": 0, "num_predict": 15, "stop": ["\n"]},
+                think=False,
+                options={"temperature": 0, "num_predict": 15},
             )
-            return response["response"]
+            return response["response"].strip()
 
         except ConnectionError as error:
             raise OllamaConnectionError() from error

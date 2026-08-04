@@ -65,6 +65,7 @@ def happy_model_stream_response():
         num_ctx,
         num_predict,
         repeat_penalty,
+        is_thinking,
     ):
         for word in [
             "I",

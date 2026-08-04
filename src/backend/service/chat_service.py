@@ -63,6 +63,7 @@ class ChatService:
         num_ctx: int,
         num_predict: int,
         repeat_penalty: float,
+        is_thinking: bool,
     ):
         """Function creates ChatBotClient object with choosen model, and parameters, stream responses from LLM using yield. It also creates full model response to save it in DB.
 
@@ -94,6 +95,7 @@ class ChatService:
             num_ctx=num_ctx,
             num_predict=num_predict,
             repeat_penalty=repeat_penalty,
+            is_thinking=is_thinking,
         ):
             full_llm_response += chunk
             yield chunk

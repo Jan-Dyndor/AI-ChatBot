@@ -57,7 +57,6 @@ def chat(
     return StreamingResponse(
         service.stream_response_from_client(
             model=user_input.model,
-            chat_history=user_input.chat_history,
             conversation_id=user_input.conversation_id,
             user_id=user.id,
             temperature=user_input.model_parameters.temperature,

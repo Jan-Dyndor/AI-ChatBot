@@ -3,6 +3,8 @@ from loguru import logger
 from backend.chat_bot.client import ChatBotClient
 from backend.database.chat_repository import ChatRepository
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound
+from backend.database.models import Messages
+from backend.api.schemas.pydantic_schemas import Message
 
 
 class ChatService:
@@ -54,7 +56,6 @@ class ChatService:
     def stream_response_from_client(
         self,
         model: str,
-        chat_history: list,
         conversation_id: int,
         user_id: int,
         temperature: float,
@@ -69,8 +70,6 @@ class ChatService:
 
         Args:
             model (str): AI model name
-            chat_history (list): list of previous conversations
-            user_input (str): user current message
             conversation_id (int): ID of conversation
             user_id (int): ID of User
             temperature (float):
@@ -85,6 +84,15 @@ class ChatService:
         """
 
         full_llm_response: str = ""
+
+        # fetch chat histiry directly from DB
+        chat_history_sql: list[Messages] = self.db.chat_history(
+            conversation_id=conversation_id, user_id=user_id
+        )
+
+        chat_history = []
+        for message in chat_history_sql:
+            chat_history.append(Message.model_validate(message).model_dump())
 
         for chunk in self.chat_bot_client.stream_response(
             model=model,

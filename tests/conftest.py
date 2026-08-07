@@ -30,7 +30,8 @@ def wrong_user_input_too_long():
     return {
         "input": "example" * 3000,
         "model": "llama3:8b",
-        "chat_history": [{"role": "assistant", "content": "example"}],
+        "conversation_id": 1,
+        "model_parameters": {},
     }
 
 
@@ -38,7 +39,6 @@ def wrong_user_input_too_long():
 def happy_test_user_input_short():
     return UserInput(
         input="What are you?",
-        chat_history=[ChatMessage(role="assistant", content="What are you?")],
         model="llama3:8b",
         conversation_id=1,
         model_parameters=ModelParameters(
@@ -94,13 +94,6 @@ def model_stream_response():
 def happy_test_user_input_long():
     return UserInput(
         input="What are you?",
-        chat_history=[
-            ChatMessage(role="user", content="What are you"),
-            ChatMessage(
-                role="assistant",
-                content="I am powerfull AI! I am here to destroy you! ",
-            ),
-        ],
         model="llama3:8b",
         conversation_id=1,
         model_parameters={  # type: ignore typechecker wants ModelParameters type not dict
@@ -113,30 +106,6 @@ def happy_test_user_input_long():
 
 
 # Dependencies / clients Fixtures / classs
-
-
-@pytest.fixture
-def FakeChatService_fixture():
-    """Fixture returns callable class object that mimics the ChatService object"""
-
-    class FakeChatService:
-        def stream_response_from_client(self, model: str, chat_history: list):
-            for word in [
-                "I",
-                "am",
-                "powerfull",
-                "AI!",
-                "I",
-                "am",
-                "here",
-                "to",
-                "destroy",
-                "you!",
-            ]:
-                yield word + " "
-                time.sleep(0.01)
-
-    return FakeChatService
 
 
 # =========== DB Fixture for UNIT testing

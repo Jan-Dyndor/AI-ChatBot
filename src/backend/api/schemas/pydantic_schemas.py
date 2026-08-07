@@ -62,7 +62,6 @@ class ModelParameters(BaseModel):
 class UserInput(BaseModel):
     input: str = Field(min_length=1, max_length=3000)
     model: str
-    chat_history: list[ChatMessage]
     conversation_id: int
     model_parameters: ModelParameters
 
@@ -99,3 +98,10 @@ class Model(BaseModel):
 
 class Models(BaseModel):
     models: list[Model]
+
+
+class Message(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    role: str
+    content: str

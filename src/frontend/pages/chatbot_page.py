@@ -226,6 +226,16 @@ def render_sidebar():
             key="model_name",
         )
 
+        reasoning = st.selectbox(
+            "LLM reasoning",
+            options=[False, True],
+            help=(
+                "Allows compatible models to think before writing the final answer. Useful for complex coding, "
+                "math, planning, or analysis tasks. It can make responses slower and may use part of the "
+                "Max response tokens budget. Some models ignore this option."
+            ),
+        )
+
         temperature = st.slider(
             label="Temperature",
             min_value=0.0,
@@ -271,7 +281,10 @@ def render_sidebar():
             value=300,
             step=50,
             key="num_predict",
-            help="Maximum number of tokens the model is allowed to generate.",
+            help=(
+                "Maximum tokens the model may generate. If Reasoning mode is enabled, internal reasoning "
+                "can use part of this budget before the final answer appears."
+            ),
         )
 
         repeat_penalty = st.slider(
@@ -327,7 +340,16 @@ def render_sidebar():
 
         st.caption("MVP version - Streamlit UI + FastAPI backend + DB Persistance")
 
-    return model_name, temperature, top_k, top_p, num_ctx, num_predict, repeat_penalty
+    return (
+        model_name,
+        temperature,
+        top_k,
+        top_p,
+        num_ctx,
+        num_predict,
+        repeat_penalty,
+        reasoning,
+    )
 
 
 def render_chat_history() -> None:
@@ -348,6 +370,7 @@ def get_ai_response(
     num_ctx,
     num_predict,
     repeat_penalty,
+    reasoning: bool,
 ):
     """
 
@@ -380,6 +403,7 @@ def get_ai_response(
                         "num_ctx": num_ctx,
                         "num_predict": num_predict,
                         "repeat_penalty": repeat_penalty,
+                        "is_thinking": reasoning,
                     },
                 },
                 headers={
@@ -436,9 +460,16 @@ def enable_conversation():
 
 def main() -> None:
     init_session_state()
-    model_name, temperature, top_k, top_p, num_ctx, num_predict, repeat_penalty = (
-        render_sidebar()
-    )
+    (
+        model_name,
+        temperature,
+        top_k,
+        top_p,
+        num_ctx,
+        num_predict,
+        repeat_penalty,
+        reasoning,
+    ) = render_sidebar()
 
     st.title("Conversational AI App")
     st.caption("Chat with your local LLM backend")
@@ -476,6 +507,7 @@ def main() -> None:
                     num_ctx,
                     num_predict,
                     repeat_penalty,
+                    reasoning,
                 ):
                     ai_response += chunk
                     placeholder.markdown(ai_response)

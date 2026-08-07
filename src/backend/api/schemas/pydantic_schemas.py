@@ -53,6 +53,11 @@ class ModelParameters(BaseModel):
         description="Penalizes repeated text. Higher values reduce repetition more strongly.",
     )
 
+    is_thinking: bool = Field(
+        default=False,
+        description="In LLMs with reasoning ability should it think before answering",
+    )
+
 
 class UserInput(BaseModel):
     input: str = Field(min_length=1, max_length=3000)

@@ -7,10 +7,10 @@ from backend.api.schemas.pydantic_schemas import (
     ChatMessage,
     CreateUserRequest,
     CreateUserResponse,
+    Models,
     Token,
     UserDB,
     UserInput,
-    Models,
     UserLogin,
 )
 from backend.authentication.auth import AuthService
@@ -66,6 +66,7 @@ def chat(
             num_ctx=user_input.model_parameters.num_ctx,
             num_predict=user_input.model_parameters.num_predict,
             repeat_penalty=user_input.model_parameters.repeat_penalty,
+            is_thinking=user_input.model_parameters.is_thinking,
         ),
         media_type="text/plain",
         headers={"Content-Type": "text/event-stream"},

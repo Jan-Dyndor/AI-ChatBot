@@ -125,7 +125,7 @@ The Streamlit frontend consumes streamed chunks in real-time to simulate ChatGPT
 - Streaming AI responses
 - FastAPI backend API
 - Streamlit frontend UI
-- Chat history handled in frontend state
+- Chat history 
 - Request tracing middleware
 - Structured logging with Loguru
 - Pydantic settings & validation
@@ -134,7 +134,8 @@ The Streamlit frontend consumes streamed chunks in real-time to simulate ChatGPT
 - Basic test suite
 - Layered backend architecture
 - Persistent chat history (SQLite)
-- Multi-chat support (for one user -> user based after adding authentication)
+- Multi-chat support 
+- Mulit-LLMs support 
 - JWT/O2Auth authentication
 - CI with GitHub Actions
 

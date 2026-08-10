@@ -8,7 +8,7 @@ class Base(DeclarativeBase):
 
 
 def get_engine(DB_URL: str):
-    """Function creates engine based on enviroment DB URL. Tests are run in in-memory sqlite DB (for now) so it need another configuration.
+    """Function creates engine based on enviroment DB URL
 
     Args:
         DB_URL (str): DB URL

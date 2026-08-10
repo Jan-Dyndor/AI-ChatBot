@@ -53,11 +53,14 @@ def chat(
         user_id=user.id,
     )
 
+    chat_history = service.fetch_chat_history(
+        conversation_id=user_input.conversation_id, user_id=user.id
+    )
+
     # Start Streaming response
     return StreamingResponse(
         service.stream_response_from_client(
             model=user_input.model,
-            chat_history=user_input.chat_history,
             conversation_id=user_input.conversation_id,
             user_id=user.id,
             temperature=user_input.model_parameters.temperature,
@@ -67,6 +70,7 @@ def chat(
             num_predict=user_input.model_parameters.num_predict,
             repeat_penalty=user_input.model_parameters.repeat_penalty,
             is_thinking=user_input.model_parameters.is_thinking,
+            chat_history=chat_history,
         ),
         media_type="text/plain",
         headers={"Content-Type": "text/event-stream"},

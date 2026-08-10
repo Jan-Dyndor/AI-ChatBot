@@ -19,9 +19,6 @@ def test_chat_wrong_user_input(client, wrong_user_input_empty, valid_token):
 
     session = client.app.state.session_maker()
 
-    print("OS DB_URL:", os.environ.get("DB_URL"))
-    print("TEST ENV PATH:", Path(__file__).resolve().parents[1] / ".env.tests")
-
     users = session.query(Users).all()
     for user in users:
         print(user.email)
@@ -168,6 +165,7 @@ def test_chat_streaming_save_bot_output_error(
     session.commit()
 
     repo_mock = Mock()
+    repo_mock.chat_history.return_value = [{"role": "user", "content": "Example"}]
     repo_mock.save_bot_output.side_effect = DataBaseResourceNotFound()
 
     client.app.dependency_overrides[get_chat_repo] = lambda: repo_mock

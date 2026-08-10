@@ -1,7 +1,9 @@
 from loguru import logger
 
+from backend.api.schemas.pydantic_schemas import Message
 from backend.chat_bot.client import ChatBotClient
 from backend.database.chat_repository import ChatRepository
+from backend.database.models import Messages
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound
 
 
@@ -54,7 +56,6 @@ class ChatService:
     def stream_response_from_client(
         self,
         model: str,
-        chat_history: list,
         conversation_id: int,
         user_id: int,
         temperature: float,
@@ -64,13 +65,12 @@ class ChatService:
         num_predict: int,
         repeat_penalty: float,
         is_thinking: bool,
+        chat_history: list[dict],
     ):
         """Function creates ChatBotClient object with choosen model, and parameters, stream responses from LLM using yield. It also creates full model response to save it in DB.
 
         Args:
             model (str): AI model name
-            chat_history (list): list of previous conversations
-            user_input (str): user current message
             conversation_id (int): ID of conversation
             user_id (int): ID of User
             temperature (float):
@@ -115,6 +115,27 @@ class ChatService:
             logger.exception(
                 f"Can not save LLM output. Failed to save bot output after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
             )
+
+    def fetch_chat_history(self, conversation_id: int, user_id: int) -> list[dict]:
+        """Fucntion fetches messages beetween user and LLM from DB
+
+        Args:
+            conversation_id (int):
+            user_id (int):
+
+        Returns:
+            list[dict]: User - Bot messages
+        """
+
+        chat_history_sql: list[Messages] = self.db.chat_history(
+            conversation_id=conversation_id, user_id=user_id
+        )
+
+        chat_history = []
+        for message in chat_history_sql:
+            chat_history.append(Message.model_validate(message).model_dump())
+
+        return chat_history
 
     def create_conversation(self, user_id: int) -> int:
         """Function creates new conversation on behalf od User with User ID, saves it to DB and returns conversation ID so frontend can attach new messages to it

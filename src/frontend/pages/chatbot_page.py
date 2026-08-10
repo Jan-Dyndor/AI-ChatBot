@@ -362,7 +362,6 @@ def render_chat_history() -> None:
 def get_ai_response(
     user_input: str,
     model: str,
-    chat_history: list[dict],
     conversation_id: int,
     temperature,
     top_k,
@@ -394,7 +393,6 @@ def get_ai_response(
                 json={
                     "input": user_input,
                     "model": model,
-                    "chat_history": chat_history,
                     "conversation_id": conversation_id,
                     "model_parameters": {
                         "temperature": temperature,
@@ -499,7 +497,6 @@ def main() -> None:
                 for chunk in get_ai_response(
                     user_input,
                     model_name,  # type: ignore
-                    st.session_state.messages,
                     st.session_state.conversation_id,  # type: ignore,
                     temperature,
                     top_k,

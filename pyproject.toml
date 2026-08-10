@@ -5,9 +5,11 @@ description = "This is local AI chatbot with FastAPI backend, Streamlit UI, DB p
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "alembic>=1.19.1",
     "fastapi>=0.136.0",
     "loguru>=0.7.3",
     "ollama>=0.6.1",
+    "psycopg2>=2.9.12",
     "pwdlib[argon2]>=0.3.0",
     "pydantic-settings>=2.14.0",
     "pydantic[email]>=2.13.1",

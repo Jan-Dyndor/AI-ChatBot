@@ -14,7 +14,9 @@ class Conversations(Base):
     )
     user: Mapped[Users] = relationship(back_populates="conversations")
 
-    messages: Mapped[list[Messages]] = relationship(back_populates="conversation")
+    messages: Mapped[list[Messages]] = relationship(
+        back_populates="conversation", order_by="Messages.created_at.asc()"
+    )
     summary: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)

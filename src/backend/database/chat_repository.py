@@ -156,6 +156,7 @@ class ChatRepository:
                 )
                 .first()
             )
+
         except SQLAlchemyError as error:
             self.db.rollback()
             raise DataBaseError() from error

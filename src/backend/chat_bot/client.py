@@ -17,8 +17,8 @@ class ChatBotClient:
     def stream_response(
         self,
         model,
-        chat_history: list,
-        temperature,
+        chat_history: list[dict],
+        temperature: float,
         top_k,
         top_p,
         num_ctx,

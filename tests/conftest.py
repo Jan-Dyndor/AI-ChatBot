@@ -160,7 +160,7 @@ def test_user_db() -> Users:
 @pytest.fixture
 def client(create_db):
     get_settings.cache_clear()
-    engine = create_db()
+    engine = create_db
 
     app = create_app(
         env_file_location=Path(__file__).resolve().parents[1] / ".env.tests"

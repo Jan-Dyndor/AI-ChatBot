@@ -1,6 +1,7 @@
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from backend.database.db import Base
 
 import jwt
 import pytest
@@ -164,6 +165,7 @@ def client():
         env_file_location=Path(__file__).resolve().parents[1] / ".env.tests"
     )
     with TestClient(app=app) as client:
+        Base.metadata.clear()
         yield client
 
     get_settings.cache_clear()

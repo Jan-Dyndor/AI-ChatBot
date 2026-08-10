@@ -158,14 +158,15 @@ def test_user_db() -> Users:
 
 
 @pytest.fixture
-def client():
+def client(create_db):
     get_settings.cache_clear()
+    engine = create_db()
 
     app = create_app(
         env_file_location=Path(__file__).resolve().parents[1] / ".env.tests"
     )
     with TestClient(app=app) as client:
-        Base.metadata.clear()
+        Base.metadata.create_all(engine)
         yield client
 
     get_settings.cache_clear()

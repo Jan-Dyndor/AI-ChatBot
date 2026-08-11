@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.api.schemas.pydantic_schemas import ChatMessage, ModelParameters, UserInput
+from backend.api.schemas.pydantic_schemas import ModelParameters, UserInput
 from backend.configuration.settings import get_settings
 from backend.database.chat_repository import ChatRepository
 from backend.database.db import Base

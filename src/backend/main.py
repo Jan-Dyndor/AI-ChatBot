@@ -1,11 +1,13 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
+
 from fastapi import FastAPI
+from sqlalchemy import text
 
 from backend.api.router.v1 import router
 from backend.configuration.logging_config import set_up_logging
 from backend.configuration.settings import get_settings
-from backend.database.db import Base, session_factory, get_engine
+from backend.database.db import get_engine, session_factory
 from backend.exceptions.handlers import register_exception_handlers
 from backend.middleware.logging_middleware import LoggingMiddleware
 from backend.middleware.request_id_middleware import RequestIDMiddleware
@@ -21,9 +23,10 @@ def create_lifespan(env_file_location: str | Path | None = None):
         settings = get_settings(env_file_location)  # read .env file
         app.state.settings = settings
         engine = get_engine(settings.db_url)
-        Base.metadata.create_all(bind=engine)
         session_maker = session_factory(engine)
         app.state.session_maker = session_maker
+        with engine.connect() as connection:  # Test DB connection
+            connection.execute(text("SELECT 1"))
         yield
         # After shutdown
         engine.dispose()

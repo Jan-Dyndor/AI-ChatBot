@@ -1,6 +1,4 @@
 from unittest.mock import Mock, patch
-import os
-from pathlib import Path
 from backend.chat_bot.client import ChatBotClient
 from backend.database.models import Conversations, Messages, Users
 from backend.dependencies.depends import get_chat_repo

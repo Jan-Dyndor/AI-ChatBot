@@ -1,7 +1,6 @@
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from backend.database.db import Base
 
 import jwt
 import pytest
@@ -14,6 +13,7 @@ from backend.configuration.settings import get_settings
 from backend.database.chat_repository import ChatRepository
 from backend.database.db import Base
 from backend.database.models import Users
+from backend.dependencies.depends import get_db
 from backend.main import create_app
 
 
@@ -158,16 +158,29 @@ def test_user_db() -> Users:
 
 
 @pytest.fixture
-def client(create_db):
+def client(session_maker):
+
     get_settings.cache_clear()
-    engine = create_db
 
     app = create_app(
         env_file_location=Path(__file__).resolve().parents[1] / ".env.tests"
     )
+
+    def override_get_db():
+        db = session_maker()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
     with TestClient(app=app) as client:
-        Base.metadata.create_all(engine)
+        client.app.state.session_maker = session_maker  # type: ignore
+        # point current session_maker to the one in memmory not one created in create_app in lifespan
         yield client
+
+    app.dependency_overrides.clear()
 
     get_settings.cache_clear()
 

@@ -15,13 +15,16 @@ from backend.api.schemas.pydantic_schemas import (
 )
 from backend.authentication.auth import AuthService
 from backend.configuration.settings import Settings, get_settings
+from backend.core.concurency.conversation_thread_lock import ConversationLockManager
 from backend.dependencies.depends import (
     get_auth_service,
     get_chat_service,
     get_current_user,
+    get_thread_lock,
     get_user_service,
 )
 from backend.service.chat_service import ChatService
+from loguru import logger
 from backend.service.user_service import UserService
 
 router = APIRouter(prefix="/v1", tags=["v1"])
@@ -37,29 +40,38 @@ def chat(
     user_input: UserInput,
     service: ChatService = Depends(get_chat_service),
     user: UserDB = Depends(get_current_user),
+    thread_lock: ConversationLockManager = Depends(get_thread_lock),
 ):
-    # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB
+    # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB.
+    #!  Aquire Thread Lock so race condition will not appear
+    lock = thread_lock.get_or_create_lock(user_input.conversation_id)
+    logger.error("Zakladam LOCK")
+    lock.acquire()
+    try:
+        service.save_user_input(
+            user_input=user_input.input,
+            conversation_id=user_input.conversation_id,
+            user_id=user.id,
+        )
 
-    service.save_user_input(
-        user_input=user_input.input,
-        conversation_id=user_input.conversation_id,
-        user_id=user.id,
-    )
+        service.conversation_summary(
+            user_input=user_input.input,
+            conversation_id=user_input.conversation_id,
+            model=user_input.model,
+            user_id=user.id,
+        )
 
-    service.conversation_summary(
-        user_input=user_input.input,
-        conversation_id=user_input.conversation_id,
-        model=user_input.model,
-        user_id=user.id,
-    )
-
-    chat_history = service.fetch_chat_history(
-        conversation_id=user_input.conversation_id, user_id=user.id
-    )
+        chat_history = service.fetch_chat_history(
+            conversation_id=user_input.conversation_id, user_id=user.id
+        )
+    except Exception:
+        lock.release()
+        raise
 
     # Start Streaming response
     return StreamingResponse(
-        service.stream_response_from_client(
+        service.thread_save_streaming_response(
+            lock_object=lock,
             model=user_input.model,
             conversation_id=user_input.conversation_id,
             user_id=user.id,
@@ -75,8 +87,6 @@ def chat(
         media_type="text/plain",
         headers={"Content-Type": "text/event-stream"},
     )
-
-    # After streaming
 
 
 @router.get(

@@ -89,3 +89,8 @@ def get_current_user(
 #! User Service
 def get_user_service(user_repo=Depends(get_user_repo)):
     return UserService(UserRepository=user_repo)
+
+
+#! Thread Lock
+def get_thread_lock(request: Request):
+    return request.app.state.lock

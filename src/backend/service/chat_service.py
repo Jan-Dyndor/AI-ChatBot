@@ -1,3 +1,5 @@
+from threading import Lock
+
 from loguru import logger
 
 from backend.api.schemas.pydantic_schemas import Message
@@ -53,6 +55,53 @@ class ChatService:
     def save_bot_output(self, output, conversation_id, user_id):
         return self.db.save_bot_output(output, conversation_id, user_id)
 
+    def thread_save_streaming_response(
+        self,
+        lock_object: Lock,
+        model: str,
+        conversation_id: int,
+        user_id: int,
+        temperature: float,
+        top_k: int,
+        top_p: float,
+        num_ctx: int,
+        num_predict: int,
+        repeat_penalty: float,
+        is_thinking: bool,
+        chat_history: list[dict],
+    ):
+        """Its a wraper on stream_response_from_client function that after the streaming or error will relase Thread Lock.
+        Its usage was needed becasue  endpoint after returning Streaming response will not execute any code after it so  can not rease Lock then + after returning this Streaming will still be happening so we have to block the conversation.
+
+        When using wrapper on this we are make sure that after Streaming is trully done only then we are relesing the Lock
+
+        Yields:
+            _type_: _description_
+        """
+        try:
+            logger.error(" WCHODZE DO WRAPERA")
+
+            for chunk in self.stream_response_from_client(
+                model,
+                conversation_id,
+                user_id,
+                temperature,
+                top_k,
+                top_p,
+                num_ctx,
+                num_predict,
+                repeat_penalty,
+                is_thinking,
+                chat_history,
+            ):
+                yield chunk
+
+        finally:
+            logger.error("ZWALNIAM LOCK I KONIEC!")
+
+            #! realase LOCk after streaming
+            lock_object.release()
+
     def stream_response_from_client(
         self,
         model: str,
@@ -85,6 +134,7 @@ class ChatService:
         """
 
         full_llm_response: str = ""
+        logger.error("WCHDOZE DO PRAWDZIWEJ FUNKCJI")
 
         for chunk in self.chat_bot_client.stream_response(
             model=model,
@@ -107,6 +157,8 @@ class ChatService:
                 conversation_id=conversation_id,
                 user_id=user_id,
             )
+            logger.error("ZAPISUJE BOT DO DB")
+
         except DataBaseResourceNotFound:
             logger.exception(
                 f"Can not save LLM output. Conversation disappeared or access invalid after streaming Conversation_ID: {conversation_id} User_ID: {user_id}"

@@ -35,6 +35,14 @@ DB_URL="sqlite:///:memory:"
 The application uses Pydantic Settings to load environment variables from the `.env`s files.
 
 Follow the command from root of the repo
+
+### Ollama
+If you want to run multiple queires at once you have to run yout Ollama with below command:
+```cmd
+OLLAMA_NUM_PARALLEL= number ollama serve
+```
+Where number is a maximum number of parallel requests each model will process at the same time, default 1. Required RAM will scale by OLLAMA_NUM_PARALLEL
+
 ### Backend
 ```cmd
 uv run uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000 --no-access-log
@@ -86,6 +94,7 @@ AI-ChatBot/
 │   │   ├── authorization/      # Auth service class responsible for authorization and JWT creation
 │   │   ├── chat_bot/           # LLM/Ollama communication logic
 │   │   ├── configuration/      # Settings and logging configuration
+│   │   ├── core/               # Utils files. Threading Lock
 │   │   ├── database/           # SQLAlchemy models, engine and DB setup, repository class setup
 │   │   ├── dependencies/       # FastAPI dependencies
 │   │   ├── exceptions/         # Custom exceptions and handlers

@@ -70,17 +70,33 @@ class ChatService:
         is_thinking: bool,
         chat_history: list[dict],
     ):
-        """Its a wraper on stream_response_from_client function that after the streaming or error will relase Thread Lock.
-        Its usage was needed becasue  endpoint after returning Streaming response will not execute any code after it so  can not rease Lock then + after returning this Streaming will still be happening so we have to block the conversation.
+        """Stream the LLM response while holding the conversation lock.
 
-        When using wrapper on this we are make sure that after Streaming is trully done only then we are relesing the Lock
+        This wrapper delegates response generation to
+        `stream_response_from_client` and yields each generated chunk.
 
-        Yields:
-            _type_: _description_
+        The provided lock must already be acquired before this generator starts.
+        It remains active for the entire streaming lifecycle and is released in
+        the `finally` block when the stream finishes, raises an exception, or is
+        closed. This prevents another request from modifying the same conversation
+        while the current assistant response is still being generated.
+
+        Keep the conversation locked for the entire streaming lifecycle.
+
+        FastAPI returns a StreamingResponse before the response generator finishes
+        its work. Therefore, releasing the lock directly in the endpoint would unlock
+        the conversation while the LLM is still generating and streaming its response.
+
+        This wrapper yields all chunks produced by `stream_response_from_client` and
+        releases the lock in the `finally` block. This guarantees that the lock is
+        released when streaming finishes, fails with an exception, or is closed.
+
+        The lock must be acquired before it is passed to this function. This function
+        does not acquire the lock; it only guarantees its release.
+
+
         """
         try:
-            logger.error(" WCHODZE DO WRAPERA")
-
             for chunk in self.stream_response_from_client(
                 model,
                 conversation_id,
@@ -97,9 +113,7 @@ class ChatService:
                 yield chunk
 
         finally:
-            logger.error("ZWALNIAM LOCK I KONIEC!")
-
-            #! realase LOCk after streaming
+            #! realase LOCK after streaming
             lock_object.release()
 
     def stream_response_from_client(
@@ -134,8 +148,6 @@ class ChatService:
         """
 
         full_llm_response: str = ""
-        logger.error("WCHDOZE DO PRAWDZIWEJ FUNKCJI")
-
         for chunk in self.chat_bot_client.stream_response(
             model=model,
             chat_history=chat_history,
@@ -157,8 +169,6 @@ class ChatService:
                 conversation_id=conversation_id,
                 user_id=user_id,
             )
-            logger.error("ZAPISUJE BOT DO DB")
-
         except DataBaseResourceNotFound:
             logger.exception(
                 f"Can not save LLM output. Conversation disappeared or access invalid after streaming Conversation_ID: {conversation_id} User_ID: {user_id}"

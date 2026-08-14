@@ -24,7 +24,6 @@ from backend.dependencies.depends import (
     get_user_service,
 )
 from backend.service.chat_service import ChatService
-from loguru import logger
 from backend.service.user_service import UserService
 
 router = APIRouter(prefix="/v1", tags=["v1"])
@@ -45,7 +44,6 @@ def chat(
     # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB.
     #!  Aquire Thread Lock so race condition will not appear
     lock = thread_lock.get_or_create_lock(user_input.conversation_id)
-    logger.error("Zakladam LOCK")
     lock.acquire()
     try:
         service.save_user_input(

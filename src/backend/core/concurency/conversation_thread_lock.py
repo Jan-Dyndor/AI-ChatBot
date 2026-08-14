@@ -2,21 +2,40 @@ from threading import Lock
 
 
 class ConversationLockManager:
-    """Klasa typy singleton ktora bedzie trzymac inofrmacje o conversation ID i obiektice Lock do niej przypisanym pop top by zapwenic ze tylko jeden thread (watek) moze pracowac nad dana konwersacja i uniemozliwic race condition"""
+    """Manage in-memory locks assigned to individual conversations.
+
+    Each conversation ID is associated with its own Lock object. Requests for
+    the same conversation receive the same lock and must be processed one at
+    a time. Requests for different conversations receive different locks and
+    can be processed concurrently.
+
+    A separate registry lock protects the dictionary while conversation locks
+    are being retrieved or created. This prevents two threads from creating
+    different locks for the same conversation at the same time.
+
+    This manager works only within a single Python process (only one worker), and all requests
+    must use the same ConversationLockManager instance.
+    """
 
     def __init__(self) -> None:
         self._lock_dict: dict[int, Lock] = {}
         self._registry_lock = Lock()
 
     def get_or_create_lock(self, conversation_id: int) -> Lock:
-        """Funckcja ma dict w ktorym bedzie trzymac conversation_ID i przypisany jej obiekt Lock ktory bedzie mozna zajmowac i zwalniac
-        A takze ma swoj wlasny obirkt Lock ktory zapewni ze tylko jeden thread na raz bedzie przegladac dict z conversation_id by uniemozliwic sytuacje ze dwa thready w tym samym czasie sprawdza slownik i ustala ze nie ma zablokwanego locka dla danej kowersacji i zaczna race condition
+        """Return the existing lock for a conversation or create a new one.
+
+        Access to the lock dictionary is protected by the registry lock. This
+        makes the check-and-create operation atomic and guarantees that all
+        threads receive the same Lock object for a given conversation ID.
+
+        The returned conversation lock is not acquired by this method. The
+        caller is responsible for acquiring and releasing it.
 
         Args:
-            conversation_id (int): _description_
+            conversation_id: ID of the conversation that requires a lock.
 
         Returns:
-            Lock: Zwraca obiekt Lock
+            The Lock object assigned to the given conversation.
         """
         with self._registry_lock:
             if conversation_id not in self._lock_dict:

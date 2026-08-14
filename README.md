@@ -37,7 +37,7 @@ The application uses Pydantic Settings to load environment variables from the `.
 Follow the command from root of the repo
 
 ### Ollama
-If you want to run multiple queires at once you have to run yout Ollama with below command:
+If you want to run multiple queires at once you have to run Ollama with below command in command line:
 ```cmd
 OLLAMA_NUM_PARALLEL= number ollama serve
 ```
@@ -126,7 +126,29 @@ The backend streams responses from Ollama through FastAPI StreamingResponse.
 
 The Streamlit frontend consumes streamed chunks in real-time to simulate ChatGPT-like interaction.
 
+## Concurrency and Conversation Locking
 
+The backend uses an in-memory `threading.Lock` for each conversation.
+
+Requests targeting the same conversation are processed sequentially. This
+prevents concurrent requests from modifying the conversation history while
+an assistant response is still being generated and streamed.
+
+Different conversations use separate locks and can be processed concurrently.
+However, actual parallel LLM generation also depends on the Ollama
+`OLLAMA_NUM_PARALLEL` configuration.
+
+### Current limitation
+
+The lock manager stores its locks in the memory of a single Python process.
+Therefore, the current implementation is safe only when FastAPI runs with
+one Uvicorn worker.
+
+Multiple Uvicorn workers would maintain separate lock registries, so requests
+handled by different workers would not share the same conversation locks.
+
+A distributed lock, for example using Redis, will be required before running
+the application with multiple workers or multiple backend instances.
 
 ## Current Features
 
@@ -147,6 +169,7 @@ The Streamlit frontend consumes streamed chunks in real-time to simulate ChatGPT
 - Mulit-LLMs support 
 - JWT/O2Auth authentication
 - CI with GitHub Actions
+- Per-conversation request locking within a single FastAPI process
 
 
 ## Planned Features
@@ -160,6 +183,7 @@ The Streamlit frontend consumes streamed chunks in real-time to simulate ChatGPT
 - CI/CD with GitHub Actions
 - Dockerized deployment
 - RAG support
+- Redis-based distributed conversation locking for multi-worker deployment
 
 
 ## Why No LangChain?

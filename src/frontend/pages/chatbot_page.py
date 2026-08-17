@@ -434,6 +434,11 @@ def get_ai_response(
                 logger.error(response_json.get("message"))
                 yield "\n\n\n\n\n[ERROR] Ollama might not be working on your machine."
                 return
+            elif response.status_code == 409:
+                response_json = response.json()
+                logger.error(response_json.get("message"))
+                yield "\n\n\n\n\n[ERROR] This conversation is currently processing another request. Please wait until it finishes and try again."
+                return
 
             response.raise_for_status()
 

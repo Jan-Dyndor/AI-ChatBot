@@ -81,3 +81,14 @@ class InvalidCredentials(AppExceptions):
             message="Could not validate credentials",
             status_code=401,
         )
+
+
+# Concurency exception
+
+
+class ConversationIDConflict(AppExceptions):
+    def __init__(self, conversation_id) -> None:
+        super().__init__(
+            message=f"Conversation {conversation_id} already processing",
+            status_code=409,
+        )

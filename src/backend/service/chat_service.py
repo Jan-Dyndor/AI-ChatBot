@@ -214,3 +214,18 @@ class ChatService:
         self,
     ):
         return self.chat_bot_client.show_avaliable_models()
+
+    def validate_conversation_access(self, conversation_id: int, user_id: int):
+        """Validate that the conversation exists and belongs to the user.
+
+        This method delegates the ownership check to the repository. It does not
+        return anything. If the conversation does not exist or is not owned by the
+        given user, the repository raises DataBaseResourceNotFound.
+
+        Args:
+            conversation_id (int): ID of the conversation being accessed.
+            user_id (int): ID of the user requesting access.
+        """
+        self.db.validate_conversation_access(
+            conversation_id=conversation_id, user_id=user_id
+        )

@@ -23,6 +23,7 @@ from backend.dependencies.depends import (
     get_thread_lock,
     get_user_service,
 )
+from backend.exceptions.exc import ConversationIDConflict
 from backend.service.chat_service import ChatService
 from backend.service.user_service import UserService
 
@@ -41,50 +42,57 @@ def chat(
     user: UserDB = Depends(get_current_user),
     thread_lock: ConversationLockManager = Depends(get_thread_lock),
 ):
+    # Validate User access to conversation ID before addind Lock
+    service.validate_conversation_access(
+        conversation_id=user_input.conversation_id, user_id=user.id
+    )
+
     # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB.
     #!  Aquire Thread Lock so race condition will not appear
     lock = thread_lock.get_or_create_lock(user_input.conversation_id)
-    lock.acquire()
-    try:
-        service.save_user_input(
-            user_input=user_input.input,
-            conversation_id=user_input.conversation_id,
-            user_id=user.id,
-        )
+    if lock.acquire(blocking=False):
+        try:
+            service.save_user_input(
+                user_input=user_input.input,
+                conversation_id=user_input.conversation_id,
+                user_id=user.id,
+            )
 
-        service.conversation_summary(
-            user_input=user_input.input,
-            conversation_id=user_input.conversation_id,
-            model=user_input.model,
-            user_id=user.id,
-        )
+            service.conversation_summary(
+                user_input=user_input.input,
+                conversation_id=user_input.conversation_id,
+                model=user_input.model,
+                user_id=user.id,
+            )
 
-        chat_history = service.fetch_chat_history(
-            conversation_id=user_input.conversation_id, user_id=user.id
-        )
-    except Exception:
-        lock.release()
-        raise
+            chat_history = service.fetch_chat_history(
+                conversation_id=user_input.conversation_id, user_id=user.id
+            )
+        except Exception:
+            lock.release()
+            raise
 
-    # Start Streaming response
-    return StreamingResponse(
-        service.thread_save_streaming_response(
-            lock_object=lock,
-            model=user_input.model,
-            conversation_id=user_input.conversation_id,
-            user_id=user.id,
-            temperature=user_input.model_parameters.temperature,
-            top_k=user_input.model_parameters.top_k,
-            top_p=user_input.model_parameters.top_p,
-            num_ctx=user_input.model_parameters.num_ctx,
-            num_predict=user_input.model_parameters.num_predict,
-            repeat_penalty=user_input.model_parameters.repeat_penalty,
-            is_thinking=user_input.model_parameters.is_thinking,
-            chat_history=chat_history,
-        ),
-        media_type="text/plain",
-        headers={"Content-Type": "text/event-stream"},
-    )
+        # Start Streaming response
+        return StreamingResponse(
+            service.thread_save_streaming_response(
+                lock_object=lock,
+                model=user_input.model,
+                conversation_id=user_input.conversation_id,
+                user_id=user.id,
+                temperature=user_input.model_parameters.temperature,
+                top_k=user_input.model_parameters.top_k,
+                top_p=user_input.model_parameters.top_p,
+                num_ctx=user_input.model_parameters.num_ctx,
+                num_predict=user_input.model_parameters.num_predict,
+                repeat_penalty=user_input.model_parameters.repeat_penalty,
+                is_thinking=user_input.model_parameters.is_thinking,
+                chat_history=chat_history,
+            ),
+            media_type="text/plain",
+            headers={"Content-Type": "text/event-stream"},
+        )
+    else:
+        raise ConversationIDConflict(conversation_id=user_input.conversation_id)
 
 
 @router.get(

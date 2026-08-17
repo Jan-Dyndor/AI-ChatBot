@@ -279,3 +279,31 @@ class ChatRepository:
             )
         except SQLAlchemyError as error:
             raise DataBaseError() from error
+
+    def validate_conversation_access(self, conversation_id: int, user_id: int):
+        """Validate that a conversation exists and belongs to the given user.
+
+        Args:
+            conversation_id (int): ID of the conversation being accessed.
+            user_id (int): ID of the user requesting access.
+
+        Raises:
+            DataBaseError: Raised when the database query fails.
+            DataBaseResourceNotFound: Raised when the conversation does not exist
+                or does not belong to the given user.
+        """
+
+        try:
+            conversation = (
+                self.db.query(Conversations.id)
+                .where(
+                    Conversations.id == conversation_id,
+                    Conversations.user_id == user_id,
+                )
+                .first()
+            )
+        except SQLAlchemyError as error:
+            raise DataBaseError() from error
+
+        if conversation is None:
+            raise DataBaseResourceNotFound()

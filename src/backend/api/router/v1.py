@@ -15,12 +15,15 @@ from backend.api.schemas.pydantic_schemas import (
 )
 from backend.authentication.auth import AuthService
 from backend.configuration.settings import Settings, get_settings
+from backend.core.concurency.conversation_thread_lock import ConversationLockManager
 from backend.dependencies.depends import (
     get_auth_service,
     get_chat_service,
     get_current_user,
+    get_thread_lock,
     get_user_service,
 )
+from backend.exceptions.exc import ConversationIDConflict
 from backend.service.chat_service import ChatService
 from backend.service.user_service import UserService
 
@@ -37,46 +40,59 @@ def chat(
     user_input: UserInput,
     service: ChatService = Depends(get_chat_service),
     user: UserDB = Depends(get_current_user),
+    thread_lock: ConversationLockManager = Depends(get_thread_lock),
 ):
-    # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB
-
-    service.save_user_input(
-        user_input=user_input.input,
-        conversation_id=user_input.conversation_id,
-        user_id=user.id,
-    )
-
-    service.conversation_summary(
-        user_input=user_input.input,
-        conversation_id=user_input.conversation_id,
-        model=user_input.model,
-        user_id=user.id,
-    )
-
-    chat_history = service.fetch_chat_history(
+    # Validate User access to conversation ID before addind Lock
+    service.validate_conversation_access(
         conversation_id=user_input.conversation_id, user_id=user.id
     )
 
-    # Start Streaming response
-    return StreamingResponse(
-        service.stream_response_from_client(
-            model=user_input.model,
-            conversation_id=user_input.conversation_id,
-            user_id=user.id,
-            temperature=user_input.model_parameters.temperature,
-            top_k=user_input.model_parameters.top_k,
-            top_p=user_input.model_parameters.top_p,
-            num_ctx=user_input.model_parameters.num_ctx,
-            num_predict=user_input.model_parameters.num_predict,
-            repeat_penalty=user_input.model_parameters.repeat_penalty,
-            is_thinking=user_input.model_parameters.is_thinking,
-            chat_history=chat_history,
-        ),
-        media_type="text/plain",
-        headers={"Content-Type": "text/event-stream"},
-    )
+    # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB.
+    #!  Aquire Thread Lock so race condition will not appear
+    lock = thread_lock.get_or_create_lock(user_input.conversation_id)
+    if lock.acquire(blocking=False):
+        try:
+            service.save_user_input(
+                user_input=user_input.input,
+                conversation_id=user_input.conversation_id,
+                user_id=user.id,
+            )
 
-    # After streaming
+            service.conversation_summary(
+                user_input=user_input.input,
+                conversation_id=user_input.conversation_id,
+                model=user_input.model,
+                user_id=user.id,
+            )
+
+            chat_history = service.fetch_chat_history(
+                conversation_id=user_input.conversation_id, user_id=user.id
+            )
+        except Exception:
+            lock.release()
+            raise
+
+        # Start Streaming response
+        return StreamingResponse(
+            service.thread_save_streaming_response(
+                lock_object=lock,
+                model=user_input.model,
+                conversation_id=user_input.conversation_id,
+                user_id=user.id,
+                temperature=user_input.model_parameters.temperature,
+                top_k=user_input.model_parameters.top_k,
+                top_p=user_input.model_parameters.top_p,
+                num_ctx=user_input.model_parameters.num_ctx,
+                num_predict=user_input.model_parameters.num_predict,
+                repeat_penalty=user_input.model_parameters.repeat_penalty,
+                is_thinking=user_input.model_parameters.is_thinking,
+                chat_history=chat_history,
+            ),
+            media_type="text/plain",
+            headers={"Content-Type": "text/event-stream"},
+        )
+    else:
+        raise ConversationIDConflict(conversation_id=user_input.conversation_id)
 
 
 @router.get(

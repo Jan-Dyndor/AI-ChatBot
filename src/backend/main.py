@@ -7,6 +7,7 @@ from sqlalchemy import text
 from backend.api.router.v1 import router
 from backend.configuration.logging_config import set_up_logging
 from backend.configuration.settings import get_settings
+from backend.core.concurency.conversation_thread_lock import ConversationLockManager
 from backend.database.db import get_engine, session_factory
 from backend.exceptions.handlers import register_exception_handlers
 from backend.middleware.logging_middleware import LoggingMiddleware
@@ -27,6 +28,10 @@ def create_lifespan(env_file_location: str | Path | None = None):
         app.state.session_maker = session_maker
         with engine.connect() as connection:  # Test DB connection
             connection.execute(text("SELECT 1"))
+        thread_lock = (
+            ConversationLockManager()
+        )  # Save one instance of Thread Lock to app.state
+        app.state.lock = thread_lock
         yield
         # After shutdown
         engine.dispose()

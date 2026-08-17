@@ -1,3 +1,5 @@
+from threading import Lock
+
 from loguru import logger
 
 from backend.api.schemas.pydantic_schemas import Message
@@ -53,6 +55,67 @@ class ChatService:
     def save_bot_output(self, output, conversation_id, user_id):
         return self.db.save_bot_output(output, conversation_id, user_id)
 
+    def thread_save_streaming_response(
+        self,
+        lock_object: Lock,
+        model: str,
+        conversation_id: int,
+        user_id: int,
+        temperature: float,
+        top_k: int,
+        top_p: float,
+        num_ctx: int,
+        num_predict: int,
+        repeat_penalty: float,
+        is_thinking: bool,
+        chat_history: list[dict],
+    ):
+        """Stream the LLM response while holding the conversation lock.
+
+        This wrapper delegates response generation to
+        `stream_response_from_client` and yields each generated chunk.
+
+        The provided lock must already be acquired before this generator starts.
+        It remains active for the entire streaming lifecycle and is released in
+        the `finally` block when the stream finishes, raises an exception, or is
+        closed. This prevents another request from modifying the same conversation
+        while the current assistant response is still being generated.
+
+        Keep the conversation locked for the entire streaming lifecycle.
+
+        FastAPI returns a StreamingResponse before the response generator finishes
+        its work. Therefore, releasing the lock directly in the endpoint would unlock
+        the conversation while the LLM is still generating and streaming its response.
+
+        This wrapper yields all chunks produced by `stream_response_from_client` and
+        releases the lock in the `finally` block. This guarantees that the lock is
+        released when streaming finishes, fails with an exception, or is closed.
+
+        The lock must be acquired before it is passed to this function. This function
+        does not acquire the lock; it only guarantees its release.
+
+
+        """
+        try:
+            for chunk in self.stream_response_from_client(
+                model,
+                conversation_id,
+                user_id,
+                temperature,
+                top_k,
+                top_p,
+                num_ctx,
+                num_predict,
+                repeat_penalty,
+                is_thinking,
+                chat_history,
+            ):
+                yield chunk
+
+        finally:
+            #! realase LOCK after streaming
+            lock_object.release()
+
     def stream_response_from_client(
         self,
         model: str,
@@ -85,7 +148,6 @@ class ChatService:
         """
 
         full_llm_response: str = ""
-
         for chunk in self.chat_bot_client.stream_response(
             model=model,
             chat_history=chat_history,
@@ -152,3 +214,18 @@ class ChatService:
         self,
     ):
         return self.chat_bot_client.show_avaliable_models()
+
+    def validate_conversation_access(self, conversation_id: int, user_id: int):
+        """Validate that the conversation exists and belongs to the user.
+
+        This method delegates the ownership check to the repository. It does not
+        return anything. If the conversation does not exist or is not owned by the
+        given user, the repository raises DataBaseResourceNotFound.
+
+        Args:
+            conversation_id (int): ID of the conversation being accessed.
+            user_id (int): ID of the user requesting access.
+        """
+        self.db.validate_conversation_access(
+            conversation_id=conversation_id, user_id=user_id
+        )

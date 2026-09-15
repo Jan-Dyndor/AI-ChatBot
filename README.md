@@ -18,21 +18,42 @@ This project was created to explore and understand:
 - AI system design without abstraction-heavy frameworks
 
 ## How to run (Docker planned later on)
-Make sure to have default model in Ollama downloaded: llama3:8b
+Make sure you have the default Ollama model downloaded:
+
+```bash
+ollama pull llama3:8b
+```
 
 Create a `.env` file in the root of the repository for local development. Use `.env.example` as a template for the required variables.
 
-If you want to run tests locally, create a separate `.env.tests` file with test-only values.
-
+Example `.env`:
 
 ```env
-# PostgreSQL database URL used for local development. 
-DB_URL = "postgresql://........"
+# PostgreSQL database URL used for local development.
+DB_URL="postgresql://user:password@localhost:5432/database_name"
+```
 
-# TEST Example SQLite database URL.
-# You can change this path if you want to store the database elsewhere.
+If you want to run tests locally, create a separate `.env.tests` file with test-only values.
+
+Example `.env.tests`:
+
+```env
+# In-memory SQLite database used for tests.
 DB_URL="sqlite:///:memory:"
 ```
+
+Before starting the backend:
+
+1. Make sure PostgreSQL is running.
+2. Create the PostgreSQL database specified in `DB_URL`.
+3. From the repository root, apply all database migrations:
+
+```bash
+uv run alembic upgrade head
+```
+
+Run this command during the initial setup and whenever new database migrations are added.
+
 
 The application uses Pydantic Settings to load environment variables from the `.env`s files.
 

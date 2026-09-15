@@ -26,8 +26,8 @@ If you want to run tests locally, create a separate `.env.tests` file with test-
 
 
 ```env
-# SQLite database URL used for local development. # If you use a nested path such as data/data.db, make sure the data directory exists first. 
-DB_URL = "sqlite:///data/data.db"
+# PostgreSQL database URL used for local development. 
+DB_URL = "postgresql://........"
 
 # TEST Example SQLite database URL.
 # You can change this path if you want to store the database elsewhere.

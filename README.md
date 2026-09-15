@@ -18,19 +18,42 @@ This project was created to explore and understand:
 - AI system design without abstraction-heavy frameworks
 
 ## How to run (Docker planned later on)
+Make sure you have the default Ollama model downloaded:
+
+```bash
+ollama pull llama3:8b
+```
+
 Create a `.env` file in the root of the repository for local development. Use `.env.example` as a template for the required variables.
+
+Example `.env`:
+
+```env
+# PostgreSQL database URL used for local development.
+DB_URL="postgresql://user:password@localhost:5432/database_name"
+```
 
 If you want to run tests locally, create a separate `.env.tests` file with test-only values.
 
+Example `.env.tests`:
 
 ```env
-# SQLite database URL used for local development. # If you use a nested path such as data/data.db, make sure the data directory exists first. 
-DB_URL = "sqlite:///data/data.db"
-
-# TEST Example SQLite database URL.
-# You can change this path if you want to store the database elsewhere.
+# In-memory SQLite database used for tests.
 DB_URL="sqlite:///:memory:"
 ```
+
+Before starting the backend:
+
+1. Make sure PostgreSQL is running.
+2. Create the PostgreSQL database specified in `DB_URL`.
+3. From the repository root, apply all database migrations:
+
+```bash
+uv run alembic upgrade head
+```
+
+Run this command during the initial setup and whenever new database migrations are added.
+
 
 The application uses Pydantic Settings to load environment variables from the `.env`s files.
 
@@ -64,7 +87,7 @@ LLM Runtime:
 - Ollama (local models)
 
 Persistence (planned):
-- SQLite → PostgreSQL (planned migration)
+- PostgreSQL (SQLite in tests)
 
 Caching (planned):
 - Redis
@@ -170,11 +193,10 @@ the application with multiple workers or multiple backend instances.
 - JWT/O2Auth authentication
 - CI with GitHub Actions
 - Per-conversation request locking within a single FastAPI process
+- PostgreSQL integration
 
 
 ## Planned Features
-
-- PostgreSQL integration
 - Redis-based conversational memory
 - Voice input (speech-to-text)
 - AI text-to-speech responses

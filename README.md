@@ -18,6 +18,8 @@ This project was created to explore and understand:
 - AI system design without abstraction-heavy frameworks
 
 ## How to run (Docker planned later on)
+Make sure to have default model in Ollama downloaded: llama3:8b
+
 Create a `.env` file in the root of the repository for local development. Use `.env.example` as a template for the required variables.
 
 If you want to run tests locally, create a separate `.env.tests` file with test-only values.
@@ -64,7 +66,7 @@ LLM Runtime:
 - Ollama (local models)
 
 Persistence (planned):
-- SQLite → PostgreSQL (planned migration)
+- PostgreSQL (SQLite in tests)
 
 Caching (planned):
 - Redis
@@ -170,11 +172,10 @@ the application with multiple workers or multiple backend instances.
 - JWT/O2Auth authentication
 - CI with GitHub Actions
 - Per-conversation request locking within a single FastAPI process
+- PostgreSQL integration
 
 
 ## Planned Features
-
-- PostgreSQL integration
 - Redis-based conversational memory
 - Voice input (speech-to-text)
 - AI text-to-speech responses

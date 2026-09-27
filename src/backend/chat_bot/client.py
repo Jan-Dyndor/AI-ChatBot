@@ -1,5 +1,7 @@
 import httpx
 import ollama
+from langchain_core.prompts import PromptTemplate
+from langchain_ollama import ChatOllama
 from ollama import chat, generate
 
 from backend.configuration.logging_config import logger
@@ -34,29 +36,21 @@ class ChatBotClient:
         Yields:
             _type_: strigns (LLM responses / ERROR messages)
         """
+        llm = ChatOllama(
+            model=model,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            num_ctx=num_ctx,
+            num_predict=num_predict,
+            repeat_penalty=repeat_penalty,
+            reasoning=is_thinking,
+        )
 
         try:
-            stream_response = chat(
-                model=model,
-                messages=chat_history,
-                stream=True,
-                think=is_thinking,
-                options={
-                    "temperature": temperature,
-                    "top_k": top_k,
-                    "top_p": top_p,
-                    "num_ctx": num_ctx,
-                    "num_predict": num_predict,
-                    "repeat_penalty": repeat_penalty,
-                },
-            )
+            for chunk in llm.stream(chat_history):
+                yield str(chunk.content)
 
-            for chunk in stream_response:
-                content_chunk = chunk.message.content
-                if content_chunk is None:
-                    continue
-                else:
-                    yield content_chunk
         # Unforunatelly this is StreamingResponse = generator. Before it starts sending data FastAPI already sends response as 200
         # It does not make sens to raise exception there so only info to frontend will be this yeld messages
         except httpx.ConnectError:
@@ -131,18 +125,17 @@ class ChatBotClient:
 
             User: "Explain the difference between REST and GraphQL"
             Title: "REST vs GraphQL"
+
+            Create a short conversation title for the following USER MESSAGE: {user_input}. Return only the title."
             """
 
         try:
-            response = generate(
-                model=model,
-                prompt=f"Create a short conversation title for the following USER MESSAGE: {user_input}. Return only the title.",
-                system=system_prompt,
-                stream=False,
-                think=False,
-                options={"temperature": 0, "num_predict": 15},
-            )
-            return response["response"].strip()
+            llm = ChatOllama(model=model, num_predict=20, temperature=0)
+            prompt = PromptTemplate.from_template(system_prompt)
+
+            chain = prompt | llm
+            response = chain.invoke({"user_input": user_input})
+            return str(response.content).strip()
 
         except ConnectionError as error:
             raise OllamaConnectionError() from error

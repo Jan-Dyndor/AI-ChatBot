@@ -130,7 +130,9 @@ class ChatBotClient:
             """
 
         try:
-            llm = ChatOllama(model=model, num_predict=20, temperature=0)
+            llm = ChatOllama(
+                model=model, num_predict=20, temperature=0, reasoning=False
+            )
             prompt = PromptTemplate.from_template(system_prompt)
 
             chain = prompt | llm

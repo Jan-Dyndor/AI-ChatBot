@@ -2,7 +2,6 @@ import httpx
 import ollama
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama import ChatOllama
-from ollama import chat, generate
 
 from backend.configuration.logging_config import logger
 from backend.exceptions.exc import (

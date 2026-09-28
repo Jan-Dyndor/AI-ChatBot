@@ -24,9 +24,13 @@ jobs:
       API_URL: ${{ vars.TEST_API_URL }}
       DB_URL: ${{ vars.TEST_DB_URL }}
       JWT_EXPIRES_TIME_MINUTES: ${{ vars.TEST_JWT_EXPIRES_TIME_MINUTES }}
+      LANGSMITH_TRACING : ${{ vars.TEST_LANGSMITH_ENDPOINT }}
+      LANGSMITH_PROJECT: ${{ vars.TEST_LANGSMITH_TRACING }}
+      LANGSMITH_ENDPOINT: ${{ vars.TEST_LANGSMITH_TRACING }}
 
       SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
       ALGORITHM:  ${{ secrets.TEST_ALGORITHM }}
+      LANGSMITH_API_KEY: ${{secrets.TEST_LANGSMITH_API_KEY}}
       
 
     steps:

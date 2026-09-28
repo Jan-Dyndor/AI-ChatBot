@@ -165,6 +165,7 @@ def client(session_maker):
     app = create_app(
         env_file_location=Path(__file__).resolve().parents[1] / ".env.tests"
     )
+    print(Path(__file__).resolve().parents[1] / ".env.tests")
 
     def override_get_db():
         db = session_maker()

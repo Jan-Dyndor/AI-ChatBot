@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -24,15 +25,21 @@ class Settings(BaseSettings):
     algorythm_jwt: str = Field(validation_alias="ALGORITHM")
     token_expires_minutes: int = Field(validation_alias="JWT_EXPIRES_TIME_MINUTES")
 
+    langsmit_api: str = Field(validation_alias="LANGSMITH_API_KEY")
+    langsmith_project: str = Field(validation_alias="LANGSMITH_PROJECT")
+    langsmith_tracing: bool = Field(validation_alias="LANGSMITH_TRACING")
+    langsmith_endpoit: str = Field(validation_alias="LANGSMITH_ENDPOINT")
+
     model_config = SettingsConfigDict(
-        env_file=root / ".env",
-        env_file_encoding="utf-8",
+        env_file=root / ".env", env_file_encoding="utf-8", extra="ignore"
     )
 
 
 @lru_cache
 def get_settings(env_file_location: str | Path | None = None) -> Settings:
     if not env_file_location:
+        load_dotenv()  # to load env file to LangSmith lib
         return Settings()  # type: ignore
     else:
+        load_dotenv(dotenv_path=env_file_location)  # to load env file to LangSmith lib
         return Settings(_env_file=env_file_location, _env_file_encoding="utf-8")  # type: ignore

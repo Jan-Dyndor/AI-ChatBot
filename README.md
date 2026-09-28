@@ -2,7 +2,9 @@
 
 Local AI conversational chatbot built with FastAPI, Streamlit and Ollama.
 
-The goal of this project is to deeply understand how production-oriented LLM systems work under the hood without relying on high-level AI orchestration frameworks such as LangChain.
+The goal of this project is to understand how production-oriented LLM applications work, from streaming responses and conversation history to authentication, persistence and observability.
+
+The project started with direct LLM integration to explore the underlying mechanics. It now incorporates LangChain for LLM interactions while keeping application architecture, conversation management and backend services explicit.
 
 ## Project Goals
 
@@ -15,7 +17,7 @@ This project was created to explore and understand:
 - authentication & session management
 - observability and monitoring
 - async Python backend systems
-- AI system design without abstraction-heavy frameworks
+- understanding the trade-offs between direct integrations and framework abstractions
 
 ## How to run (Docker planned later on)
 Make sure you have the default Ollama model downloaded:
@@ -83,11 +85,12 @@ Frontend:
 Backend API:
 - FastAPI
 
-LLM Runtime:
-- Ollama (local models)
+LLM Integration:
+- LangChain
+- ChatOllama for communication with local Ollama models
 
-Persistence (planned):
-- PostgreSQL (SQLite in tests)
+Persistence:
+- PostgreSQL 
 
 Caching (planned):
 - Redis
@@ -175,7 +178,7 @@ the application with multiple workers or multiple backend instances.
 
 ## Current Features
 
-- Local LLM chatbot using Ollama
+- LangChain integration for LLM interactions and prompt construction
 - Streaming AI responses
 - FastAPI backend API
 - Streamlit frontend UI
@@ -187,13 +190,14 @@ the application with multiple workers or multiple backend instances.
 - Installed as editable Python package
 - Basic test suite
 - Layered backend architecture
-- Persistent chat history (SQLite)
+- Persistent chat history (PostgreSQL; SQLite for tests)
 - Multi-chat support 
-- Mulit-LLMs support 
-- JWT/O2Auth authentication
+- Multiple LLM models supported through Ollama
+- JWT-based authentication
 - CI with GitHub Actions
 - Per-conversation request locking within a single FastAPI process
 - PostgreSQL integration
+- Continuous deployment with GitHub Actions
 
 
 ## Planned Features
@@ -202,16 +206,19 @@ the application with multiple workers or multiple backend instances.
 - AI text-to-speech responses
 - User metrics dashboard
 - Grafana/Loki and Prometheus observability stack
-- CI/CD with GitHub Actions
+- CD with GitHub Actions
 - Dockerized deployment
 - RAG support
 - Redis-based distributed conversation locking for multi-worker deployment
 
 
-## Why No LangChain?
+## LangChain Integration
 
-This project intentionally avoids high-level LLM orchestration frameworks.
+The initial implementation used direct Ollama integration to build an understanding of prompt handling, streaming, conversation management and error handling.
 
+The project now uses LangChain for model interaction and prompt construction. Authentication, persistence, conversation locking and application-level orchestration remain part of the project's own backend services.
+
+The learning goal remains the same: understand how each component works, why an abstraction is useful and which responsibilities belong to the application.
 The main goal is to understand:
 - streaming mechanics
 - prompt handling
@@ -221,7 +228,6 @@ The main goal is to understand:
 - observability
 - architecture decisions
 
-before introducing abstraction layers.
 
 ## Learning Focus
 

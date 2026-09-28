@@ -197,7 +197,7 @@ the application with multiple workers or multiple backend instances.
 - CI with GitHub Actions
 - Per-conversation request locking within a single FastAPI process
 - PostgreSQL integration
-- Continuous deployment with GitHub Actions
+- Continuous Integration with GitHub Actions
 
 
 ## Planned Features

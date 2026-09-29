@@ -10,11 +10,13 @@ from backend.exceptions.exc import (
     OllamaError,
     OllamaModelError,
 )
+from langsmith import traceable
 
 
 class ChatBotClient:
     """Stateless class to communicate with Ollama"""
 
+    @traceable(name="stream_response")
     def stream_response(
         self,
         model,
@@ -78,6 +80,7 @@ class ChatBotClient:
             yield "\n\n\n\n\n [ERROR] Ollama stopped responding and is unavailable. Check if its running on your system"
             return
 
+    @traceable(name="create_conversation_title")
     def create_conversation_title(self, user_input: str, model: str) -> str:
         """Function generated conversation summary based on user prompt
 

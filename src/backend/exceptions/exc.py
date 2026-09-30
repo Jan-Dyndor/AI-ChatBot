@@ -141,3 +141,12 @@ class FileNameIsNone(AppExceptions):
             status_code=400,
             client_message="Invalid file. Can not upload.",
         )
+
+
+class DataBaseFileError(AppExceptions):
+    def __init__(self, user_id: int, file_name: str) -> None:
+        super().__init__(
+            message=f"Database operation to save user's {user_id} file {file_name} failed. File is being deleted from storage.",
+            status_code=500,
+            client_message="Database operation failed. File is deleted. Upload file again.",
+        )

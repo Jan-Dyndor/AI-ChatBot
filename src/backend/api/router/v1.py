@@ -1,4 +1,5 @@
 from datetime import timedelta
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, UploadFile
 from fastapi.responses import StreamingResponse
@@ -171,5 +172,7 @@ def upload_file(
 ):
     if file.filename is None:
         raise FileNameIsNone(user_id.id)
-    file_service.save_file(file, file_name=file.filename, user_id=user_id.id)
-    return UploadFileResponse(file_name=file.filename)
+    safe_file_name = str(Path(file.filename))
+
+    file_service.save_file(file, file_name=safe_file_name, user_id=user_id.id)
+    return UploadFileResponse(file_name=safe_file_name)

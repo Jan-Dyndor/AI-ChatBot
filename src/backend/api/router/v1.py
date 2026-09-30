@@ -26,7 +26,7 @@ from backend.dependencies.depends import (
     get_thread_lock,
     get_user_service,
 )
-from backend.exceptions.exc import ConversationIDConflict, FileNameIsNone
+from backend.exceptions.exc import ConversationIDConflict, NotEnoughtFileParameters
 from backend.service.chat_service import ChatService
 from backend.service.file_service import FileService
 from backend.service.user_service import UserService
@@ -168,11 +168,22 @@ def show_models(service: ChatService = Depends(get_chat_service)):
 def upload_file(
     file: UploadFile,
     file_service: FileService = Depends(get_file_service),
-    user_id: UserDB = Depends(get_current_user),
+    user: UserDB = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
 ):
     if file.filename is None:
-        raise FileNameIsNone(user_id.id)
+        raise NotEnoughtFileParameters(user_id=user.id, file_param="file name")
+    if file.size is None:
+        raise NotEnoughtFileParameters(user_id=user.id, file_param="file size")
+
+    file_service.validate_file_size(
+        size=file.size,
+        max_size=settings.max_file_size_BYTES,
+        user_id=user.id,
+        file_name=file.filename,
+    )
+
     safe_file_name = str(Path(file.filename))
 
-    file_service.save_file(file, file_name=safe_file_name, user_id=user_id.id)
+    file_service.save_file(file, file_name=safe_file_name, user_id=user.id)
     return UploadFileResponse(file_name=safe_file_name)

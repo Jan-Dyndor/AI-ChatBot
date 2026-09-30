@@ -134,10 +134,10 @@ class FileNotSaved(AppExceptions):
         )
 
 
-class FileNameIsNone(AppExceptions):
-    def __init__(self, user_id: int) -> None:
+class NotEnoughtFileParameters(AppExceptions):
+    def __init__(self, user_id: int, file_param: str) -> None:
         super().__init__(
-            message=f"Can not process user's {user_id} file. There is no 'file name' attribute ",
+            message=f"Can not process user's {user_id} file. There is no {file_param} attribute ",
             status_code=400,
             client_message="Invalid file. Can not upload.",
         )
@@ -149,4 +149,13 @@ class DataBaseFileError(AppExceptions):
             message=f"Database operation to save user's {user_id} file {file_name} failed. File is being deleted from storage.",
             status_code=500,
             client_message="Database operation failed. File is deleted. Upload file again.",
+        )
+
+
+class FileToLarge(AppExceptions):
+    def __init__(self, file_name: str, user_id: int, max_size: int) -> None:
+        super().__init__(
+            message=f"User's {user_id} file {file_name} is too large. It exceeds {max_size} MB limit",
+            status_code=400,
+            client_message=f"Given file is to large. It exceeds current {max_size} MB limit",
         )

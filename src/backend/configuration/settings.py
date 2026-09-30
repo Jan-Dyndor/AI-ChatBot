@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     langsmith_tracing: bool = Field(validation_alias="LANGSMITH_TRACING")
     langsmith_endpoit: str = Field(validation_alias="LANGSMITH_ENDPOINT")
 
+    max_file_size_BYTES: int = Field(
+        validation_alias="MAX_FILE_SIZE_BYTES", default=10485760
+    )  # 10 MB
+
     model_config = SettingsConfigDict(
         env_file=root / ".env", env_file_encoding="utf-8", extra="ignore"
     )

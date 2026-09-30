@@ -1,6 +1,7 @@
 from fastapi import UploadFile
 
 from backend.database.file_repository import FileRepository
+from backend.exceptions.exc import FileToLarge
 
 
 class FileService:
@@ -19,3 +20,9 @@ class FileService:
             user_id (int): ID of the user who uploaded the file.
         """
         self.db.save_file(file, file_name, user_id)
+
+    def validate_file_size(
+        self, size: int, max_size: int, file_name: str, user_id: int
+    ) -> None:
+        if size > max_size:
+            raise FileToLarge(file_name, user_id, max_size)

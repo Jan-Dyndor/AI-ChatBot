@@ -164,7 +164,7 @@ def show_models(service: ChatService = Depends(get_chat_service)):
     )  #! For now vlaue is by defoult. Later on in development - change how ChatBotClinet is passed to Service Layer - make it as composition
 
 
-@router.post("/upload_file", response_model=UploadFileResponse)
+@router.post("/file", response_model=UploadFileResponse)
 def upload_file(
     file: UploadFile,
     file_service: FileService = Depends(get_file_service),

@@ -3,8 +3,10 @@ from fastapi import Depends, Request
 from backend.authentication.auth import AuthService, oauth2_scheme
 from backend.chat_bot.client import ChatBotClient
 from backend.database.chat_repository import ChatRepository
+from backend.database.file_repository import FileRepository
 from backend.database.user_repository import UserRepository
 from backend.service.chat_service import ChatService
+from backend.service.file_service import FileService
 from backend.service.user_service import UserService
 
 
@@ -94,3 +96,12 @@ def get_user_service(user_repo=Depends(get_user_repo)):
 #! Thread Lock
 def get_thread_lock(request: Request):
     return request.app.state.lock
+
+
+# ! Files
+def get_file_repo(db_session=Depends(get_db)):
+    return FileRepository(db_session)
+
+
+def get_file_service(file_repository=Depends(get_file_repo)):
+    return FileService(file_repository)

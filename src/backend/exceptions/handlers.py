@@ -19,7 +19,7 @@ def register_exception_handlers(app: FastAPI):
                 f"Application error: {exc.status_code} - {exc.message}. Path - {request.url.path},  method - {request.method}"
             )
         return JSONResponse(
-            status_code=exc.status_code, content={"message": exc.message}
+            status_code=exc.status_code, content={"message": exc.client_message}
         )
 
     @app.exception_handler(RequestValidationError)

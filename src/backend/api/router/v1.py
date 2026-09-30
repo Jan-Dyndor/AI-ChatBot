@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile
 from fastapi.responses import StreamingResponse
 
 from backend.api.schemas.pydantic_schemas import (
@@ -9,6 +9,7 @@ from backend.api.schemas.pydantic_schemas import (
     CreateUserResponse,
     Models,
     Token,
+    UploadFileResponse,
     UserDB,
     UserInput,
     UserLogin,
@@ -20,11 +21,13 @@ from backend.dependencies.depends import (
     get_auth_service,
     get_chat_service,
     get_current_user,
+    get_file_service,
     get_thread_lock,
     get_user_service,
 )
-from backend.exceptions.exc import ConversationIDConflict
+from backend.exceptions.exc import ConversationIDConflict, FileNameIsNone
 from backend.service.chat_service import ChatService
+from backend.service.file_service import FileService
 from backend.service.user_service import UserService
 
 router = APIRouter(prefix="/v1", tags=["v1"])
@@ -158,3 +161,15 @@ def show_models(service: ChatService = Depends(get_chat_service)):
     return (
         service.show_avaliable_models()
     )  #! For now vlaue is by defoult. Later on in development - change how ChatBotClinet is passed to Service Layer - make it as composition
+
+
+@router.post("/upload_file", response_model=UploadFileResponse)
+def upload_file(
+    file: UploadFile,
+    file_service: FileService = Depends(get_file_service),
+    user_id: UserDB = Depends(get_current_user),
+):
+    if file.filename is None:
+        raise FileNameIsNone(user_id.id)
+    file_service.save_file(file, file_name=file.filename, user_id=user_id.id)
+    return UploadFileResponse(file_name=file.filename)

@@ -48,6 +48,21 @@ class Users(Base):
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     conversations: Mapped[list[Conversations]] = relationship(back_populates="user")
+    files: Mapped[list[Files]] = relationship(back_populates="user")
     created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(tz=UTC)
+    )
+
+
+class Files(Base):
+    __tablename__ = "files"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    original_file_name: Mapped[str] = mapped_column(String, nullable=False)
+    storage_path: Mapped[str] = mapped_column(String, nullable=False)
+    user: Mapped[Users] = relationship(back_populates="files")
+    uploaded_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(tz=UTC)
     )

@@ -183,7 +183,7 @@ def upload_file(
         file_name=file.filename,
     )
 
-    safe_file_name = str(Path(file.filename))
+    safe_file_name = str(Path(file.filename).name)
 
     file_service.save_file(file, file_name=safe_file_name, user_id=user.id)
     return UploadFileResponse(file_name=safe_file_name)

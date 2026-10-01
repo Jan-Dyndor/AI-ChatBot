@@ -1,6 +1,7 @@
 from datetime import timedelta
+from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile
 from fastapi.responses import StreamingResponse
 
 from backend.api.schemas.pydantic_schemas import (
@@ -9,6 +10,7 @@ from backend.api.schemas.pydantic_schemas import (
     CreateUserResponse,
     Models,
     Token,
+    UploadFileResponse,
     UserDB,
     UserInput,
     UserLogin,
@@ -20,11 +22,13 @@ from backend.dependencies.depends import (
     get_auth_service,
     get_chat_service,
     get_current_user,
+    get_file_service,
     get_thread_lock,
     get_user_service,
 )
-from backend.exceptions.exc import ConversationIDConflict
+from backend.exceptions.exc import ConversationIDConflict, NotEnoughtFileParameters
 from backend.service.chat_service import ChatService
+from backend.service.file_service import FileService
 from backend.service.user_service import UserService
 
 router = APIRouter(prefix="/v1", tags=["v1"])
@@ -158,3 +162,28 @@ def show_models(service: ChatService = Depends(get_chat_service)):
     return (
         service.show_avaliable_models()
     )  #! For now vlaue is by defoult. Later on in development - change how ChatBotClinet is passed to Service Layer - make it as composition
+
+
+@router.post("/file", response_model=UploadFileResponse)
+def upload_file(
+    file: UploadFile,
+    file_service: FileService = Depends(get_file_service),
+    user: UserDB = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+):
+    if file.filename is None:
+        raise NotEnoughtFileParameters(user_id=user.id, file_param="file name")
+    if file.size is None:
+        raise NotEnoughtFileParameters(user_id=user.id, file_param="file size")
+
+    file_service.validate_file_size(
+        size=file.size,
+        max_size=settings.max_file_size_BYTES,
+        user_id=user.id,
+        file_name=file.filename,
+    )
+
+    safe_file_name = str(Path(file.filename).name)
+
+    file_service.save_file(file, file_name=safe_file_name, user_id=user.id)
+    return UploadFileResponse(file_name=safe_file_name)

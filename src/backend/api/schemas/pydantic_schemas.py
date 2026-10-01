@@ -105,3 +105,8 @@ class Message(BaseModel):
 
     role: str
     content: str
+
+
+class UploadFileResponse(BaseModel):
+    file_name: str
+    status: str = Field(default="UPLOADED")

@@ -1,3 +1,4 @@
+import math
 from uuid import uuid4
 
 import requests
@@ -7,8 +8,10 @@ from loguru import logger
 from backend.configuration.settings import get_settings
 
 settings = get_settings()
-MAX_FILE_SIZE_MB: float = round(settings.max_file_size_BYTES / (1024 * 1024), 1)
-
+MAX_FILE_SIZE_MB: float = round(settings.max_file_size_BYTES / (1024 * 1024), 2)
+STREAMLIT_WIDGET_LIMIT_MB: int = max(
+    1, math.ceil(settings.max_file_size_BYTES / (1024 * 1024))
+)
 
 st.set_page_config(page_title="Upload document", page_icon="📄")
 
@@ -36,7 +39,7 @@ uploaded_file = st.file_uploader(
     label="Choose a document",
     accept_multiple_files=False,
     type=["pdf", "txt", "doc", "docx", "csv", "json", "md"],
-    max_upload_size=int(MAX_FILE_SIZE_MB),
+    max_upload_size=STREAMLIT_WIDGET_LIMIT_MB,
 )
 
 if st.button("Upload", type="primary", disabled=uploaded_file is None):

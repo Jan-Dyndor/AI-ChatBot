@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from langchain_core.vectorstores import VectorStore
 from sqlalchemy import text
 
 from backend.api.router.v1 import router
@@ -12,6 +13,7 @@ from backend.database.db import get_engine, session_factory
 from backend.exceptions.handlers import register_exception_handlers
 from backend.middleware.logging_middleware import LoggingMiddleware
 from backend.middleware.request_id_middleware import RequestIDMiddleware
+from RAG.chroma_db import create_vector_store
 
 set_up_logging()
 
@@ -26,6 +28,8 @@ def create_lifespan(env_file_location: str | Path | None = None):
         engine = get_engine(settings.db_url)
         session_maker = session_factory(engine)
         app.state.session_maker = session_maker
+        vector_store: VectorStore = create_vector_store()
+        app.state.vector_store = vector_store
         with engine.connect() as connection:  # Test DB connection
             connection.execute(text("SELECT 1"))
         thread_lock = (

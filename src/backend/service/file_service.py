@@ -19,7 +19,7 @@ class FileService:
             file_name (str): Original name of the uploaded file.
             user_id (int): ID of the user who uploaded the file.
         """
-        self.db.save_file(file, file_name, user_id)
+        return self.db.save_file(file, file_name, user_id)
 
     def validate_file_size(
         self, size: int, max_size: int, file_name: str, user_id: int

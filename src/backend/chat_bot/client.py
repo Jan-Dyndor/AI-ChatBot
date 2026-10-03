@@ -1,7 +1,9 @@
 import httpx
 import ollama
+from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama import ChatOllama
+from langsmith import traceable
 
 from backend.configuration.logging_config import logger
 from backend.exceptions.exc import (
@@ -10,7 +12,6 @@ from backend.exceptions.exc import (
     OllamaError,
     OllamaModelError,
 )
-from langsmith import traceable
 
 
 class ChatBotClient:
@@ -162,3 +163,27 @@ class ChatBotClient:
             raise OllamaConnectionError from error
         except ollama.ResponseError as error:
             raise OllamaError() from error
+
+    # ========
+    def get_llm(
+        self,
+        model,
+        temperature: float,
+        top_k,
+        top_p,
+        num_ctx,
+        num_predict,
+        repeat_penalty,
+        is_thinking,
+    ) -> BaseChatModel:
+
+        return ChatOllama(
+            model=model,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            num_ctx=num_ctx,
+            num_predict=num_predict,
+            repeat_penalty=repeat_penalty,
+            reasoning=is_thinking,
+        )

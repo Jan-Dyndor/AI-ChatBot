@@ -1,5 +1,6 @@
 from unittest.mock import Mock, patch
-from backend.chat_bot.client import ChatBotClient
+
+from backend.chat_bot.client import RAGChatBotClient
 from backend.database.models import Conversations, Messages, Users
 from backend.dependencies.depends import get_chat_repo
 from backend.exceptions.exc import DataBaseResourceNotFound
@@ -48,8 +49,8 @@ def test_chat_wrong_user_input_long(client, wrong_user_input_too_long, valid_tok
     assert response.status_code == 422
 
 
-@patch.object(ChatBotClient, "create_conversation_title")
-@patch.object(ChatBotClient, "stream_response")
+@patch.object(RAGChatBotClient, "create_conversation_title")
+@patch.object(RAGChatBotClient, "stream_response")
 def test_chat_streaming_happy(
     mock_stream_response,
     mock_create_conversation_title,

@@ -1,4 +1,5 @@
 from fastapi import Depends, Request
+from langchain_core.vectorstores import VectorStore
 
 from backend.authentication.auth import AuthService, oauth2_scheme
 from backend.chat_bot.client import ChatBotClient
@@ -8,6 +9,8 @@ from backend.database.user_repository import UserRepository
 from backend.service.chat_service import ChatService
 from backend.service.file_service import FileService
 from backend.service.user_service import UserService
+from RAG.document_indexing_seervice import DocumentIndexingService
+from RAG.file_vector_repository import FileVectorStorage
 
 
 def get_db(request: Request):
@@ -45,22 +48,6 @@ def get_chat_bot_client() -> ChatBotClient:
         ChatBotClient: Object of Ollama client
     """
     return ChatBotClient()
-
-
-def get_chat_service(
-    repository=Depends(get_chat_repo), chat_bot_client=Depends(get_chat_bot_client)
-) -> ChatService:
-    """Function is used to create ChatService object that needs to have ChatRepository parameter whitch is provided by get_get_chat_repo  function.
-    ChatService is required in endpoint since it contains all business logic.
-    It chains the Depends function of FastAPI
-
-    Args:
-        repository (ChatRepository): Object to do all DB operations.
-
-    Returns:
-        ChatService: object that contains all business logic
-    """
-    return ChatService(db=repository, chat_bot_client=chat_bot_client)
 
 
 #! Settings
@@ -105,3 +92,45 @@ def get_file_repo(db_session=Depends(get_db)):
 
 def get_file_service(file_repository=Depends(get_file_repo)):
     return FileService(file_repository)
+
+
+#! vector store
+
+
+def get_vector_storage(request: Request):
+    return request.app.state.vector_store
+
+
+def get_indexing_service():
+    return DocumentIndexingService()
+
+
+def create_file_vector_storage(
+    indexing_service: DocumentIndexingService = Depends(get_indexing_service),
+    vector_store: VectorStore = Depends(get_vector_storage),
+) -> FileVectorStorage:
+    return FileVectorStorage(
+        vector_db=vector_store, file_index_service=indexing_service
+    )
+
+
+def get_chat_service(
+    repository=Depends(get_chat_repo),
+    chat_bot_client=Depends(get_chat_bot_client),
+    file_vector_storage: FileVectorStorage = Depends(create_file_vector_storage),
+) -> ChatService:
+    """Function is used to create ChatService object that needs to have ChatRepository parameter whitch is provided by get_get_chat_repo  function.
+    ChatService is required in endpoint since it contains all business logic.
+    It chains the Depends function of FastAPI
+
+    Args:
+        repository (ChatRepository): Object to do all DB operations.
+
+    Returns:
+        ChatService: object that contains all business logic
+    """
+    return ChatService(
+        db=repository,
+        chat_bot_client=chat_bot_client,
+        file_vector_storage=file_vector_storage,
+    )

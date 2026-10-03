@@ -1,8 +1,9 @@
 from datetime import timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from fastapi.responses import StreamingResponse
+from loguru import logger
 
 from backend.api.schemas.pydantic_schemas import (
     ChatMessage,
@@ -19,6 +20,7 @@ from backend.authentication.auth import AuthService
 from backend.configuration.settings import Settings, get_settings
 from backend.core.concurency.conversation_thread_lock import ConversationLockManager
 from backend.dependencies.depends import (
+    create_file_vector_storage,
     get_auth_service,
     get_chat_service,
     get_current_user,
@@ -30,6 +32,7 @@ from backend.exceptions.exc import ConversationIDConflict, NotEnoughtFileParamet
 from backend.service.chat_service import ChatService
 from backend.service.file_service import FileService
 from backend.service.user_service import UserService
+from RAG.file_vector_repository import FileVectorStorage
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 
@@ -39,64 +42,64 @@ def health():
     return {"status": "ok"}
 
 
-@router.post("/chat")
-def chat(
-    user_input: UserInput,
-    service: ChatService = Depends(get_chat_service),
-    user: UserDB = Depends(get_current_user),
-    thread_lock: ConversationLockManager = Depends(get_thread_lock),
-):
-    # Validate User access to conversation ID before addind Lock
-    service.validate_conversation_access(
-        conversation_id=user_input.conversation_id, user_id=user.id
-    )
+# @router.post("/chat")
+# def chat(
+#     user_input: UserInput,
+#     service: ChatService = Depends(get_chat_service),
+#     user: UserDB = Depends(get_current_user),
+#     thread_lock: ConversationLockManager = Depends(get_thread_lock),
+# ):
+#     # Validate User access to conversation ID before addind Lock
+#     service.validate_conversation_access(
+#         conversation_id=user_input.conversation_id, user_id=user.id
+#     )
 
-    # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB.
-    #!  Aquire Thread Lock so race condition will not appear
-    lock = thread_lock.get_or_create_lock(user_input.conversation_id)
-    if lock.acquire(blocking=False):
-        try:
-            service.save_user_input(
-                user_input=user_input.input,
-                conversation_id=user_input.conversation_id,
-                user_id=user.id,
-            )
+#     # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB.
+#     #!  Aquire Thread Lock so race condition will not appear
+#     lock = thread_lock.get_or_create_lock(user_input.conversation_id)
+#     if lock.acquire(blocking=False):
+#         try:
+#             service.save_user_input(
+#                 user_input=user_input.input,
+#                 conversation_id=user_input.conversation_id,
+#                 user_id=user.id,
+#             )
 
-            service.conversation_summary(
-                user_input=user_input.input,
-                conversation_id=user_input.conversation_id,
-                model=user_input.model,
-                user_id=user.id,
-            )
+#             service.conversation_summary(
+#                 user_input=user_input.input,
+#                 conversation_id=user_input.conversation_id,
+#                 model=user_input.model,
+#                 user_id=user.id,
+#             )
 
-            chat_history = service.fetch_chat_history(
-                conversation_id=user_input.conversation_id, user_id=user.id
-            )
-        except Exception:
-            lock.release()
-            raise
+#             chat_history = service.fetch_chat_history(
+#                 conversation_id=user_input.conversation_id, user_id=user.id
+#             )
+#         except Exception:
+#             lock.release()
+#             raise
 
-        # Start Streaming response
-        return StreamingResponse(
-            service.thread_save_streaming_response(
-                lock_object=lock,
-                model=user_input.model,
-                conversation_id=user_input.conversation_id,
-                user_id=user.id,
-                temperature=user_input.model_parameters.temperature,
-                top_k=user_input.model_parameters.top_k,
-                top_p=user_input.model_parameters.top_p,
-                num_ctx=user_input.model_parameters.num_ctx,
-                num_predict=user_input.model_parameters.num_predict,
-                repeat_penalty=user_input.model_parameters.repeat_penalty,
-                is_thinking=user_input.model_parameters.is_thinking,
-                chat_history=chat_history,
-            ),
-            media_type="text/plain",
-            headers={"Content-Type": "text/event-stream"},
-        )
-    else:
-        raise ConversationIDConflict(conversation_id=user_input.conversation_id)
+#         # Start Streaming response
+#         return StreamingResponse(
+#             service.thread_save_streaming_response(
+#                 lock_object=lock,
+#                 model=user_input.model,
+#                 conversation_id=user_input.conversation_id,
+#                 user_id=user.id,
+#                 temperature=user_input.model_parameters.temperature,
+#                 top_k=user_input.model_parameters.top_k,
+#                 top_p=user_input.model_parameters.top_p,
+#                 num_ctx=user_input.model_parameters.num_ctx,
+#                 num_predict=user_input.model_parameters.num_predict,
+#                 repeat_penalty=user_input.model_parameters.repeat_penalty,
+#                 is_thinking=user_input.model_parameters.is_thinking,
+#                 chat_history=chat_history,
+#             ),
+#             media_type="text/plain",
+#             headers={"Content-Type": "text/event-stream"},
+#         )
+#     else:
+#         raise ConversationIDConflict(conversation_id=user_input.conversation_id)
 
 
 @router.get(
@@ -166,11 +169,14 @@ def show_models(service: ChatService = Depends(get_chat_service)):
 
 @router.post("/file", response_model=UploadFileResponse)
 def upload_file(
+    background_task: BackgroundTasks,
     file: UploadFile,
     file_service: FileService = Depends(get_file_service),
     user: UserDB = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
+    vector_file_storage: FileVectorStorage = Depends(create_file_vector_storage),
 ):
+
     if file.filename is None:
         raise NotEnoughtFileParameters(user_id=user.id, file_param="file name")
     if file.size is None:
@@ -185,5 +191,59 @@ def upload_file(
 
     safe_file_name = str(Path(file.filename).name)
 
-    file_service.save_file(file, file_name=safe_file_name, user_id=user.id)
+    saved_file_path = file_service.save_file(
+        file, file_name=safe_file_name, user_id=user.id
+    )
+
+    #! background task - embedd document
+    background_task.add_task(
+        vector_file_storage.add_document, file_path=saved_file_path, user_id=user.id
+    )
+
     return UploadFileResponse(file_name=safe_file_name)
+
+
+# ! Later implement Thread safe
+@router.post("/chat")
+def test_rag(
+    user_input: UserInput,
+    service: ChatService = Depends(get_chat_service),
+    user: UserDB = Depends(get_current_user),
+    thread_lock: ConversationLockManager = Depends(get_thread_lock),
+):
+
+    service.save_user_input(
+        user_input=user_input.input,
+        conversation_id=user_input.conversation_id,
+        user_id=user.id,
+    )
+
+    service.conversation_summary(
+        user_input=user_input.input,
+        conversation_id=user_input.conversation_id,
+        model=user_input.model,
+        user_id=user.id,
+    )
+
+    chat_history = service.fetch_chat_history(
+        conversation_id=user_input.conversation_id, user_id=user.id
+    )
+    logger.error("=============================")
+    logger.error(user.id)
+    return StreamingResponse(
+        service.rag_streaming_response(
+            model=user_input.model,
+            conversation_id=user_input.conversation_id,
+            user_id=user.id,
+            temperature=user_input.model_parameters.temperature,
+            top_k=user_input.model_parameters.top_k,
+            top_p=user_input.model_parameters.top_p,
+            num_ctx=user_input.model_parameters.num_ctx,
+            num_predict=user_input.model_parameters.num_predict,
+            repeat_penalty=user_input.model_parameters.repeat_penalty,
+            is_thinking=user_input.model_parameters.is_thinking,
+            chat_history=chat_history,
+            question=user_input.input,
+        ),
+        media_type="text/plain",
+    )

@@ -99,6 +99,8 @@ class FileRepository:
 
             raise DataBaseFileError(user_id, file_name) from e
 
+        return file_path
+
     def delete_file_from_storage(self, file_path: Path):
         """Delete File from storage
 

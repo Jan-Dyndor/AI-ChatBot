@@ -102,9 +102,7 @@ def me(user: UserDB = Depends(get_current_user)):
 
 @router.get("/models", response_model=Models)
 def show_models(service: ChatService = Depends(get_chat_service)):
-    return (
-        service.show_avaliable_models()
-    )  #! For now vlaue is by defoult. Later on in development - change how ChatBotClinet is passed to Service Layer - make it as composition
+    return service.show_avaliable_models()
 
 
 @router.post("/file", response_model=UploadFileResponse)

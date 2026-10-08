@@ -7,14 +7,18 @@ from loguru import logger
 
 
 class DocumentIndexingService:
-    #! Moze zrobic z tego classmethod jak i tak nie potrzeuje instacji
+
+    def __init__(self, chunk_size: int, chunk_overlap: int) -> None:
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+
     def load_and_split_pdf(self, user_id: int, file_path: Path) -> list[Document]:
 
         loader = PyPDFLoader(file_path=file_path)
         doc = loader.load()
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=50,
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
         )
 
         doc_split = splitter.split_documents(doc)

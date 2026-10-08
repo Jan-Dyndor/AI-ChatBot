@@ -46,7 +46,7 @@ class FileRepository:
         file: UploadFile,
         file_name: str,
         user_id: int,
-    ):
+    ) -> Path:
         """Save an uploaded file to local storage and persist its metadata in the database.
 
         The file is first written to the filesystem. If the file is saved successfully,

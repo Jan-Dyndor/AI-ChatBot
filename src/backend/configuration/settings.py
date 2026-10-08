@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     max_file_size_BYTES: int = Field(
         validation_alias="MAX_FILE_SIZE_BYTES", default=10485760
     )  # 10 MB
+    chunk_size: int = Field(default=500)
+    chunk_overlap: int = Field(default=50)
 
     model_config = SettingsConfigDict(
         env_file=root / ".env", env_file_encoding="utf-8", extra="ignore"

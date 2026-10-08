@@ -135,7 +135,7 @@ def upload_file(
         file, file_name=safe_file_name, user_id=user.id
     )
 
-    #! background task - embedd document
+    #! background task - embed document
     background_task.add_task(
         vector_file_storage.add_document, file_path=saved_file_path, user_id=user.id
     )
@@ -143,7 +143,6 @@ def upload_file(
     return UploadFileResponse(file_name=safe_file_name)
 
 
-# ! Later implement Thread safe
 @router.post("/chat")
 def rag_caht(
     user_input: UserInput,
@@ -175,7 +174,7 @@ def rag_caht(
         except Exception:
             logger.warning("Relase LOCK due to the error")
             lock.release()
-            raise Exception
+            raise
 
         return StreamingResponse(
             service.thread_safe_rag_streaming_response(

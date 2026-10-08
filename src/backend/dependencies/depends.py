@@ -3,6 +3,7 @@ from langchain_core.vectorstores import VectorStore
 
 from backend.authentication.auth import AuthService, oauth2_scheme
 from backend.chat_bot.client import ChatBotClient
+from backend.configuration.settings import Settings
 from backend.database.chat_repository import ChatRepository
 from backend.database.file_repository import FileRepository
 from backend.database.user_repository import UserRepository
@@ -101,8 +102,10 @@ def get_vector_storage(request: Request):
     return request.app.state.vector_store
 
 
-def get_indexing_service():
-    return DocumentIndexingService()
+def get_indexing_service(settings: Settings = Depends(get_settings)):
+    return DocumentIndexingService(
+        chunk_overlap=settings.chunk_overlap, chunk_size=settings.chunk_size
+    )
 
 
 def create_file_vector_storage(

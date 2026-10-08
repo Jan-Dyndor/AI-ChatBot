@@ -26,5 +26,16 @@ class FileService:
     def validate_file_size(
         self, size: int, max_size: int, file_name: str, user_id: int
     ) -> None:
+        """Validate that the uploaded file does not exceed the maximum allowed size.
+
+        Args:
+            size (int): Size of the uploaded file in bytes.
+            max_size (int): Maximum allowed file size in bytes.
+            file_name (str): Name of the uploaded file.
+            user_id (int): ID of the user uploading the file.
+
+        Raises:
+            FileToLarge: If the file size exceeds the maximum allowed limit.
+        """
         if size > max_size:
             raise FileToLarge(file_name, user_id, max_size)

@@ -3,6 +3,7 @@ from pathlib import Path
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from loguru import logger
 
 
 class DocumentIndexingService:
@@ -21,4 +22,5 @@ class DocumentIndexingService:
         for doc in doc_split:
             doc.metadata["user_id"] = user_id
 
+        logger.info("Splitted DOC into chunks")
         return doc_split

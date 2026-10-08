@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from langchain_core.vectorstores import VectorStore
+from loguru import logger
 
 from RAG.document_indexing_seervice import DocumentIndexingService
 
@@ -16,13 +17,16 @@ class FileVectorStorage:
         doc_chunks = self.index_service.load_and_split_pdf(
             file_path=file_path, user_id=user_id
         )
+
         self.vector_storage.add_documents(documents=doc_chunks)
+        logger.info("Added Doc to Vector Store")
 
     def return_retiver(self, serach_kwargs: dict):
         retriver = self.vector_storage.as_retriever(
             search_type="similarity",
             search_kwargs=serach_kwargs,
         )
+
         return retriver
 
     def format_found_docs(self, docs):

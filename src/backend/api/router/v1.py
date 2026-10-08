@@ -42,66 +42,6 @@ def health():
     return {"status": "ok"}
 
 
-# @router.post("/chat")
-# def chat(
-#     user_input: UserInput,
-#     service: ChatService = Depends(get_chat_service),
-#     user: UserDB = Depends(get_current_user),
-#     thread_lock: ConversationLockManager = Depends(get_thread_lock),
-# ):
-#     # Validate User access to conversation ID before addind Lock
-#     service.validate_conversation_access(
-#         conversation_id=user_input.conversation_id, user_id=user.id
-#     )
-
-#     # Check User data before streaming response starts - after it starts it will not be possible to change status code or send error message + save user input to DB.
-#     #!  Aquire Thread Lock so race condition will not appear
-#     lock = thread_lock.get_or_create_lock(user_input.conversation_id)
-#     if lock.acquire(blocking=False):
-#         try:
-#             service.save_user_input(
-#                 user_input=user_input.input,
-#                 conversation_id=user_input.conversation_id,
-#                 user_id=user.id,
-#             )
-
-#             service.conversation_summary(
-#                 user_input=user_input.input,
-#                 conversation_id=user_input.conversation_id,
-#                 model=user_input.model,
-#                 user_id=user.id,
-#             )
-
-#             chat_history = service.fetch_chat_history(
-#                 conversation_id=user_input.conversation_id, user_id=user.id
-#             )
-#         except Exception:
-#             lock.release()
-#             raise
-
-#         # Start Streaming response
-#         return StreamingResponse(
-#             service.thread_save_streaming_response(
-#                 lock_object=lock,
-#                 model=user_input.model,
-#                 conversation_id=user_input.conversation_id,
-#                 user_id=user.id,
-#                 temperature=user_input.model_parameters.temperature,
-#                 top_k=user_input.model_parameters.top_k,
-#                 top_p=user_input.model_parameters.top_p,
-#                 num_ctx=user_input.model_parameters.num_ctx,
-#                 num_predict=user_input.model_parameters.num_predict,
-#                 repeat_penalty=user_input.model_parameters.repeat_penalty,
-#                 is_thinking=user_input.model_parameters.is_thinking,
-#                 chat_history=chat_history,
-#             ),
-#             media_type="text/plain",
-#             headers={"Content-Type": "text/event-stream"},
-#         )
-#     else:
-#         raise ConversationIDConflict(conversation_id=user_input.conversation_id)
-
-
 @router.get(
     "/conversations/{conversation_id}/messages", response_model=list[ChatMessage]
 )
@@ -205,45 +145,56 @@ def upload_file(
 
 # ! Later implement Thread safe
 @router.post("/chat")
-def test_rag(
+def rag_caht(
     user_input: UserInput,
     service: ChatService = Depends(get_chat_service),
     user: UserDB = Depends(get_current_user),
     thread_lock: ConversationLockManager = Depends(get_thread_lock),
 ):
 
-    service.save_user_input(
-        user_input=user_input.input,
-        conversation_id=user_input.conversation_id,
-        user_id=user.id,
-    )
+    lock = thread_lock.get_or_create_lock(conversation_id=user_input.conversation_id)
+    if lock.acquire(blocking=False):
+        try:
 
-    service.conversation_summary(
-        user_input=user_input.input,
-        conversation_id=user_input.conversation_id,
-        model=user_input.model,
-        user_id=user.id,
-    )
+            service.save_user_input(
+                user_input=user_input.input,
+                conversation_id=user_input.conversation_id,
+                user_id=user.id,
+            )
 
-    chat_history = service.fetch_chat_history(
-        conversation_id=user_input.conversation_id, user_id=user.id
-    )
-    logger.error("=============================")
-    logger.error(user.id)
-    return StreamingResponse(
-        service.rag_streaming_response(
-            model=user_input.model,
-            conversation_id=user_input.conversation_id,
-            user_id=user.id,
-            temperature=user_input.model_parameters.temperature,
-            top_k=user_input.model_parameters.top_k,
-            top_p=user_input.model_parameters.top_p,
-            num_ctx=user_input.model_parameters.num_ctx,
-            num_predict=user_input.model_parameters.num_predict,
-            repeat_penalty=user_input.model_parameters.repeat_penalty,
-            is_thinking=user_input.model_parameters.is_thinking,
-            chat_history=chat_history,
-            question=user_input.input,
-        ),
-        media_type="text/plain",
-    )
+            service.conversation_summary(
+                user_input=user_input.input,
+                conversation_id=user_input.conversation_id,
+                model=user_input.model,
+                user_id=user.id,
+            )
+
+            chat_history = service.fetch_chat_history(
+                conversation_id=user_input.conversation_id, user_id=user.id
+            )
+        except Exception:
+            logger.warning("Relase LOCK due to the error")
+            lock.release()
+            raise Exception
+
+        return StreamingResponse(
+            service.thread_safe_rag_streaming_response(
+                model=user_input.model,
+                conversation_id=user_input.conversation_id,
+                user_id=user.id,
+                temperature=user_input.model_parameters.temperature,
+                top_k=user_input.model_parameters.top_k,
+                top_p=user_input.model_parameters.top_p,
+                num_ctx=user_input.model_parameters.num_ctx,
+                num_predict=user_input.model_parameters.num_predict,
+                repeat_penalty=user_input.model_parameters.repeat_penalty,
+                is_thinking=user_input.model_parameters.is_thinking,
+                chat_history=chat_history,
+                question=user_input.input,
+                lock_object=lock,
+            ),
+            media_type="text/plain",
+        )
+
+    else:
+        raise ConversationIDConflict(conversation_id=user_input.conversation_id)

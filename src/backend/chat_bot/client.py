@@ -164,7 +164,7 @@ class ChatBotClient:
         except ollama.ResponseError as error:
             raise OllamaError() from error
 
-    # ========
+    #! ========
     def get_llm(
         self,
         model,

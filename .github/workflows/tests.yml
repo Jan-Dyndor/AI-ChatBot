@@ -32,6 +32,7 @@ jobs:
       SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
       ALGORITHM:  ${{ secrets.TEST_ALGORITHM }}
       LANGSMITH_API_KEY: ${{secrets.TEST_LANGSMITH_API_KEY}}
+      EMBEDDING_MODEL : ${{vars.EMBEDDING_MODEL}}
       
 
     steps:

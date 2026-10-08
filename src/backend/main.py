@@ -28,7 +28,10 @@ def create_lifespan(env_file_location: str | Path | None = None):
         engine = get_engine(settings.db_url)
         session_maker = session_factory(engine)
         app.state.session_maker = session_maker
-        vector_store: VectorStore = create_vector_store()
+        vector_store: VectorStore = create_vector_store(
+            embedding_model=settings.embedding_model,
+            collection_name=settings.collection_name_vector_store,
+        )
         app.state.vector_store = vector_store
         with engine.connect() as connection:  # Test DB connection
             connection.execute(text("SELECT 1"))

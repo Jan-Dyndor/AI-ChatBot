@@ -1,4 +1,3 @@
-import httpx
 import ollama
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate

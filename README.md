@@ -1,10 +1,10 @@
 # AI Conversational Chatbot
 
-Local AI conversational chatbot built with FastAPI, Streamlit and Ollama.
+Local AI conversational chatbot with contextualized RAG, built with FastAPI, Streamlit, LangChain and Ollama.
 
 The goal of this project is to understand how production-oriented LLM applications work, from streaming responses and conversation history to authentication, persistence and observability.
 
-The project started with direct LLM integration to explore the underlying mechanics. It now incorporates LangChain for LLM interactions while keeping application architecture, conversation management and backend services explicit.
+The project started with direct LLM integration to explore the underlying mechanics. It now uses LangChain for LLM interactions and retrieval while keeping application architecture, conversation management and backend services explicit.
 
 ## Project Goals
 
@@ -18,15 +18,26 @@ This project was created to explore and understand:
 - observability and monitoring
 - async Python backend systems
 - understanding the trade-offs between direct integrations and framework abstractions
+- document ingestion, embeddings and vector similarity search
+- contextualized retrieval using conversation history
 
 ## How to run (Docker planned later on)
-Make sure you have the default Ollama model downloaded:
+Make sure Ollama is installed and pull both a chat model and an embedding model. The chat model generates answers; the embedding model is required to index and search uploaded PDFs.
 
 ```bash
 ollama pull llama3:8b
+ollama pull nomic-embed-text
 ```
 
 Create a `.env` file in the root of the repository for local development. Use `.env.example` as a template for the required variables.
+
+Set `EMBEDDING_MODEL` to the embedding model you pulled. For the commands above:
+
+```env
+EMBEDDING_MODEL="nomic-embed-text"
+```
+
+`EMBEDDING_MODEL` must reference an Ollama model that supports embeddings. If it is empty or points to a model that cannot generate embeddings, PDF indexing will fail when an uploaded document is processed.
 
 Example `.env`:
 
@@ -89,6 +100,12 @@ LLM Integration:
 - LangChain
 - ChatOllama for communication with local Ollama models
 
+Retrieval-Augmented Generation:
+- LangChain history-aware retriever
+- Chroma persistent vector store
+- Ollama embeddings
+- PDF loading and recursive text splitting
+
 Persistence:
 - PostgreSQL 
 
@@ -115,9 +132,14 @@ AI-ChatBot/
 │   └── workflows/              # GitHub Actions workflows
 │
 ├── src/
+│   ├── RAG/
+│   │   ├── chroma_db.py                    # Persistent Chroma vector-store setup
+│   │   ├── document_indexing_seervice.py   # PDF loading and text chunking
+│   │   └── file_vector_repository.py       # Document indexing and retrieval adapter
+│   │
 │   ├── backend/
 │   │   ├── api/                # FastAPI routers and API endpoints and Pydantic schemas
-│   │   ├── authorization/      # Auth service class responsible for authorization and JWT creation
+│   │   ├── authentication/     # Authentication, password hashing and JWT handling
 │   │   ├── chat_bot/           # LLM/Ollama communication logic
 │   │   ├── configuration/      # Settings and logging configuration
 │   │   ├── core/               # Utils files. Threading Lock
@@ -129,13 +151,17 @@ AI-ChatBot/
 │   │   └── main.py             # FastAPI application entrypoint
 │   │
 │   └── frontend/
-│       └── main.py             # Entry point of Streamlit applications 
-│       ├── pages/              # Streamlit frontend pages
-│           └── chatbot_page.py 
-│           └── login_page.py 
-│           └── register_page.py            
+│       ├── main.py             # Streamlit application entrypoint
+│       └── pages/
+│           ├── chatbot_page.py # Chat UI
+│           ├── login_page.py   # Login UI
+│           ├── register_page.py # Registration UI
+│           └── upload_page.py  # PDF upload UI
 │
 ├── tests/                      # Unit and integration tests
+├── alembic/                     # Database migration environment and revisions
+├── storage/                     # Uploaded files, organized by user at runtime
+├── vector_storage/              # Persistent Chroma data at runtime
 ├── .gitignore
 ├── .env                        # Env file with env variables
 ├── .env.tests                  # Env file with env variables for tests purposes 
@@ -145,6 +171,20 @@ AI-ChatBot/
 ├── pyproject.toml              # Project configuration and dependencies
 └── uv.lock                     # Locked dependency versions
 ```
+
+## Contextualized RAG
+
+Authenticated users can upload PDF documents from the Streamlit upload page. The backend stores the file and its metadata, then indexes the PDF in a background task:
+
+1. `PyPDFLoader` loads the PDF.
+2. `RecursiveCharacterTextSplitter` creates chunks using the configured `chunk_size` and `chunk_overlap` settings.
+3. `OllamaEmbeddings` creates embeddings for each chunk.
+4. Chroma persists the embeddings in `vector_storage/`.
+5. Each chunk receives the owning `user_id` as metadata.
+
+When a user sends a chat message, the RAG pipeline uses the conversation history to rewrite follow-up questions into standalone questions. A history-aware LangChain retriever then searches the user's documents only (`k=3`), and the retrieved context is passed to the Ollama chat model to generate a streamed answer. The completed answer is saved to the conversation history.
+
+The upload endpoint is `POST /v1/file`, and the RAG chat endpoint is `POST /v1/chat`. PDF uploads are limited by `MAX_FILE_SIZE_BYTES` (10 MB by default).
 
 ## Streaming Responses
 
@@ -198,6 +238,10 @@ the application with multiple workers or multiple backend instances.
 - Per-conversation request locking within a single FastAPI process
 - PostgreSQL integration
 - Continuous Integration with GitHub Actions
+- Contextualized RAG over user-uploaded PDF documents
+- Persistent Chroma vector store with Ollama embeddings
+- User-scoped document retrieval
+- PDF upload page in the Streamlit frontend
 
 
 ## Planned Features
@@ -208,7 +252,6 @@ the application with multiple workers or multiple backend instances.
 - Grafana/Loki and Prometheus observability stack
 - CD with GitHub Actions
 - Dockerized deployment
-- RAG support
 - Redis-based distributed conversation locking for multi-worker deployment
 
 
@@ -216,13 +259,14 @@ the application with multiple workers or multiple backend instances.
 
 The initial implementation used direct Ollama integration to build an understanding of prompt handling, streaming, conversation management and error handling.
 
-The project now uses LangChain for model interaction and prompt construction. Authentication, persistence, conversation locking and application-level orchestration remain part of the project's own backend services.
+The project now uses LangChain for model interaction, prompt construction and contextualized retrieval. Authentication, persistence, conversation locking, file management and application-level orchestration remain part of the project's own backend services.
 
 The learning goal remains the same: understand how each component works, why an abstraction is useful and which responsibilities belong to the application.
 The main goal is to understand:
 - streaming mechanics
 - prompt handling
 - memory management
+- contextualized retrieval and document grounding
 - API communication
 - retries & error handling
 - observability

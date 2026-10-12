@@ -22,13 +22,22 @@ This project was created to explore and understand:
 - contextualized retrieval using conversation history
 
 ## How to run (Docker planned later on)
-Make sure you have the default Ollama model downloaded:
+Make sure Ollama is installed and pull both a chat model and an embedding model. The chat model generates answers; the embedding model is required to index and search uploaded PDFs.
 
 ```bash
 ollama pull llama3:8b
+ollama pull nomic-embed-text
 ```
 
 Create a `.env` file in the root of the repository for local development. Use `.env.example` as a template for the required variables.
+
+Set `EMBEDDING_MODEL` to the embedding model you pulled. For the commands above:
+
+```env
+EMBEDDING_MODEL="nomic-embed-text"
+```
+
+`EMBEDDING_MODEL` must reference an Ollama model that supports embeddings. If it is empty or points to a model that cannot generate embeddings, PDF indexing will fail when an uploaded document is processed.
 
 Example `.env`:
 

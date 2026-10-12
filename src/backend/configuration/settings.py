@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     max_file_size_BYTES: int = Field(
         validation_alias="MAX_FILE_SIZE_BYTES", default=10485760
     )  # 10 MB
+    chunk_size: int = Field(default=500)
+    chunk_overlap: int = Field(default=50)
+    embedding_model: str = Field(validation_alias="EMBEDDING_MODEL")
+    collection_name_vector_store: str = Field(default="AI_chat_bot_collection")
 
     model_config = SettingsConfigDict(
         env_file=root / ".env", env_file_encoding="utf-8", extra="ignore"

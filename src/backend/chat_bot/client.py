@@ -1,7 +1,8 @@
-import httpx
 import ollama
+from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama import ChatOllama
+from langsmith import traceable
 
 from backend.configuration.logging_config import logger
 from backend.exceptions.exc import (
@@ -10,75 +11,10 @@ from backend.exceptions.exc import (
     OllamaError,
     OllamaModelError,
 )
-from langsmith import traceable
 
 
 class ChatBotClient:
     """Stateless class to communicate with Ollama"""
-
-    @traceable(name="stream_response")
-    def stream_response(
-        self,
-        model,
-        chat_history: list[dict],
-        temperature: float,
-        top_k,
-        top_p,
-        num_ctx,
-        num_predict,
-        repeat_penalty,
-        is_thinking,
-    ):
-        """Function streams responses from LLM using Ollama
-
-        Args:
-            chat_history (list): chat history, list of dics
-
-        Yields:
-            _type_: strigns (LLM responses / ERROR messages)
-        """
-        llm = ChatOllama(
-            model=model,
-            temperature=temperature,
-            top_k=top_k,
-            top_p=top_p,
-            num_ctx=num_ctx,
-            num_predict=num_predict,
-            repeat_penalty=repeat_penalty,
-            reasoning=is_thinking,
-        )
-
-        try:
-            for chunk in llm.stream(chat_history):
-                yield str(chunk.content)
-
-        # Unforunatelly this is StreamingResponse = generator. Before it starts sending data FastAPI already sends response as 200
-        # It does not make sens to raise exception there so only info to frontend will be this yeld messages
-        except httpx.ConnectError:
-            logger.exception("Ollama in unavaliable")
-            yield "\n\n\n\n\n[ERROR] Ollama is not available. Check if its running on your system"
-            return
-        except ollama.ResponseError as error:
-            if error.status_code == 404:
-                logger.exception(
-                    f"Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
-                )
-                yield "\n\n\n\n\n[ERROR] Ollama error. Ollama model might not exists or its not downloaded"
-                return
-            elif error.status_code == 400:
-                logger.exception(f"Ollama error: {error.status_code}. Error - {error}")
-                yield "\n\n\n\n\n[ERROR] Ollama error. Keep in mind that embedding models can not generate responses and some models do not support THINKING"
-                return
-            else:
-                logger.exception(f"Ollama error {error.status_code}")
-                yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}."
-                return
-        except httpx.RemoteProtocolError:
-            logger.exception(
-                "Ollama stopped responding and is unavailable. Check if its running on your system"
-            )
-            yield "\n\n\n\n\n [ERROR] Ollama stopped responding and is unavailable. Check if its running on your system"
-            return
 
     @traceable(name="create_conversation_title")
     def create_conversation_title(self, user_input: str, model: str) -> str:
@@ -162,3 +98,41 @@ class ChatBotClient:
             raise OllamaConnectionError from error
         except ollama.ResponseError as error:
             raise OllamaError() from error
+
+    def get_llm(
+        self,
+        model,
+        temperature: float,
+        top_k,
+        top_p,
+        num_ctx,
+        num_predict,
+        repeat_penalty,
+        is_thinking,
+    ) -> BaseChatModel:
+        """Create and configure an Ollama chat model.
+
+        Args:
+            model (str): Name of the Ollama model to use.
+            temperature (float): Controls the randomness of generated responses.
+            top_k (int): Limits token selection to the top K candidates.
+            top_p (float): Sets the cumulative probability threshold for token sampling.
+            num_ctx (int): Maximum context window size in tokens.
+            num_predict (int): Maximum number of tokens to generate.
+            repeat_penalty (float): Penalty applied to repeated tokens.
+            is_thinking (bool): Enables or disables reasoning mode for supported models.
+
+        Returns:
+            BaseChatModel: Configured Ollama chat model instance.
+        """
+
+        return ChatOllama(
+            model=model,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            num_ctx=num_ctx,
+            num_predict=num_predict,
+            repeat_penalty=repeat_penalty,
+            reasoning=is_thinking,
+        )

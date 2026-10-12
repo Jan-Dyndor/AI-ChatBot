@@ -1,5 +1,14 @@
 from threading import Lock
 
+import httpx
+import ollama
+from langchain_classic.chains import (
+    create_history_aware_retriever,
+    create_retrieval_chain,
+)
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langsmith import traceable
 from loguru import logger
 
 from backend.api.schemas.pydantic_schemas import Message
@@ -7,12 +16,19 @@ from backend.chat_bot.client import ChatBotClient
 from backend.database.chat_repository import ChatRepository
 from backend.database.models import Messages
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound
+from RAG.file_vector_repository import FileVectorStorage
 
 
 class ChatService:
-    def __init__(self, db: ChatRepository, chat_bot_client: ChatBotClient) -> None:
+    def __init__(
+        self,
+        db: ChatRepository,
+        chat_bot_client: ChatBotClient,
+        file_vector_storage: FileVectorStorage,
+    ) -> None:
         self.db = db
         self.chat_bot_client = chat_bot_client
+        self.vector_storage = file_vector_storage
 
     def lates_conversations_ids(self, user_id: int):
         return self.db.user_lates_conversations_ids(user_id)
@@ -54,129 +70,6 @@ class ChatService:
 
     def save_bot_output(self, output, conversation_id, user_id):
         return self.db.save_bot_output(output, conversation_id, user_id)
-
-    def thread_save_streaming_response(
-        self,
-        lock_object: Lock,
-        model: str,
-        conversation_id: int,
-        user_id: int,
-        temperature: float,
-        top_k: int,
-        top_p: float,
-        num_ctx: int,
-        num_predict: int,
-        repeat_penalty: float,
-        is_thinking: bool,
-        chat_history: list[dict],
-    ):
-        """Stream the LLM response while holding the conversation lock.
-
-        This wrapper delegates response generation to
-        `stream_response_from_client` and yields each generated chunk.
-
-        The provided lock must already be acquired before this generator starts.
-        It remains active for the entire streaming lifecycle and is released in
-        the `finally` block when the stream finishes, raises an exception, or is
-        closed. This prevents another request from modifying the same conversation
-        while the current assistant response is still being generated.
-
-        Keep the conversation locked for the entire streaming lifecycle.
-
-        FastAPI returns a StreamingResponse before the response generator finishes
-        its work. Therefore, releasing the lock directly in the endpoint would unlock
-        the conversation while the LLM is still generating and streaming its response.
-
-        This wrapper yields all chunks produced by `stream_response_from_client` and
-        releases the lock in the `finally` block. This guarantees that the lock is
-        released when streaming finishes, fails with an exception, or is closed.
-
-        The lock must be acquired before it is passed to this function. This function
-        does not acquire the lock; it only guarantees its release.
-
-
-        """
-        try:
-            for chunk in self.stream_response_from_client(
-                model,
-                conversation_id,
-                user_id,
-                temperature,
-                top_k,
-                top_p,
-                num_ctx,
-                num_predict,
-                repeat_penalty,
-                is_thinking,
-                chat_history,
-            ):
-                yield chunk
-
-        finally:
-            #! realase LOCK after streaming
-            lock_object.release()
-
-    def stream_response_from_client(
-        self,
-        model: str,
-        conversation_id: int,
-        user_id: int,
-        temperature: float,
-        top_k: int,
-        top_p: float,
-        num_ctx: int,
-        num_predict: int,
-        repeat_penalty: float,
-        is_thinking: bool,
-        chat_history: list[dict],
-    ):
-        """Function creates ChatBotClient object with choosen model, and parameters, stream responses from LLM using yield. It also creates full model response to save it in DB.
-
-        Args:
-            model (str): AI model name
-            conversation_id (int): ID of conversation
-            user_id (int): ID of User
-            temperature (float):
-            top_k (int):
-            top_p (float):
-            num_ctx (int):
-            num_predict (int):
-            repeat_penalty (float):
-
-        Yields:
-            str: LLM yields chunks of response
-        """
-
-        full_llm_response: str = ""
-        for chunk in self.chat_bot_client.stream_response(
-            model=model,
-            chat_history=chat_history,
-            temperature=temperature,
-            top_k=top_k,
-            top_p=top_p,
-            num_ctx=num_ctx,
-            num_predict=num_predict,
-            repeat_penalty=repeat_penalty,
-            is_thinking=is_thinking,
-        ):
-            full_llm_response += chunk
-            yield chunk
-        #! Save bot output - I can not raise errors and let them go to FastAPI exception handler, since StreamingResponse already started and I can not change HTTP status code. Otherwise I Will get errors like below:
-        # raise RuntimeError("Caught handled exception, but response already started.")
-        try:
-            self.db.save_bot_output(
-                output=full_llm_response,
-                conversation_id=conversation_id,
-                user_id=user_id,
-            )
-        except DataBaseResourceNotFound:
-            logger.exception(
-                f"Can not save LLM output. Conversation disappeared or access invalid after streaming Conversation_ID: {conversation_id} User_ID: {user_id}"
-            )
-        except DataBaseError:
-            logger.exception(
-                f"Can not save LLM output. Failed to save bot output after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
-            )
 
     def fetch_chat_history(self, conversation_id: int, user_id: int) -> list[dict]:
         """Fucntion fetches messages beetween user and LLM from DB
@@ -229,3 +122,217 @@ class ChatService:
         self.db.validate_conversation_access(
             conversation_id=conversation_id, user_id=user_id
         )
+
+    # !RAG  ==================================================
+    @traceable(name="RAG-CHAT")
+    def rag_streaming_response(
+        self,
+        model: str,
+        temperature: float,
+        top_k,
+        top_p,
+        num_ctx,
+        num_predict,
+        repeat_penalty,
+        is_thinking,
+        user_id: int,
+        chat_history: list[dict],
+        question: str,
+        conversation_id: int,
+    ):
+        """Generate a streaming RAG response using conversation history and user-specific documents.
+
+        Args:
+            model (str): Name of the Ollama model to use.
+            temperature (float): Controls the randomness of generated responses.
+            top_k (int): Number of candidate tokens considered during sampling.
+            top_p (float): Cumulative probability threshold for token sampling.
+            num_ctx (int): Maximum context window size in tokens.
+            num_predict (int): Maximum number of tokens to generate.
+            repeat_penalty (float): Penalty applied to repeated tokens.
+            is_thinking (bool): Enables reasoning mode for supported models.
+            user_id (int): User ID used to filter documents in the vector store.
+            chat_history (list[dict]): Previous conversation messages used to
+                contextualize the question and generate the response.
+            question (str): Current user question.
+            conversation_id (int): Conversation ID used to save the generated response.
+
+        Yields:
+            str: Generated response chunks or an error message if Ollama fails.
+
+        Notes:
+            Uses a history-aware retriever to retrieve relevant documents filtered
+            by user ID. Streams the generated answer and attempts to save the
+            complete response to the database after successful generation.
+            Ollama errors are logged and returned as streamed error messages.
+            Database persistence errors are logged without interrupting the response.
+        """
+
+        llm = self.chat_bot_client.get_llm(
+            model=model,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            num_ctx=num_ctx,
+            num_predict=num_predict,
+            repeat_penalty=repeat_penalty,
+            is_thinking=is_thinking,
+        )
+
+        retriver = self.vector_storage.return_retiver(
+            serach_kwargs={"k": 3, "filter": {"user_id": user_id}}
+        )
+        # Enrich question based on user chat history
+
+        system_instruction = """Given a chat history and the latest user question \
+        which might reference context in the chat history, formulate a standalone question \
+        which can be understood without the chat history. Do NOT answer the question, \
+        just reformulate it if needed and otherwise return it as is."""
+
+        prompt_question_contextualize = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_instruction),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
+
+        contextualized_retrived_docs = create_history_aware_retriever(
+            llm, retriver, prompt_question_contextualize
+        )
+
+        # RAG
+        qa_system_prompt = """You are an assistant for          question-answering tasks. \
+            Use the following pieces of retrieved context to answer the question. \
+            If you don't know the answer, just say that you don't know. \
+
+
+            {context}"""
+
+        prompt_answer_question = ChatPromptTemplate.from_messages(
+            [
+                ("system", qa_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
+
+        question_answer_chain = create_stuff_documents_chain(
+            llm, prompt_answer_question
+        )
+
+        rag_chain = create_retrieval_chain(
+            contextualized_retrived_docs, question_answer_chain
+        )
+
+        full_llm_response = ""
+        try:
+            for chunk in rag_chain.stream(
+                {"input": question, "chat_history": chat_history}
+            ):
+                if "answer" in chunk:
+                    answer_chunk = chunk["answer"]
+                    full_llm_response += answer_chunk
+                    yield answer_chunk
+
+        except httpx.ConnectError:
+            logger.exception("Ollama in unavaliable")
+            yield "\n\n\n\n\n[ERROR] Ollama is not available. Check if its running on your system"
+            return
+        except ollama.ResponseError as error:
+            if error.status_code == 404:
+                logger.exception(
+                    f"Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
+                )
+                yield "\n\n\n\n\n[ERROR] Ollama error. Ollama model might not exists or its not downloaded"
+                return
+            elif error.status_code == 400:
+                logger.exception(f"Ollama error: {error.status_code}. Error - {error}")
+                yield "\n\n\n\n\n[ERROR] Ollama error. Keep in mind that embedding models can not generate responses and some models do not support THINKING"
+                return
+            else:
+                logger.exception(f"Ollama error {error.status_code}")
+                yield f"\n\n\n\n\n[ERROR] Ollama error: {error.status_code}."
+                return
+        except httpx.RemoteProtocolError:
+            logger.exception(
+                "Ollama stopped responding and is unavailable. Check if its running on your system"
+            )
+            yield "\n\n\n\n\n [ERROR] Ollama stopped responding and is unavailable. Check if its running on your system"
+            return
+
+        try:
+            self.db.save_bot_output(
+                output=full_llm_response,
+                conversation_id=conversation_id,
+                user_id=user_id,
+            )
+
+        except DataBaseResourceNotFound:
+            logger.exception(
+                f"Can not save LLM output. Conversation disappeared or access invalid after streaming Conversation_ID: {conversation_id} User_ID: {user_id}"
+            )
+        except DataBaseError:
+            logger.exception(
+                f"Can not save LLM output. Failed to save bot output after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
+            )
+
+    #! Thread Save response
+    def thread_safe_rag_streaming_response(
+        self,
+        model: str,
+        temperature: float,
+        top_k,
+        top_p,
+        num_ctx,
+        num_predict,
+        repeat_penalty,
+        is_thinking,
+        user_id: int,
+        chat_history: list[dict],
+        question: str,
+        conversation_id: int,
+        lock_object: Lock,
+    ):
+        """Stream a RAG response while holding a conversation-specific thread lock.
+
+        Wraps the RAG response generator to ensure that the conversation lock
+        remains acquired throughout the entire streaming process.
+
+        The wrapper iterates over the underlying RAG generator and yields each
+        response chunk to the client. The lock is released in the finally block
+        when streaming finishes, raises an exception, or the generator is closed.
+
+        This prevents concurrent requests from processing the same conversation
+        while a response is being generated.
+
+
+        Yields:
+            str: Response chunks generated by the underlying RAG pipeline.
+
+        Notes:
+            The finally block releases the lock when the wrapper generator
+            terminates or is explicitly closed. If the generator is never started,
+            its finally block will not execute.
+        """
+
+        try:
+            for chunk in self.rag_streaming_response(
+                model=model,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
+                num_ctx=num_ctx,
+                num_predict=num_predict,
+                repeat_penalty=repeat_penalty,
+                is_thinking=is_thinking,
+                user_id=user_id,
+                chat_history=chat_history,
+                question=question,
+                conversation_id=conversation_id,
+            ):
+                yield chunk
+
+        finally:
+            #! realase LOCK after streaming
+            lock_object.release()

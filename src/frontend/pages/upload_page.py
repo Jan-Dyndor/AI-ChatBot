@@ -38,7 +38,7 @@ if uploaded_file_name := st.session_state.pop("uploaded_file_name", None):
 uploaded_file = st.file_uploader(
     label="Choose a document",
     accept_multiple_files=False,
-    type=["pdf", "txt", "doc", "docx", "csv", "json", "md"],
+    type=["pdf"],
     max_upload_size=STREAMLIT_WIDGET_LIMIT_MB,
 )
 

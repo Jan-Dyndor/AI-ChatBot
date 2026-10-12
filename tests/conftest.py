@@ -12,6 +12,7 @@ from backend.api.schemas.pydantic_schemas import ModelParameters, UserInput
 from backend.configuration.settings import get_settings
 from backend.database.chat_repository import ChatRepository
 from backend.database.db import Base
+from backend.database.file_repository import FileRepository
 from backend.database.models import Users
 from backend.dependencies.depends import get_db
 from backend.main import create_app
@@ -183,6 +184,14 @@ def client(session_maker):
     app.dependency_overrides.clear()
 
     get_settings.cache_clear()
+
+
+#! FileRepo object
+
+
+@pytest.fixture
+def file_repository(session):
+    return FileRepository(session)
 
 
 #! AUTH Frixtures

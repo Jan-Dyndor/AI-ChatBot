@@ -83,9 +83,9 @@ def test_chat_streams_rag_answer_and_forwards_request_context(
 
     names = [name for name, _ in service.calls]
     assert names == [
-        "save_user_input",
         "conversation_summary",
         "fetch_chat_history",
+        "save_user_input",
         "thread_safe_rag_streaming_response",
     ]
     stream_call = service.calls[-1][1]
@@ -131,7 +131,7 @@ def test_chat_releases_lock_when_pre_stream_work_fails(
     client, happy_test_user_input_short
 ):
     service = Mock()
-    service.save_user_input.side_effect = RuntimeError("database unavailable")
+    service.conversation_summary.side_effect = RuntimeError("database unavailable")
     lock = RecordingLock()
     client.app.dependency_overrides[get_chat_service] = lambda: service
     client.app.dependency_overrides[get_current_user] = lambda: UserDB(
@@ -148,7 +148,7 @@ def test_chat_releases_lock_when_pre_stream_work_fails(
         client.app.dependency_overrides.clear()
 
     assert lock.release_count == 1
-    service.conversation_summary.assert_not_called()
+    service.fetch_chat_history.assert_not_called()
 
 
 def test_chat_rejects_invalid_payload_before_service_calls(
@@ -202,7 +202,9 @@ def test_rag_pipeline_retrieves_only_the_requesting_users_documents(monkeypatch)
         lambda actual_retriever, actual_answer_chain: rag_chain,
     )
 
-    service = ChatService(db=db, chat_bot_client=bot, file_vector_storage=vector_storage)
+    service = ChatService(
+        db=db, chat_bot_client=bot, file_vector_storage=vector_storage
+    )
     chunks = list(
         service.rag_streaming_response(
             model="llama3:8b",

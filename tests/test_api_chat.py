@@ -1,9 +1,11 @@
 from unittest.mock import Mock, patch
 
+from backend.api.schemas.pydantic_schemas import Message
 from backend.chat_bot.client import ChatBotClient
 from backend.database.models import Conversations, Messages, Users
 from backend.dependencies.depends import get_chat_repo
 from backend.exceptions.exc import DataBaseResourceNotFound
+from backend.service.chat_service import ChatService
 
 
 #! VALID TOKEN
@@ -113,8 +115,9 @@ def test_chat_wrong_user_input_long(client, wrong_user_input_too_long, valid_tok
 #     assert conv.summary == "test title"
 
 
+@patch.object(ChatService, "fetch_chat_history")
 def test_chat_streaming_save_user_input_error(
-    client, happy_test_user_input_short, valid_token
+    mock_fech_history, client, happy_test_user_input_short, valid_token
 ):
     """Function tests API response when there is an error within save_user_input_function
 
@@ -123,6 +126,9 @@ def test_chat_streaming_save_user_input_error(
 
         happy_test_user_input_short (UserInput): ficxture tyo store user input and chat histroy, successfully converted into Pydantic models
     """
+    mock_fech_history.side_effect = Message.model_validate(
+        {"role": "user", "content": "test"}
+    )
     session = client.app.state.session_maker()
     user = Users(email="test@gmail.com", password_hash="test")
     session.add(user)

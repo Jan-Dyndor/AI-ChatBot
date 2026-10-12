@@ -153,12 +153,6 @@ def rag_caht(
     if lock.acquire(blocking=False):
         try:
 
-            service.save_user_input(
-                user_input=user_input.input,
-                conversation_id=user_input.conversation_id,
-                user_id=user.id,
-            )
-
             service.conversation_summary(
                 user_input=user_input.input,
                 conversation_id=user_input.conversation_id,
@@ -169,6 +163,13 @@ def rag_caht(
             chat_history = service.fetch_chat_history(
                 conversation_id=user_input.conversation_id, user_id=user.id
             )
+
+            service.save_user_input(
+                user_input=user_input.input,
+                conversation_id=user_input.conversation_id,
+                user_id=user.id,
+            )
+
         except Exception:
             logger.warning("Relase LOCK due to the error")
             lock.release()

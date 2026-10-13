@@ -50,5 +50,6 @@ def get_settings(env_file_location: str | Path | None = None) -> Settings:
         load_dotenv()  # to load env file to LangSmith lib
         return Settings()  # type: ignore
     else:
-        load_dotenv(dotenv_path=env_file_location)  # to load env file to LangSmith lib
+        # Explicit env files (used by tests) must override variables loaded earlier.
+        load_dotenv(dotenv_path=env_file_location, override=True)
         return Settings(_env_file=env_file_location, _env_file_encoding="utf-8")  # type: ignore

@@ -3,7 +3,8 @@ from unittest.mock import Mock, patch
 from backend.api.schemas.pydantic_schemas import Message
 from backend.chat_bot.client import ChatBotClient
 from backend.database.models import Conversations, Messages, Users
-from backend.dependencies.depends import get_chat_repo
+from backend.api.schemas.pydantic_schemas import UserDB
+from backend.dependencies.depends import get_chat_service, get_current_user
 from backend.exceptions.exc import DataBaseResourceNotFound
 from backend.service.chat_service import ChatService
 
@@ -115,9 +116,8 @@ def test_chat_wrong_user_input_long(client, wrong_user_input_too_long, valid_tok
 #     assert conv.summary == "test title"
 
 
-@patch.object(ChatService, "fetch_chat_history")
 def test_chat_streaming_save_user_input_error(
-    mock_fech_history, client, happy_test_user_input_short, valid_token
+    client, happy_test_user_input_short, valid_token
 ):
     """Function tests API response when there is an error within save_user_input_function
 
@@ -126,18 +126,13 @@ def test_chat_streaming_save_user_input_error(
 
         happy_test_user_input_short (UserInput): ficxture tyo store user input and chat histroy, successfully converted into Pydantic models
     """
-    mock_fech_history.side_effect = Message.model_validate(
-        {"role": "user", "content": "test"}
+    service = Mock(spec=ChatService)
+    service.fetch_chat_history.return_value = []
+    service.save_user_input.side_effect = DataBaseResourceNotFound()
+    client.app.dependency_overrides[get_chat_service] = lambda: service
+    client.app.dependency_overrides[get_current_user] = lambda: UserDB(
+        id=1, email="test@gmail.com", password_hash="test"
     )
-    session = client.app.state.session_maker()
-    user = Users(email="test@gmail.com", password_hash="test")
-    session.add(user)
-    session.commit()
-
-    repo_mock = Mock()
-    repo_mock.save_user_input.side_effect = DataBaseResourceNotFound()
-
-    client.app.dependency_overrides[get_chat_repo] = lambda: repo_mock
 
     response = client.post(
         "v1/chat",
@@ -146,6 +141,9 @@ def test_chat_streaming_save_user_input_error(
     )
     assert response.status_code == 404
     assert response.json().get("message") == "Database cound not find given resource"
+    service.save_user_input.assert_called_once_with(
+        user_input="What are you?", conversation_id=1, user_id=1
+    )
     client.app.dependency_overrides.clear()
 
 
@@ -160,16 +158,18 @@ def test_chat_streaming_save_bot_output_error(
 
         happy_test_user_input_short (UserInput): ficxture tyo store user input and chat histroy, successfully converted into Pydantic models
     """
-    session = client.app.state.session_maker()
-    user = Users(email="test@gmail.com", password_hash="test")
-    session.add(user)
-    session.commit()
+    service = Mock(spec=ChatService)
+    service.conversation_summary.return_value = None
+    service.fetch_chat_history.return_value = [{"role": "user", "content": "Example"}]
 
-    repo_mock = Mock()
-    repo_mock.chat_history.return_value = [{"role": "user", "content": "Example"}]
-    repo_mock.save_bot_output.side_effect = DataBaseResourceNotFound()
+    def stream(**kwargs):
+        yield "answer"
 
-    client.app.dependency_overrides[get_chat_repo] = lambda: repo_mock
+    service.thread_safe_rag_streaming_response.side_effect = stream
+    client.app.dependency_overrides[get_chat_service] = lambda: service
+    client.app.dependency_overrides[get_current_user] = lambda: UserDB(
+        id=1, email="test@gmail.com", password_hash="test"
+    )
 
     response = client.post(
         "v1/chat",

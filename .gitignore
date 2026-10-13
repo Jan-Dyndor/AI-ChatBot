@@ -10,3 +10,4 @@ storage/*
 !storage/.gitkeep
 vector_storage/*
 !vector_storage/.gitkeep
+.deepeval

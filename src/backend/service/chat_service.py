@@ -124,8 +124,8 @@ class ChatService:
         )
 
     # !RAG  ==================================================
-    @traceable(name="RAG-CHAT")
-    def rag_streaming_response(
+
+    def build_rag_chain(
         self,
         model: str,
         temperature: float,
@@ -136,9 +136,79 @@ class ChatService:
         repeat_penalty,
         is_thinking,
         user_id: int,
+    ):
+        llm = self.chat_bot_client.get_llm(
+            model=model,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            num_ctx=num_ctx,
+            num_predict=num_predict,
+            repeat_penalty=repeat_penalty,
+            is_thinking=is_thinking,
+        )
+
+        retriver = self.vector_storage.return_retiver(
+            serach_kwargs={"k": 3, "filter": {"user_id": user_id}}
+        )
+        # Enrich question based on user chat history
+
+        system_instruction = """Given a chat history and the latest user question \
+            which might reference context in the chat history, formulate a standalone question \
+            which can be understood without the chat history. Do NOT answer the question, \
+            just reformulate it if needed and otherwise return it as is."""
+
+        prompt_question_contextualize = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_instruction),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
+
+        contextualized_retrived_docs = create_history_aware_retriever(
+            llm, retriver, prompt_question_contextualize
+        )
+
+        # RAG
+        qa_system_prompt = """You are an assistant for          question-answering tasks. \
+                Use the following pieces of retrieved context to answer the question. \
+                If you don't know the answer, just say that you don't know. \
+    
+    
+                {context}"""
+
+        prompt_answer_question = ChatPromptTemplate.from_messages(
+            [
+                ("system", qa_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
+
+        question_answer_chain = create_stuff_documents_chain(
+            llm, prompt_answer_question
+        )
+
+        return create_retrieval_chain(
+            contextualized_retrived_docs, question_answer_chain
+        )
+
+    @traceable(name="RAG-CHAT")
+    def rag_streaming_response(
+        self,
         chat_history: list[dict],
         question: str,
         conversation_id: int,
+        model: str,
+        temperature: float,
+        top_k,
+        top_p,
+        num_ctx,
+        num_predict,
+        repeat_penalty,
+        is_thinking,
+        user_id: int,
     ):
         """Generate a streaming RAG response using conversation history and user-specific documents.
 
@@ -167,62 +237,16 @@ class ChatService:
             Ollama errors are logged and returned as streamed error messages.
             Database persistence errors are logged without interrupting the response.
         """
-
-        llm = self.chat_bot_client.get_llm(
-            model=model,
-            temperature=temperature,
-            top_k=top_k,
-            top_p=top_p,
-            num_ctx=num_ctx,
-            num_predict=num_predict,
-            repeat_penalty=repeat_penalty,
-            is_thinking=is_thinking,
-        )
-
-        retriver = self.vector_storage.return_retiver(
-            serach_kwargs={"k": 3, "filter": {"user_id": user_id}}
-        )
-        # Enrich question based on user chat history
-
-        system_instruction = """Given a chat history and the latest user question \
-        which might reference context in the chat history, formulate a standalone question \
-        which can be understood without the chat history. Do NOT answer the question, \
-        just reformulate it if needed and otherwise return it as is."""
-
-        prompt_question_contextualize = ChatPromptTemplate.from_messages(
-            [
-                ("system", system_instruction),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-
-        contextualized_retrived_docs = create_history_aware_retriever(
-            llm, retriver, prompt_question_contextualize
-        )
-
-        # RAG
-        qa_system_prompt = """You are an assistant for          question-answering tasks. \
-            Use the following pieces of retrieved context to answer the question. \
-            If you don't know the answer, just say that you don't know. \
-
-
-            {context}"""
-
-        prompt_answer_question = ChatPromptTemplate.from_messages(
-            [
-                ("system", qa_system_prompt),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-
-        question_answer_chain = create_stuff_documents_chain(
-            llm, prompt_answer_question
-        )
-
-        rag_chain = create_retrieval_chain(
-            contextualized_retrived_docs, question_answer_chain
+        rag_chain = self.build_rag_chain(
+            model,
+            temperature,
+            top_k,
+            top_p,
+            num_ctx,
+            num_predict,
+            repeat_penalty,
+            is_thinking,
+            user_id,
         )
 
         full_llm_response = ""

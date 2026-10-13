@@ -52,7 +52,7 @@ def get_chat_bot_client() -> ChatBotClient:
 
 
 #! Settings
-def get_settings(request: Request):
+def get_settings(request: Request) -> Settings:
     return request.app.state.settings
 
 

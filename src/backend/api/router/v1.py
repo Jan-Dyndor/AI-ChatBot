@@ -1,6 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
-
+from backend.configuration.settings import Settings
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from fastapi.responses import StreamingResponse
 from loguru import logger
@@ -17,7 +17,6 @@ from backend.api.schemas.pydantic_schemas import (
     UserLogin,
 )
 from backend.authentication.auth import AuthService
-from backend.configuration.settings import Settings, get_settings
 from backend.core.concurency.conversation_thread_lock import ConversationLockManager
 from backend.dependencies.depends import (
     create_file_vector_storage,
@@ -25,6 +24,7 @@ from backend.dependencies.depends import (
     get_chat_service,
     get_current_user,
     get_file_service,
+    get_settings,
     get_thread_lock,
     get_user_service,
 )
@@ -142,7 +142,7 @@ def upload_file(
 
 
 @router.post("/chat")
-def rag_caht(
+def rag_chat(
     user_input: UserInput,
     service: ChatService = Depends(get_chat_service),
     user: UserDB = Depends(get_current_user),

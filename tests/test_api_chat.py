@@ -1,10 +1,8 @@
 from unittest.mock import Mock, patch
 
-from backend.api.schemas.pydantic_schemas import Message
-from backend.chat_bot.client import ChatBotClient
-from backend.database.models import Conversations, Messages, Users
+from backend.database.models import Users
 from backend.api.schemas.pydantic_schemas import UserDB
-from backend.dependencies.depends import get_chat_service, get_current_user
+from backend.dependencies.depends import get_chat_repo, get_chat_service, get_current_user
 from backend.exceptions.exc import DataBaseResourceNotFound
 from backend.service.chat_service import ChatService
 
@@ -158,29 +156,37 @@ def test_chat_streaming_save_bot_output_error(
 
         happy_test_user_input_short (UserInput): ficxture tyo store user input and chat histroy, successfully converted into Pydantic models
     """
-    service = Mock(spec=ChatService)
-    service.conversation_summary.return_value = None
-    service.fetch_chat_history.return_value = [{"role": "user", "content": "Example"}]
+    repo_mock = Mock()
+    repo_mock.conversation_summary_presence.return_value = True
+    repo_mock.chat_history.return_value = []
+    repo_mock.save_bot_output.side_effect = DataBaseResourceNotFound()
+    rag_chain = Mock()
+    rag_chain.stream.return_value = [{"answer": "answer"}]
 
-    def stream(**kwargs):
-        yield "answer"
-
-    service.thread_safe_rag_streaming_response.side_effect = stream
-    client.app.dependency_overrides[get_chat_service] = lambda: service
+    # Keep the real service generator in the request path: it is responsible for
+    # catching persistence failures after the streamed response has started.
+    client.app.dependency_overrides[get_chat_repo] = lambda: repo_mock
     client.app.dependency_overrides[get_current_user] = lambda: UserDB(
         id=1, email="test@gmail.com", password_hash="test"
     )
 
-    response = client.post(
-        "v1/chat",
-        json=happy_test_user_input_short,
-        headers={"Authorization": f"Bearer {valid_token}"},
-    )
+    try:
+        with patch.object(ChatService, "build_rag_chain", return_value=rag_chain):
+            response = client.post(
+                "v1/chat",
+                json=happy_test_user_input_short,
+                headers={"Authorization": f"Bearer {valid_token}"},
+            )
+    finally:
+        client.app.dependency_overrides.clear()
 
     assert (
         response.status_code == 200
     )  # ! Even when error occured , StreamingResponse has already started so HTTP response is 200. Error is visible in logs only
-    client.app.dependency_overrides.clear()
+    assert response.text == "answer"
+    repo_mock.save_bot_output.assert_called_once_with(
+        output="answer", conversation_id=1, user_id=1
+    )
 
 
 #! Invalid token

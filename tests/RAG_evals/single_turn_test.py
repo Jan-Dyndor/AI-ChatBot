@@ -41,18 +41,20 @@ service = ChatService(
     db=Mock(), chat_bot_client=chat_client, file_vector_storage=file_vector_storage
 )
 
-model = OllamaModel(model="llama3:8b", temperature=0)
+model = OllamaModel(
+    model=settings.test_deepevals_model, temperature=settings.test_deepevals_temp
+)
 
 rag_chain = service.build_rag_chain(
-    model="llama3:8b",
-    temperature=0,
-    top_k=40,
-    top_p=0.9,
-    num_ctx=4096,
-    num_predict=300,
-    repeat_penalty=1.1,
-    is_thinking=False,
-    user_id=1,
+    model=settings.test_deepevals_model,
+    temperature=settings.test_deepevals_temp,
+    top_k=settings.test_deepevals_top_k,
+    top_p=settings.test_deepevals_top_p,
+    num_ctx=settings.test_deepevals_num_ctx,
+    num_predict=settings.test_deepevals_temp_num_predict,
+    repeat_penalty=settings.test_deepevals_repeat_penalty,
+    is_thinking=settings.test_deepevals_is_thinking,
+    user_id=settings.test_deepevals_user_id,
 )
 with open("tests/RAG_evals/single_turn_goldens.json", "r") as file:
     golden_json_data = json.load(file)

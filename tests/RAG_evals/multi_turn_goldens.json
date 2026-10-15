@@ -1,0 +1,353 @@
+[
+  {
+    "id": "M01",
+    "topic": "refund_vs_service_credit",
+    "difficulty": "context_carryover",
+    "turns": [
+      {
+        "turn": 1,
+        "input": "When must Finance issue a refund after formal financial approval?",
+        "expected_output": "Finance must issue the refund or credit note within five business days after formal financial approval.",
+        "needs_history": false,
+        "source_pages": [
+          7
+        ],
+        "context": [
+          "Once a claim or return refund is formally approved, Finance issues the refund or credit note within five business days. The refund timer begins at financial approval, not at original delivery and not when a client creates the initial complaint."
+        ],
+        "evidence": [
+          {
+            "page": 7,
+            "text": "Once a claim or return refund is formally approved, Finance issues the refund or credit note within five business days. The refund timer begins at financial approval, not at original delivery and not when a client creates the initial complaint."
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "input": "When exactly does that five-day period start?",
+        "expected_output": "It starts at formal financial approval, not at delivery or when the client submits the original complaint.",
+        "needs_history": true,
+        "source_pages": [
+          7
+        ],
+        "context": [
+          "Once a claim or return refund is formally approved, Finance issues the refund or credit note within five business days. The refund timer begins at financial approval, not at original delivery and not when a client creates the initial complaint."
+        ],
+        "evidence": [
+          {
+            "page": 7,
+            "text": "Once a claim or return refund is formally approved, Finance issues the refund or credit note within five business days. The refund timer begins at financial approval, not at original delivery and not when a client creates the initial complaint."
+          }
+        ]
+      },
+      {
+        "turn": 3,
+        "input": "Is that also the deadline for requesting a dispatch service credit?",
+        "expected_output": "No. A refund or credit note is due within five business days after formal financial approval, whereas the client must request a dispatch service credit within ten business days after the end of the service month.",
+        "needs_history": true,
+        "source_pages": [
+          7,
+          8
+        ],
+        "context": [
+          "Once a claim or return refund is formally approved, Finance issues the refund or credit note within five business days. The refund timer begins at financial approval, not at original delivery and not when a client creates the initial complaint.",
+          "A customer claim is distinct from a contractual dispatch service credit. Claims address missing or damaged merchandise; the service credit on page 8 addresses eligible missed dispatch commitments. They follow different submission windows.",
+          "Clients must submit service-credit requests within ten business days after the end of the service month."
+        ],
+        "evidence": [
+          {
+            "page": 7,
+            "text": "Once a claim or return refund is formally approved, Finance issues the refund or credit note within five business days. The refund timer begins at financial approval, not at original delivery and not when a client creates the initial complaint."
+          },
+          {
+            "page": 7,
+            "text": "A customer claim is distinct from a contractual dispatch service credit. Claims address missing or damaged merchandise; the service credit on page 8 addresses eligible missed dispatch commitments. They follow different submission windows."
+          },
+          {
+            "page": 8,
+            "text": "Clients must submit service-credit requests within ten business days after the end of the service month."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "M02",
+    "topic": "chilled_temperature_and_quality_hold",
+    "difficulty": "context_carryover",
+    "turns": [
+      {
+        "turn": 1,
+        "input": "What temperature condition triggers an alert in chilled storage?",
+        "expected_output": "An alert is triggered when temperature stays above 6°C for more than 10 consecutive minutes.",
+        "needs_history": false,
+        "source_pages": [
+          3
+        ],
+        "context": [
+          "The chilled-grocery storage target is 2-6 degrees Celsius. A temperature alert is raised when a monitored location is above 6 degrees Celsius for more than 10 consecutive minutes. A quality hold is mandatory when the measured temperature is above 8 degrees Celsius for more than 5 consecutive minutes. The quality hold remains active until a documented release decision is recorded by the Quality Lead.",
+          "“More than” is strict. Exactly 10 minutes above 6 C is not sufficient for an alert; exactly 5 minutes above 8 C is not sufficient for the mandatory hold."
+        ],
+        "evidence": [
+          {
+            "page": 3,
+            "text": "The chilled-grocery storage target is 2-6 degrees Celsius. A temperature alert is raised when a monitored location is above 6 degrees Celsius for more than 10 consecutive minutes. A quality hold is mandatory when the measured temperature is above 8 degrees Celsius for more than 5 consecutive minutes. The quality hold remains active until a documented release decision is recorded by the Quality Lead."
+          },
+          {
+            "page": 3,
+            "text": "“More than” is strict. Exactly 10 minutes above 6 C is not sufficient for an alert; exactly 5 minutes above 8 C is not sufficient for the mandatory hold."
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "input": "Does that alert automatically mean the goods must be put on a quality hold?",
+        "expected_output": "No. An alert alone does not automatically require a hold. A mandatory quality hold applies when the temperature stays above 8°C for more than five consecutive minutes.",
+        "needs_history": true,
+        "source_pages": [
+          3
+        ],
+        "context": [
+          "The chilled-grocery storage target is 2-6 degrees Celsius. A temperature alert is raised when a monitored location is above 6 degrees Celsius for more than 10 consecutive minutes. A quality hold is mandatory when the measured temperature is above 8 degrees Celsius for more than 5 consecutive minutes. The quality hold remains active until a documented release decision is recorded by the Quality Lead."
+        ],
+        "evidence": [
+          {
+            "page": 3,
+            "text": "The chilled-grocery storage target is 2-6 degrees Celsius. A temperature alert is raised when a monitored location is above 6 degrees Celsius for more than 10 consecutive minutes. A quality hold is mandatory when the measured temperature is above 8 degrees Celsius for more than 5 consecutive minutes. The quality hold remains active until a documented release decision is recorded by the Quality Lead."
+          }
+        ]
+      },
+      {
+        "turn": 3,
+        "input": "If that hold is opened, who can authorize releasing the goods?",
+        "expected_output": "Only the Quality Lead, Lena Ortiz, may authorize release after reviewing the temperature records and supporting evidence; operations staff and carrier managers cannot release the goods themselves.",
+        "needs_history": true,
+        "source_pages": [
+          10
+        ],
+        "context": [
+          "Only the Quality Lead can approve release from a mandatory chilled-goods quality hold after reviewing temperature records and supporting evidence. Operations staff and carrier managers cannot self-release affected product. The Data Operations Lead can correct a sensor record but cannot authorize the physical release of chilled goods.",
+          "Quality Lead                                   Lena Ortiz"
+        ],
+        "evidence": [
+          {
+            "page": 10,
+            "text": "Only the Quality Lead can approve release from a mandatory chilled-goods quality hold after reviewing temperature records and supporting evidence. Operations staff and carrier managers cannot self-release affected product. The Data Operations Lead can correct a sensor record but cannot authorize the physical release of chilled goods."
+          },
+          {
+            "page": 10,
+            "text": "Quality Lead                                   Lena Ortiz"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "M03",
+    "topic": "standard_cutoff_and_dispatch_definition",
+    "difficulty": "context_carryover",
+    "turns": [
+      {
+        "turn": 1,
+        "input": "What is the current cutoff for Standard orders?",
+        "expected_output": "The Standard cutoff is 16:00 Monday through Friday under version 2.4.",
+        "needs_history": false,
+        "source_pages": [
+          10
+        ],
+        "context": [
+          "The Standard order cutoff changed from 15:00 in version 2.3 to 16:00 in version 2.4. The Express cutoff remains 14:00 and the Chilled Grocery cutoff remains 12:00 Monday through Thursday."
+        ],
+        "evidence": [
+          {
+            "page": 10,
+            "text": "The Standard order cutoff changed from 15:00 in version 2.3 to 16:00 in version 2.4. The Express cutoff remains 14:00 and the Chilled Grocery cutoff remains 12:00 Monday through Thursday."
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "input": "What if one is accepted at 16:15 on Tuesday?",
+        "expected_output": "It misses the Tuesday cutoff and enters the next eligible business-day processing cycle. It is due for dispatch by 22:00 Wednesday, assuming Wednesday is a business day.",
+        "needs_history": true,
+        "source_pages": [
+          2
+        ],
+        "context": [
+          "These dispatch targets apply only to accepted orders received no later than the listed cutoff. An order that arrives after the cutoff joins the next eligible business-day processing cycle. For example, a Standard order accepted at 16:15 on Tuesday is due for dispatch by 22:00 on Wednesday, provided Wednesday is a business day."
+        ],
+        "evidence": [
+          {
+            "page": 2,
+            "text": "These dispatch targets apply only to accepted orders received no later than the listed cutoff. An order that arrives after the cutoff joins the next eligible business-day processing cycle. For example, a Standard order accepted at 16:15 on Tuesday is due for dispatch by 22:00 on Wednesday, provided Wednesday is a business day."
+          }
+        ]
+      },
+      {
+        "turn": 3,
+        "input": "Would printing its shipping label on Tuesday count as dispatch?",
+        "expected_output": "No. Printing the label does not count as dispatch; dispatch requires the first carrier acceptance scan.",
+        "needs_history": true,
+        "source_pages": [
+          1
+        ],
+        "context": [
+          "A dispatched shipment has received the first carrier acceptance scan; printing a label or moving a parcel to a staging shelf is not dispatch."
+        ],
+        "evidence": [
+          {
+            "page": 1,
+            "text": "A dispatched shipment has received the first carrier acceptance scan; printing a label or moving a parcel to a staging shelf is not dispatch."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "M04",
+    "topic": "stock_variance_followups",
+    "difficulty": "comparative_reasoning",
+    "turns": [
+      {
+        "turn": 1,
+        "input": "We received 197 units of an SKU instead of the expected 200. Must we escalate it?",
+        "expected_output": "No. The shortage is three units, or 1.5%, so it exceeds neither the more-than-three-unit threshold nor the more-than-2% threshold.",
+        "needs_history": false,
+        "source_pages": [
+          3
+        ],
+        "context": [
+          "Escalate a variance to Inventory Control when the absolute difference is greater than three units OR greater than 2% of expected quantity. Exactly three missing units do not trigger the unit threshold, but can still trigger the percentage threshold.",
+          "For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore requires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does not cross either escalation threshold. Negative and positive variances follow the same rule."
+        ],
+        "evidence": [
+          {
+            "page": 3,
+            "text": "Escalate a variance to Inventory Control when the absolute difference is greater than three units OR greater than 2% of expected quantity. Exactly three missing units do not trigger the unit threshold, but can still trigger the percentage threshold."
+          },
+          {
+            "page": 3,
+            "text": "For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore requires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does not cross either escalation threshold. Negative and positive variances follow the same rule."
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "input": "What if we received 97 units instead of 100?",
+        "expected_output": "Yes, escalate it to Inventory Control. The shortage is three units, but 3% of the expected quantity, which exceeds the 2% threshold.",
+        "needs_history": true,
+        "source_pages": [
+          3
+        ],
+        "context": [
+          "Escalate a variance to Inventory Control when the absolute difference is greater than three units OR greater than 2% of expected quantity. Exactly three missing units do not trigger the unit threshold, but can still trigger the percentage threshold.",
+          "For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore requires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does not cross either escalation threshold. Negative and positive variances follow the same rule."
+        ],
+        "evidence": [
+          {
+            "page": 3,
+            "text": "Escalate a variance to Inventory Control when the absolute difference is greater than three units OR greater than 2% of expected quantity. Exactly three missing units do not trigger the unit threshold, but can still trigger the percentage threshold."
+          },
+          {
+            "page": 3,
+            "text": "For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore requires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does not cross either escalation threshold. Negative and positive variances follow the same rule."
+          }
+        ]
+      },
+      {
+        "turn": 3,
+        "input": "Why does the second case require escalation but the first does not if both are short by three units?",
+        "expected_output": "Both shortages are exactly three units, which does not exceed the unit threshold. But three out of 100 is 3% and exceeds 2%, while three out of 200 is only 1.5%. The rule triggers when either threshold is exceeded.",
+        "needs_history": true,
+        "source_pages": [
+          3
+        ],
+        "context": [
+          "Escalate a variance to Inventory Control when the absolute difference is greater than three units OR greater than 2% of expected quantity. Exactly three missing units do not trigger the unit threshold, but can still trigger the percentage threshold.",
+          "For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore requires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does not cross either escalation threshold. Negative and positive variances follow the same rule."
+        ],
+        "evidence": [
+          {
+            "page": 3,
+            "text": "Escalate a variance to Inventory Control when the absolute difference is greater than three units OR greater than 2% of expected quantity. Exactly three missing units do not trigger the unit threshold, but can still trigger the percentage threshold."
+          },
+          {
+            "page": 3,
+            "text": "For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore requires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does not cross either escalation threshold. Negative and positive variances follow the same rule."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "M05",
+    "topic": "express_service_credit_and_cap",
+    "difficulty": "context_and_arithmetic",
+    "turns": [
+      {
+        "turn": 1,
+        "input": "An eligible Express parcel was accepted on time but missed its dispatch deadline. What standard service credit applies?",
+        "expected_output": "The standard credit is PLN 2.84 for that parcel, equal to 20% of the PLN 14.20 Express fulfillment fee, subject to the monthly client cap.",
+        "needs_history": false,
+        "source_pages": [
+          8
+        ],
+        "context": [
+          "A client may request a credit when Harborline misses the published dispatch deadline for an eligible, on-time accepted order. The standard credit is 20% of the fulfillment fee for the affected parcel; it is not 20% of the merchandise value or the entire invoice. Total service credits for one client are capped at PLN 300 per calendar month.",
+          "For one eligible late Express parcel, the standard 20% credit is PLN 2.84 (20% of PLN 14.20), subject to the client monthly cap."
+        ],
+        "evidence": [
+          {
+            "page": 8,
+            "text": "A client may request a credit when Harborline misses the published dispatch deadline for an eligible, on-time accepted order. The standard credit is 20% of the fulfillment fee for the affected parcel; it is not 20% of the merchandise value or the entire invoice. Total service credits for one client are capped at PLN 300 per calendar month."
+          },
+          {
+            "page": 8,
+            "text": "For one eligible late Express parcel, the standard 20% credit is PLN 2.84 (20% of PLN 14.20), subject to the client monthly cap."
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "input": "If the same client had 120 such parcels in one calendar month, how much credit could they receive?",
+        "expected_output": "The uncapped amount is 120 × PLN 2.84 = PLN 340.80, but the monthly service-credit cap limits the client to PLN 300 total.",
+        "needs_history": true,
+        "source_pages": [
+          8
+        ],
+        "context": [
+          "A client may request a credit when Harborline misses the published dispatch deadline for an eligible, on-time accepted order. The standard credit is 20% of the fulfillment fee for the affected parcel; it is not 20% of the merchandise value or the entire invoice. Total service credits for one client are capped at PLN 300 per calendar month.",
+          "For one eligible late Express parcel, the standard 20% credit is PLN 2.84 (20% of PLN 14.20), subject to the client monthly cap."
+        ],
+        "evidence": [
+          {
+            "page": 8,
+            "text": "A client may request a credit when Harborline misses the published dispatch deadline for an eligible, on-time accepted order. The standard credit is 20% of the fulfillment fee for the affected parcel; it is not 20% of the merchandise value or the entire invoice. Total service credits for one client are capped at PLN 300 per calendar month."
+          },
+          {
+            "page": 8,
+            "text": "For one eligible late Express parcel, the standard 20% credit is PLN 2.84 (20% of PLN 14.20), subject to the client monthly cap."
+          }
+        ]
+      },
+      {
+        "turn": 3,
+        "input": "And if those parcels had actually been dispatched on time but delivered late by the carrier instead?",
+        "expected_output": "They would not qualify for the standard dispatch service credit on that basis, because late carrier delivery after on-time dispatch is not a standard credit trigger.",
+        "needs_history": true,
+        "source_pages": [
+          8
+        ],
+        "context": [
+          "A late carrier delivery after an on-time dispatch is not itself a standard credit trigger."
+        ],
+        "evidence": [
+          {
+            "page": 8,
+            "text": "A late carrier delivery after an on-time dispatch is not itself a standard credit trigger."
+          }
+        ]
+      }
+    ]
+  }
+]

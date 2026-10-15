@@ -88,6 +88,60 @@ uv run uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000 --no-acc
 ```cmd
  uv run streamlit run src/frontend/main.py
 ```
+
+## DeepEval RAG evaluations
+
+The repository contains two DeepEval RAG evaluation scripts:
+
+- `tests/RAG_evals/single_turn_test.py` — evaluates independent, single-turn RAG questions.
+- `tests/RAG_evals/multi_turn_rag_test.py` — evaluates conversations containing multiple related turns.
+
+Run the evaluations from the repository root with `uv`:
+
+```bash
+uv run python tests/RAG_evals/single_turn_test.py
+uv run python tests/RAG_evals/multi_turn_rag_test.py
+```
+
+The evaluations use the RAG evaluation settings in the repository-root `.env` file. The default configuration uses the local `llama3:8b` model. Configure the model, generation parameters, and the account whose documents are searched with these variables:
+
+```env
+TEST_DEEPEVALS_MODEL="llama3:8b"
+TEST_DEEPEVALS_TEMP=0
+TEST_DEEPEVALS_TOP_K=40
+TEST_DEEPEVALS_TOP_P=0.9
+TEST_DEEPEVALS_NUM_CTX=4096
+TEST_DEEPEVALS_NUM_PREDICT=300
+TEST_DEEPEVALS_REPEAT_PENALTY=1.1
+TEST_DEEPEVALS_IS_THINKING=false
+TEST_DEEPEVALS_USER_ID=1
+```
+
+`TEST_DEEPEVALS_USER_ID` must be the ID of the dedicated user who owns the evaluation documents. These values belong in `.env`, not `.env.tests`.
+
+If DeepEval reports a timeout, increase its per-attempt and per-task timeouts before running the command again:
+
+```bash
+export DEEPEVAL_PER_ATTEMPT_TIMEOUT_SECONDS_OVERRIDE=600
+export DEEPEVAL_PER_TASK_TIMEOUT_SECONDS_OVERRIDE=600
+
+uv run python tests/RAG_evals/single_turn_test.py
+# or
+uv run python tests/RAG_evals/multi_turn_rag_test.py
+```
+
+The value `600` is only a starting point. Adjust it to match the available hardware, the selected model, and whether the evaluation is running asynchronously.
+
+### Preparing documents for RAG evaluation
+
+The RAG evaluation scripts retrieve context from the vector store, so the source document used by the goldens must be uploaded and indexed before running an evaluation. Upload the document through the `POST /v1/file` endpoint defined in `src/backend/api/router/v1.py`. The endpoint saves the file, splits it into chunks, and creates embeddings for those chunks.
+
+For repeatable evaluation runs, create a dedicated test account, upload the evaluation document while authenticated as that user, and set `TEST_DEEPEVALS_USER_ID` in `.env` to the returned user ID, for example `42`. Do not add this value to `.env.tests`.
+
+This is important because retrieval is scoped by `user_id`: the RAG chain must return only documents and chunks belonging to the test user. If the document is uploaded under a different account, or the script uses the wrong ID, the evaluation may retrieve no context or context from the wrong user's documents.
+
+In the future, I will improve the functionality or rethink this approach to make preparing and running the evaluations easier.
+
 ## Architecture
 
 Frontend:

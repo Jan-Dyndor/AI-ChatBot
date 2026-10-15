@@ -1,0 +1,565 @@
+[
+  {
+    "id": "S01",
+    "difficulty": "direct",
+    "topic": "document_control",
+    "input": "What is the effective date and version of the handbook?",
+    "expected_output": "The handbook is version 2.4 and took effect on 1 October 2026.",
+    "source_pages": [
+      1
+    ],
+    "context": [
+      "Version 2.4 supersedes version 2.3. When a Q3 performance result seems different from a Q4 service target, treat the result as a historical observation, not as a revised target. Page 10 lists the Q4 policy changes. Page 9 contains the July-September historical performance records.",
+      "Field | Value\nDocument ID | HF-OPS-2026-Q4\nVersion | 2.4\nEffective date | 1 October 2026\nOwner | Operations Excellence\nClassification | Synthetic benchmark / public test data"
+    ],
+    "evidence": [
+      {
+        "page": 1,
+        "text": "Version 2.4 supersedes version 2.3. When a Q3 performance result seems different from a Q4 service target, treat the result as a historical observation, not as a revised target. Page 10 lists the Q4 policy changes. Page 9 contains the July-September historical performance records."
+      },
+      {
+        "page": 1,
+        "text": "Field | Value\nDocument ID | HF-OPS-2026-Q4\nVersion | 2.4\nEffective date | 1 October 2026\nOwner | Operations Excellence\nClassification | Synthetic benchmark / public test data"
+      }
+    ]
+  },
+  {
+    "id": "S02",
+    "difficulty": "direct",
+    "topic": "cutoffs",
+    "input": "What is the Standard order cutoff in the current policy?",
+    "expected_output": "16:00, Monday through Friday, Europe/Warsaw time.",
+    "source_pages": [
+      2,
+      10
+    ],
+    "context": [
+      "These dispatch targets apply only to accepted orders received no later than the listed cutoff. An order that arrives after the cutoff joins the next eligible business-day processing cycle. For example, a Standard order accepted at 16:15 on Tuesday is due for dispatch by 22:00 on Wednesday, provided Wednesday is a business day.",
+      "The Standard order cutoff changed from 15:00 in version 2.3 to 16:00 in version 2.4. The Express cutoff remains 14:00 and the Chilled Grocery cutoff remains 12:00 Monday through Thursday. The Friday chilled-order default remains a hold for Monday dispatch except for a Quality-Lead-approved exceptional route.",
+      "Tier | Order cutoff | Dispatch target | Delivery expectation\nStandard | 16:00 Mon-Fri | 22:00 same business day | Within 2 business days after dispatch\nExpress | 14:00 Mon-Fri | 18:00 same business day | Next business day after dispatch\nChilled Grocery | 12:00 Mon-Thu | 16:00 same business day | Next business day after dispatch"
+    ],
+    "evidence": [
+      {
+        "page": 2,
+        "text": "These dispatch targets apply only to accepted orders received no later than the listed cutoff. An order that arrives after the cutoff joins the next eligible business-day processing cycle. For example, a Standard order accepted at 16:15 on Tuesday is due for dispatch by 22:00 on Wednesday, provided Wednesday is a business day."
+      },
+      {
+        "page": 10,
+        "text": "The Standard order cutoff changed from 15:00 in version 2.3 to 16:00 in version 2.4. The Express cutoff remains 14:00 and the Chilled Grocery cutoff remains 12:00 Monday through Thursday. The Friday chilled-order default remains a hold for Monday dispatch except for a Quality-Lead-approved exceptional route."
+      },
+      {
+        "page": 2,
+        "text": "Tier | Order cutoff | Dispatch target | Delivery expectation\nStandard | 16:00 Mon-Fri | 22:00 same business day | Within 2 business days after dispatch\nExpress | 14:00 Mon-Fri | 18:00 same business day | Next business day after dispatch\nChilled Grocery | 12:00 Mon-Thu | 16:00 same business day | Next business day after dispatch"
+      }
+    ]
+  },
+  {
+    "id": "S03",
+    "difficulty": "direct",
+    "topic": "service_levels",
+    "input": "When must an on-time accepted Express order be dispatched?",
+    "expected_output": "By 18:00 on the same business day, when the order is accepted by 14:00 Monday through Friday.",
+    "source_pages": [
+      2
+    ],
+    "context": [
+      "These dispatch targets apply only to accepted orders received no later than the listed cutoff. An order that arrives after the cutoff joins the next eligible business-day processing cycle. For example, a Standard order accepted at 16:15 on Tuesday is due for dispatch by 22:00 on Wednesday, provided Wednesday is a business day.",
+      "Tier | Order cutoff | Dispatch target | Delivery expectation\nStandard | 16:00 Mon-Fri | 22:00 same business day | Within 2 business days after dispatch\nExpress | 14:00 Mon-Fri | 18:00 same business day | Next business day after dispatch\nChilled Grocery | 12:00 Mon-Thu | 16:00 same business day | Next business day after dispatch"
+    ],
+    "evidence": [
+      {
+        "page": 2,
+        "text": "These dispatch targets apply only to accepted orders received no later than the listed cutoff. An order that arrives after the cutoff joins the next eligible business-day processing cycle. For example, a Standard order accepted at 16:15 on Tuesday is due for dispatch by 22:00 on Wednesday, provided Wednesday is a business day."
+      },
+      {
+        "page": 2,
+        "text": "Tier | Order cutoff | Dispatch target | Delivery expectation\nStandard | 16:00 Mon-Fri | 22:00 same business day | Within 2 business days after dispatch\nExpress | 14:00 Mon-Fri | 18:00 same business day | Next business day after dispatch\nChilled Grocery | 12:00 Mon-Thu | 16:00 same business day | Next business day after dispatch"
+      }
+    ]
+  },
+  {
+    "id": "S04",
+    "difficulty": "logic",
+    "topic": "exceptions",
+    "input": "A Chilled Grocery order is placed on Friday. What normally happens, and who can approve an exception?",
+    "expected_output": "It is normally held for Monday dispatch. An exceptional Friday route requires advance approval from the Quality Lead.",
+    "source_pages": [
+      2,
+      10
+    ],
+    "context": [
+      "Standard and Express orders received on Saturday, Sunday or a Polish public holiday enter the queue for the next business day. Chilled Grocery orders are normally accepted for dispatch Monday through Thursday only. Chilled Grocery orders placed on Friday are held for Monday dispatch unless the Quality Lead has approved an exceptional Friday route in advance."
+    ],
+    "evidence": [
+      {
+        "page": 2,
+        "text": "Standard and Express orders received on Saturday, Sunday or a Polish public holiday enter the queue for the next business day. Chilled Grocery orders are normally accepted for dispatch Monday through Thursday only. Chilled Grocery orders placed on Friday are held for Monday dispatch unless the Quality Lead has approved an exceptional Friday route in advance."
+      }
+    ]
+  },
+  {
+    "id": "S05",
+    "difficulty": "direct",
+    "topic": "definitions",
+    "input": "Does printing a shipping label count as dispatch?",
+    "expected_output": "No. Dispatch occurs only when the first carrier acceptance scan is recorded.",
+    "source_pages": [
+      1,
+      4
+    ],
+    "context": [
+      "An accepted order has passed data validation and entered the warehouse queue. A dispatched shipment has received the first carrier acceptance scan; printing a label or moving a parcel to a staging shelf is not dispatch. A tote is a numbered transport container that may contain more than one chilled-grocery order. A temperature alert is not automatically the same as a quality hold."
+    ],
+    "evidence": [
+      {
+        "page": 1,
+        "text": "An accepted order has passed data validation and entered the warehouse queue. A dispatched shipment has received the first carrier acceptance scan; printing a label or moving a parcel to a staging shelf is not dispatch. A tote is a numbered transport container that may contain more than one chilled-grocery order. A temperature alert is not automatically the same as a quality hold."
+      }
+    ]
+  },
+  {
+    "id": "S06",
+    "difficulty": "direct",
+    "topic": "warehouse",
+    "input": "Which warehouse is authorized to pick chilled-grocery orders?",
+    "expected_output": "WRO-1 in Wroclaw. POZ-2 does not hold chilled inventory.",
+    "source_pages": [
+      3
+    ],
+    "context": [
+      "WRO-1 (Wroclaw) handles all chilled grocery stock and a limited ambient overflow zone. POZ-2 (Poznan) handles the primary ambient catalog and returns inspection. A chilled order may be picked only at WRO-1; POZ-2 does not hold chilled inventory."
+    ],
+    "evidence": [
+      {
+        "page": 3,
+        "text": "WRO-1 (Wroclaw) handles all chilled grocery stock and a limited ambient overflow zone. POZ-2 (Poznan) handles the primary ambient catalog and returns inspection. A chilled order may be picked only at WRO-1; POZ-2 does not hold chilled inventory."
+      }
+    ]
+  },
+  {
+    "id": "S07",
+    "difficulty": "logic",
+    "topic": "inventory_thresholds",
+    "input": "An inbound SKU shows 197 received units versus 200 expected. Does the standard variance rule require escalation?",
+    "expected_output": "No. The difference is three units (not greater than three) and 1.5% (not greater than 2%).",
+    "source_pages": [
+      3
+    ],
+    "context": [
+      "For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore requires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does not cross either escalation threshold. Negative and positive variances follow the same rule."
+    ],
+    "evidence": [
+      {
+        "page": 3,
+        "text": "For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore requires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does not cross either escalation threshold. Negative and positive variances follow the same rule."
+      }
+    ]
+  },
+  {
+    "id": "S08",
+    "difficulty": "logic",
+    "topic": "inventory_thresholds",
+    "input": "An inbound SKU shows 97 received units versus 100 expected. Does it require escalation, and why?",
+    "expected_output": "Yes. The three-unit variance equals 3%, which exceeds the 2% threshold despite not exceeding three units.",
+    "source_pages": [
+      3
+    ],
+    "context": [
+      "For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore requires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does not cross either escalation threshold. Negative and positive variances follow the same rule."
+    ],
+    "evidence": [
+      {
+        "page": 3,
+        "text": "For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore requires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does not cross either escalation threshold. Negative and positive variances follow the same rule."
+      }
+    ]
+  },
+  {
+    "id": "S09",
+    "difficulty": "direct",
+    "topic": "temperature",
+    "input": "What continuous temperature condition causes a chilled storage alert?",
+    "expected_output": "Above 6 degrees Celsius for more than 10 consecutive minutes.",
+    "source_pages": [
+      3,
+      10
+    ],
+    "context": [
+      "The chilled-grocery storage target is 2-6 degrees Celsius. A temperature alert is raised when a monitored location is above 6 degrees Celsius for more than 10 consecutive minutes. A quality hold is mandatory when the measured temperature is above 8 degrees Celsius for more than 5 consecutive minutes. The quality hold remains active until a documented release decision is recorded by the Quality Lead."
+    ],
+    "evidence": [
+      {
+        "page": 3,
+        "text": "The chilled-grocery storage target is 2-6 degrees Celsius. A temperature alert is raised when a monitored location is above 6 degrees Celsius for more than 10 consecutive minutes. A quality hold is mandatory when the measured temperature is above 8 degrees Celsius for more than 5 consecutive minutes. The quality hold remains active until a documented release decision is recorded by the Quality Lead."
+      }
+    ]
+  },
+  {
+    "id": "S10",
+    "difficulty": "direct",
+    "topic": "temperature",
+    "input": "What temperature condition requires a mandatory chilled-goods quality hold?",
+    "expected_output": "Above 8 degrees Celsius for more than 5 consecutive minutes.",
+    "source_pages": [
+      3,
+      5,
+      10
+    ],
+    "context": [
+      "The chilled-grocery storage target is 2-6 degrees Celsius. A temperature alert is raised when a monitored location is above 6 degrees Celsius for more than 10 consecutive minutes. A quality hold is mandatory when the measured temperature is above 8 degrees Celsius for more than 5 consecutive minutes. The quality hold remains active until a documented release decision is recorded by the Quality Lead."
+    ],
+    "evidence": [
+      {
+        "page": 3,
+        "text": "The chilled-grocery storage target is 2-6 degrees Celsius. A temperature alert is raised when a monitored location is above 6 degrees Celsius for more than 10 consecutive minutes. A quality hold is mandatory when the measured temperature is above 8 degrees Celsius for more than 5 consecutive minutes. The quality hold remains active until a documented release decision is recorded by the Quality Lead."
+      }
+    ]
+  },
+  {
+    "id": "S11",
+    "difficulty": "logic",
+    "topic": "packing",
+    "input": "Does a Chilled Grocery order worth PLN 320 with four units need an independent second check?",
+    "expected_output": "Yes. Every chilled order containing four or more units needs a second check, regardless of value.",
+    "source_pages": [
+      4
+    ],
+    "context": [
+      "An independent second check is required for any order with merchandise value of at least PLN 500, regardless of service tier. The same check is required for any Chilled Grocery order containing four or more individual units, even if its value is below PLN 500. Meeting either rule is enough; both rules need not apply."
+    ],
+    "evidence": [
+      {
+        "page": 4,
+        "text": "An independent second check is required for any order with merchandise value of at least PLN 500, regardless of service tier. The same check is required for any Chilled Grocery order containing four or more individual units, even if its value is below PLN 500. Meeting either rule is enough; both rules need not apply."
+      }
+    ]
+  },
+  {
+    "id": "S12",
+    "difficulty": "direct",
+    "topic": "telemetry",
+    "input": "What happens if a chilled-tote telemetry upload gap exceeds 60 minutes?",
+    "expected_output": "A manual quality assessment is required before the tote can be closed as compliant; the gap alone does not prove spoiled goods.",
+    "source_pages": [
+      5
+    ],
+    "context": [
+      "A telemetry upload gap longer than 30 minutes creates a data-gap flag for investigation. A gap longer than 60 minutes requires manual quality assessment before the related tote can be closed as compliant. A data gap alone does not prove a temperature excursion or require automatic disposal of the goods."
+    ],
+    "evidence": [
+      {
+        "page": 5,
+        "text": "A telemetry upload gap longer than 30 minutes creates a data-gap flag for investigation. A gap longer than 60 minutes requires manual quality assessment before the related tote can be closed as compliant. A data gap alone does not prove a temperature excursion or require automatic disposal of the goods."
+      }
+    ]
+  },
+  {
+    "id": "S13",
+    "difficulty": "multihop",
+    "topic": "incident",
+    "input": "A temperature hold affects 12 chilled totes. Which incident severity example applies, and how quickly must the incident be acknowledged?",
+    "expected_output": "SEV1, with acknowledgment within 15 minutes of incident creation.",
+    "source_pages": [
+      3,
+      6
+    ],
+    "context": [
+      "For SEV1, the Operations Manager coordinates the site response, and the Quality Lead decides the product disposition. The first report within four hours summarizes scope, known facts, evidence gaps and containment status. It is not required to establish the root cause within four hours.",
+      "The clock starts when the incident is created in the incident register, not when a manager first reads a message. The illustrative triggers in the table do not rule out other causes of equivalent impact; the Quality Lead makes the final determination when chilled-product integrity is at risk.",
+      "Severity | Illustrative trigger | Acknowledge | Escalate | Initial report\nSEV1 | Mandatory hold affecting >10 totes | 15 minutes | 60 minutes | Within 4 hours\nSEV2 | Delivery disruption affecting >30 orders | 1 hour | 4 hours | 1 business day\nSEV3 | Single-parcel cosmetic packaging issue | 1 business day | No fixed deadline | Weekly summary"
+    ],
+    "evidence": [
+      {
+        "page": 6,
+        "text": "For SEV1, the Operations Manager coordinates the site response, and the Quality Lead decides the product disposition. The first report within four hours summarizes scope, known facts, evidence gaps and containment status. It is not required to establish the root cause within four hours."
+      },
+      {
+        "page": 6,
+        "text": "The clock starts when the incident is created in the incident register, not when a manager first reads a message. The illustrative triggers in the table do not rule out other causes of equivalent impact; the Quality Lead makes the final determination when chilled-product integrity is at risk."
+      },
+      {
+        "page": 6,
+        "text": "Severity | Illustrative trigger | Acknowledge | Escalate | Initial report\nSEV1 | Mandatory hold affecting >10 totes | 15 minutes | 60 minutes | Within 4 hours\nSEV2 | Delivery disruption affecting >30 orders | 1 hour | 4 hours | 1 business day\nSEV3 | Single-parcel cosmetic packaging issue | 1 business day | No fixed deadline | Weekly summary"
+      }
+    ]
+  },
+  {
+    "id": "S14",
+    "difficulty": "direct",
+    "topic": "incident",
+    "input": "What are the SEV2 acknowledgment and escalation deadlines?",
+    "expected_output": "Acknowledge within 1 hour and escalate within 4 hours after incident creation.",
+    "source_pages": [
+      6
+    ],
+    "context": [
+      "The clock starts when the incident is created in the incident register, not when a manager first reads a message. The illustrative triggers in the table do not rule out other causes of equivalent impact; the Quality Lead makes the final determination when chilled-product integrity is at risk.",
+      "Severity | Illustrative trigger | Acknowledge | Escalate | Initial report\nSEV1 | Mandatory hold affecting >10 totes | 15 minutes | 60 minutes | Within 4 hours\nSEV2 | Delivery disruption affecting >30 orders | 1 hour | 4 hours | 1 business day\nSEV3 | Single-parcel cosmetic packaging issue | 1 business day | No fixed deadline | Weekly summary"
+    ],
+    "evidence": [
+      {
+        "page": 6,
+        "text": "The clock starts when the incident is created in the incident register, not when a manager first reads a message. The illustrative triggers in the table do not rule out other causes of equivalent impact; the Quality Lead makes the final determination when chilled-product integrity is at risk."
+      },
+      {
+        "page": 6,
+        "text": "Severity | Illustrative trigger | Acknowledge | Escalate | Initial report\nSEV1 | Mandatory hold affecting >10 totes | 15 minutes | 60 minutes | Within 4 hours\nSEV2 | Delivery disruption affecting >30 orders | 1 hour | 4 hours | 1 business day\nSEV3 | Single-parcel cosmetic packaging issue | 1 business day | No fixed deadline | Weekly summary"
+      }
+    ]
+  },
+  {
+    "id": "S15",
+    "difficulty": "multihop",
+    "topic": "claims",
+    "input": "A client reports a damaged delivery and later receives RMA approval. State the claim-submission deadline and the time allowed to send the approved return.",
+    "expected_output": "The initial damage claim is due within 3 business days after delivery; the approved return must be sent back within 14 calendar days after RMA approval.",
+    "source_pages": [
+      7
+    ],
+    "context": [
+      "Clients must report a missing-item or visible-damage claim within three business days after delivery. A valid claim includes the shipment ID, the affected SKU, a short description of the problem and supporting photographs for visible damage. For missing items, the client provides the packing list and the quantity received; photographs are requested only when helpful.",
+      "After reviewing evidence, Customer Operations must issue an approval or rejection decision on a return merchandise authorization (RMA) request within two business days. If approved, the client has 14 calendar days from the approval date to send the product back. POZ-2 inspects received ambient returns within two business days of arrival."
+    ],
+    "evidence": [
+      {
+        "page": 7,
+        "text": "Clients must report a missing-item or visible-damage claim within three business days after delivery. A valid claim includes the shipment ID, the affected SKU, a short description of the problem and supporting photographs for visible damage. For missing items, the client provides the packing list and the quantity received; photographs are requested only when helpful."
+      },
+      {
+        "page": 7,
+        "text": "After reviewing evidence, Customer Operations must issue an approval or rejection decision on a return merchandise authorization (RMA) request within two business days. If approved, the client has 14 calendar days from the approval date to send the product back. POZ-2 inspects received ambient returns within two business days of arrival."
+      }
+    ]
+  },
+  {
+    "id": "S16",
+    "difficulty": "direct",
+    "topic": "claims",
+    "input": "When must Finance issue a refund after formal financial approval?",
+    "expected_output": "Within 5 business days after the refund or credit note is formally approved.",
+    "source_pages": [
+      7
+    ],
+    "context": [
+      "Once a claim or return refund is formally approved, Finance issues the refund or credit note within five business days. The refund timer begins at financial approval, not at original delivery and not when a client creates the initial complaint."
+    ],
+    "evidence": [
+      {
+        "page": 7,
+        "text": "Once a claim or return refund is formally approved, Finance issues the refund or credit note within five business days. The refund timer begins at financial approval, not at original delivery and not when a client creates the initial complaint."
+      }
+    ]
+  },
+  {
+    "id": "S17",
+    "difficulty": "math",
+    "topic": "pricing",
+    "input": "How much are the fulfillment fees for ten Express parcels and five Chilled Grocery parcels, excluding storage and taxes?",
+    "expected_output": "PLN 239.50: 10 × PLN 14.20 plus 5 × PLN 19.50.",
+    "source_pages": [
+      8
+    ],
+    "context": [
+      "Ten Express parcels plus five Chilled Grocery parcels cost PLN 239.50 in fulfillment fees, before storage and taxes."
+    ],
+    "evidence": [
+      {
+        "page": 8,
+        "text": "Ten Express parcels plus five Chilled Grocery parcels cost PLN 239.50 in fulfillment fees, before storage and taxes."
+      }
+    ]
+  },
+  {
+    "id": "S18",
+    "difficulty": "multihop",
+    "topic": "service_credit",
+    "input": "An eligible Express parcel misses its dispatch deadline. What is its standard service credit, and what is the monthly client cap?",
+    "expected_output": "PLN 2.84 for that parcel (20% of PLN 14.20), subject to a PLN 300 total monthly service-credit cap per client.",
+    "source_pages": [
+      8
+    ],
+    "context": [
+      "Clients must submit service-credit requests within ten business days after the end of the service month. Finance validates accepted timestamps, carrier scans, exclusions and the monthly cap. For one eligible late Express parcel, the standard 20% credit is PLN 2.84 (20% of PLN 14.20), subject to the client monthly cap.",
+      "A client may request a credit when Harborline misses the published dispatch deadline for an eligible, on-time accepted order. The standard credit is 20% of the fulfillment fee for the affected parcel; it is not 20% of the merchandise value or the entire invoice. Total service credits for one client are capped at PLN 300 per calendar month."
+    ],
+    "evidence": [
+      {
+        "page": 8,
+        "text": "Clients must submit service-credit requests within ten business days after the end of the service month. Finance validates accepted timestamps, carrier scans, exclusions and the monthly cap. For one eligible late Express parcel, the standard 20% credit is PLN 2.84 (20% of PLN 14.20), subject to the client monthly cap."
+      },
+      {
+        "page": 8,
+        "text": "A client may request a credit when Harborline misses the published dispatch deadline for an eligible, on-time accepted order. The standard credit is 20% of the fulfillment fee for the affected parcel; it is not 20% of the merchandise value or the entire invoice. Total service credits for one client are capped at PLN 300 per calendar month."
+      }
+    ]
+  },
+  {
+    "id": "S19",
+    "difficulty": "direct",
+    "topic": "service_credit",
+    "input": "Does an on-time dispatched Express parcel qualify for the standard dispatch credit if the carrier delivers it late?",
+    "expected_output": "No. A late carrier delivery after an on-time dispatch is not itself a standard dispatch-credit trigger.",
+    "source_pages": [
+      2,
+      8
+    ],
+    "context": [
+      "No standard dispatch credit is payable for an order received after the published cutoff, a customer-address validation failure or a documented force-majeure interruption. A late carrier delivery after an on-time dispatch is not itself a standard credit trigger. Contract-specific remedies outside this handbook are not part of this benchmark."
+    ],
+    "evidence": [
+      {
+        "page": 8,
+        "text": "No standard dispatch credit is payable for an order received after the published cutoff, a customer-address validation failure or a documented force-majeure interruption. A late carrier delivery after an on-time dispatch is not itself a standard credit trigger. Contract-specific remedies outside this handbook are not part of this benchmark."
+      }
+    ]
+  },
+  {
+    "id": "S20",
+    "difficulty": "logic",
+    "topic": "q3_metrics",
+    "input": "Which Q3 2026 months would have met the Q4 on-time dispatch target of at least 99.2%?",
+    "expected_output": "September only (99.4%); July was 98.6% and August was 99.1%.",
+    "source_pages": [
+      9
+    ],
+    "context": [
+      "The Q4 target for on-time dispatch is at least 99.2% per calendar month across the service tiers. September 2026 (99.4%) would meet that target if judged against it, whereas August (99.1%) and July (98.6%) would not. The Q4 operational threshold for chilled temperature alerts is no more than eight per month; only September meets that threshold among these three months.",
+      "Indicator | July | August | September\nAccepted orders | 18,400 | 19,250 | 21,000\nOn-time dispatch | 98.6% | 99.1% | 99.4%\nPick accuracy | 99.62% | 99.70% | 99.78%\nChilled temperature alerts | 14 | 9 | 6\nTelemetry gaps >30 minutes | 4 | 3 | 1"
+    ],
+    "evidence": [
+      {
+        "page": 9,
+        "text": "The Q4 target for on-time dispatch is at least 99.2% per calendar month across the service tiers. September 2026 (99.4%) would meet that target if judged against it, whereas August (99.1%) and July (98.6%) would not. The Q4 operational threshold for chilled temperature alerts is no more than eight per month; only September meets that threshold among these three months."
+      },
+      {
+        "page": 9,
+        "text": "Indicator | July | August | September\nAccepted orders | 18,400 | 19,250 | 21,000\nOn-time dispatch | 98.6% | 99.1% | 99.4%\nPick accuracy | 99.62% | 99.70% | 99.78%\nChilled temperature alerts | 14 | 9 | 6\nTelemetry gaps >30 minutes | 4 | 3 | 1"
+      }
+    ]
+  },
+  {
+    "id": "S21",
+    "difficulty": "math",
+    "topic": "q3_metrics",
+    "input": "By how many percentage points did pick accuracy improve from July to September 2026?",
+    "expected_output": "0.16 percentage points (99.78% minus 99.62%).",
+    "source_pages": [
+      9
+    ],
+    "context": [
+      "Between July and September, pick accuracy rose from 99.62% to 99.78%, an increase of 0.16 percentage points. Chilled temperature alerts fell from 14 to 6, a reduction of eight events. Do not report the 0.16-point increase as a 0.16% relative improvement."
+    ],
+    "evidence": [
+      {
+        "page": 9,
+        "text": "Between July and September, pick accuracy rose from 99.62% to 99.78%, an increase of 0.16 percentage points. Chilled temperature alerts fell from 14 to 6, a reduction of eight events. Do not report the 0.16-point increase as a 0.16% relative improvement."
+      }
+    ]
+  },
+  {
+    "id": "S22",
+    "difficulty": "math",
+    "topic": "q3_metrics",
+    "input": "How many fewer chilled temperature alerts occurred in September than in July?",
+    "expected_output": "Eight fewer alerts (14 in July versus 6 in September).",
+    "source_pages": [
+      9
+    ],
+    "context": [
+      "Between July and September, pick accuracy rose from 99.62% to 99.78%, an increase of 0.16 percentage points. Chilled temperature alerts fell from 14 to 6, a reduction of eight events. Do not report the 0.16-point increase as a 0.16% relative improvement."
+    ],
+    "evidence": [
+      {
+        "page": 9,
+        "text": "Between July and September, pick accuracy rose from 99.62% to 99.78%, an increase of 0.16 percentage points. Chilled temperature alerts fell from 14 to 6, a reduction of eight events. Do not report the 0.16-point increase as a 0.16% relative improvement."
+      }
+    ]
+  },
+  {
+    "id": "S23",
+    "difficulty": "multihop",
+    "topic": "governance",
+    "input": "Who may release goods from a mandatory quality hold, and who is responsible for telemetry integrity?",
+    "expected_output": "Lena Ortiz, the Quality Lead, may authorize release after reviewing evidence. Nika Rao, the Data Operations Lead, is responsible for telemetry integrity.",
+    "source_pages": [
+      10
+    ],
+    "context": [
+      "Only the Quality Lead can approve release from a mandatory chilled-goods quality hold after reviewing temperature records and supporting evidence. Operations staff and carrier managers cannot self-release affected product. The Data Operations Lead can correct a sensor record but cannot authorize the physical release of chilled goods.",
+      "Role | Named owner | Authorized decision\nOperations Manager | Mara Ellis | Staffing and dispatch recovery\nQuality Lead | Lena Ortiz | Chilled route exception and release of a quality hold\nFinance Owner | Theo Park | Credit and refund authorization\nData Operations Lead | Nika Rao | Telemetry integrity and dashboard corrections"
+    ],
+    "evidence": [
+      {
+        "page": 10,
+        "text": "Only the Quality Lead can approve release from a mandatory chilled-goods quality hold after reviewing temperature records and supporting evidence. Operations staff and carrier managers cannot self-release affected product. The Data Operations Lead can correct a sensor record but cannot authorize the physical release of chilled goods."
+      },
+      {
+        "page": 10,
+        "text": "Role | Named owner | Authorized decision\nOperations Manager | Mara Ellis | Staffing and dispatch recovery\nQuality Lead | Lena Ortiz | Chilled route exception and release of a quality hold\nFinance Owner | Theo Park | Credit and refund authorization\nData Operations Lead | Nika Rao | Telemetry integrity and dashboard corrections"
+      }
+    ]
+  },
+  {
+    "id": "S24",
+    "difficulty": "direct",
+    "topic": "retention",
+    "input": "How long are telemetry and formal claim case files retained?",
+    "expected_output": "Temperature telemetry is retained for 180 days after collection; formal claim case files for 24 months after closure.",
+    "source_pages": [
+      10
+    ],
+    "context": [
+      "Temperature telemetry is retained for 180 days after collection. Formal claim case files are retained for 24 months after closure. If a site poster or an archived email contradicts version 2.4 of this handbook, version 2.4 takes precedence for events on or after 1 October 2026; historical events are judged by the version in force on their event date."
+    ],
+    "evidence": [
+      {
+        "page": 10,
+        "text": "Temperature telemetry is retained for 180 days after collection. Formal claim case files are retained for 24 months after closure. If a site poster or an archived email contradicts version 2.4 of this handbook, version 2.4 takes precedence for events on or after 1 October 2026; historical events are judged by the version in force on their event date."
+      }
+    ]
+  },
+  {
+    "id": "S25",
+    "difficulty": "unanswerable",
+    "topic": "abstention",
+    "input": "Who is the chief executive officer (CEO) of Harborline Fulfillment?",
+    "expected_output": "The CEO is not specified in the handbook.",
+    "source_pages": [
+      10
+    ],
+    "context": [
+      "Use the effective-date rule when comparing a historical number with a current policy. The CEO name and international shipping tariffs are deliberately absent from this document."
+    ],
+    "evidence": [
+      {
+        "page": 10,
+        "text": "Use the effective-date rule when comparing a historical number with a current policy. The CEO name and international shipping tariffs are deliberately absent from this document."
+      }
+    ]
+  },
+  {
+    "id": "S26",
+    "difficulty": "unanswerable",
+    "topic": "abstention",
+    "input": "What is the published tariff for international shipments from Poland to Germany?",
+    "expected_output": "The handbook does not specify international shipping tariffs; its scope is domestic Polish fulfillment.",
+    "source_pages": [
+      1,
+      10
+    ],
+    "context": [
+      "This handbook applies to orders accepted through Harborline systems for the WRO-1 and POZ-2 sites. It does not cover cross-border shipping, pharmaceuticals, dangerous goods or consumer-facing retail returns. All clock times use the Europe/Warsaw time zone, and a business day means Monday through Friday excluding Polish public holidays.",
+      "Use the effective-date rule when comparing a historical number with a current policy. The CEO name and international shipping tariffs are deliberately absent from this document."
+    ],
+    "evidence": [
+      {
+        "page": 1,
+        "text": "This handbook applies to orders accepted through Harborline systems for the WRO-1 and POZ-2 sites. It does not cover cross-border shipping, pharmaceuticals, dangerous goods or consumer-facing retail returns. All clock times use the Europe/Warsaw time zone, and a business day means Monday through Friday excluding Polish public holidays."
+      },
+      {
+        "page": 10,
+        "text": "Use the effective-date rule when comparing a historical number with a current policy. The CEO name and international shipping tariffs are deliberately absent from this document."
+      }
+    ]
+  }
+]

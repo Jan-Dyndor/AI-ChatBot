@@ -39,6 +39,36 @@ class Settings(BaseSettings):
     embedding_model: str = Field(validation_alias="EMBEDDING_MODEL")
     collection_name_vector_store: str = Field(default="AI_chat_bot_collection")
 
+    # TEST RAG EVALS
+    test_deepevals_model: str = Field(
+        default="llama3:8b", validation_alias="TEST_DEEPEVALS_MODEL"
+    )
+    test_deepevals_temp: int = Field(default=0, validation_alias="TEST_DEEPEVALS_TEMP")
+    test_deepevals_top_k: int = Field(
+        default=40, validation_alias="TEST_DEEPEVALS_TOP_K"
+    )
+    test_deepevals_top_p: float = Field(
+        default=0.9, validation_alias="TEST_DEEPEVALS_TOP_P"
+    )
+    test_deepevals_num_ctx: int = Field(
+        default=4096, validation_alias="TEST_DEEPEVALS_NUM_CTX"
+    )
+    test_deepevals_temp_num_predict: int = Field(
+        default=300, validation_alias="TEST_DEEPEVALS_NUM_PREDICT"
+    )
+    test_deepevals_repeat_penalty: float = Field(
+        default=1.1, validation_alias="TEST_DEEPEVALS_REPEAT_PENALTY"
+    )
+    test_deepevals_is_thinking: bool = Field(
+        default=False, validation_alias="TEST_DEEPEVALS_IS_THINKING"
+    )
+    #! DEFOULT VALUE FOR NOW
+    # Later I will implement soenm TEst account that will onely hacve its one docs or figure out better way than manuap file update on account
+    # That allows testing
+    test_deepevals_user_id: int = Field(
+        default=1, validation_alias="TEST_DEEPEVALS_USER_ID"
+    )
+
     model_config = SettingsConfigDict(
         env_file=root / ".env", env_file_encoding="utf-8", extra="ignore"
     )
@@ -50,5 +80,6 @@ def get_settings(env_file_location: str | Path | None = None) -> Settings:
         load_dotenv()  # to load env file to LangSmith lib
         return Settings()  # type: ignore
     else:
-        load_dotenv(dotenv_path=env_file_location)  # to load env file to LangSmith lib
+        # Explicit env files (used by tests) must override variables loaded earlier.
+        load_dotenv(dotenv_path=env_file_location, override=True)
         return Settings(_env_file=env_file_location, _env_file_encoding="utf-8")  # type: ignore

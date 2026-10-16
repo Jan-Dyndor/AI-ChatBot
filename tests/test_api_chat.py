@@ -1,8 +1,14 @@
 from unittest.mock import Mock, patch
 
-from backend.database.models import Users
+import sseclient
+
 from backend.api.schemas.pydantic_schemas import UserDB
-from backend.dependencies.depends import get_chat_repo, get_chat_service, get_current_user
+from backend.database.models import Users
+from backend.dependencies.depends import (
+    get_chat_repo,
+    get_chat_service,
+    get_current_user,
+)
 from backend.exceptions.exc import DataBaseResourceNotFound
 from backend.service.chat_service import ChatService
 
@@ -44,74 +50,6 @@ def test_chat_wrong_user_input_long(client, wrong_user_input_too_long, valid_tok
         headers={"Authorization": f"Bearer {valid_token}"},
     )
     assert response.status_code == 422
-
-
-# @patch.object(ChatBotClient, "create_conversation_title")
-# @patch.object(ChatBotClient, "stream_response")
-# def test_chat_streaming_happy(
-#     mock_stream_response,
-#     mock_create_conversation_title,
-#     client,
-#     happy_test_user_input_short,
-#     happy_model_stream_response,
-#     model_stream_response,
-#     valid_token,
-# ):
-#     """Full happy apth of /chat endpint. Saving user and bot mess to DB
-
-#     Args:
-#         mock_stream_response (Mock): Mock of LLM streaming response.
-#         mock_create_conversation_title (Mock): Mock of LLM title generation
-#          client (TestClient): TestClient from FastAPI. It invoked create_app function (creates DB, saves sessionmaker object in app.state, attaches middleware and router)
-
-#         happy_test_user_input_short (UserInput): ficxture tyo store user input and chat histroy, successfully converted into Pydantic models
-
-#         happy_model_stream_response (str): Generator that yields chunks of str as LLM response
-
-#         model_stream_response (str): LLM model response , whole message how it should look like
-
-#         test_user_db (Users): object instance of Users
-#     """
-
-#     mock_stream_response.side_effect = happy_model_stream_response
-#     mock_create_conversation_title.return_value = "test title"
-
-#     session = client.app.state.session_maker()
-#     user = Users(email="test@gmail.com", password_hash="test")
-#     session.add(user)
-#     session.commit()
-
-#     conversation_example = Conversations(user_id=user.id)
-#     session.add(conversation_example)
-#     session.commit()
-
-#     response = client.post(
-#         "v1/chat",
-#         json=happy_test_user_input_short,
-#         headers={"Authorization": f"Bearer {valid_token}"},
-#     )
-
-#     chunks = []
-#     for chunk in response.iter_text():
-#         chunks.append(chunk)
-
-#     full_response_txt = "".join(chunks)
-#     assert full_response_txt.strip() == model_stream_response
-#     mock_stream_response.assert_called_once()
-#     client.app.dependency_overrides.clear()
-
-#     # DB
-
-#     mess = session.query(Messages).all()
-
-#     assert mess[0].content == "What are you?"
-#     assert (
-#         mess[1].content.strip()
-#         == "I am powerfull AI! I am here to destroy you! ".strip()
-#     )
-
-#     conv = session.query(Conversations).where(Conversations.user_id == user.id).first()
-#     assert conv.summary == "test title"
 
 
 def test_chat_streaming_save_user_input_error(
@@ -161,6 +99,7 @@ def test_chat_streaming_save_bot_output_error(
     repo_mock.chat_history.return_value = []
     repo_mock.save_bot_output.side_effect = DataBaseResourceNotFound()
     rag_chain = Mock()
+    # rag_chain.stream.return_value = ServerSentEvent(event="token", data="answer")
     rag_chain.stream.return_value = [{"answer": "answer"}]
 
     # Keep the real service generator in the request path: it is responsible for
@@ -180,10 +119,13 @@ def test_chat_streaming_save_bot_output_error(
     finally:
         client.app.dependency_overrides.clear()
 
+    events = list(sseclient.SSEClient(response.iter_bytes()).events())
     assert (
         response.status_code == 200
     )  # ! Even when error occured , StreamingResponse has already started so HTTP response is 200. Error is visible in logs only
-    assert response.text == "answer"
+    assert len(events) == 1
+    assert events[0].event == "token"
+    assert events[0].data == "answer"
     repo_mock.save_bot_output.assert_called_once_with(
         output="answer", conversation_id=1, user_id=1
     )

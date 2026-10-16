@@ -1,10 +1,12 @@
 from uuid import uuid4
 
 import requests
+import sseclient
 import streamlit as st
 from loguru import logger
 
 from backend.configuration.settings import get_settings
+from frontend.frontend_exceptions.frontend_exceptions import ChatStreamError
 
 settings = get_settings()
 
@@ -416,38 +418,49 @@ def get_ai_response(
                 stream=True,
             )
 
-            logger.debug(f"LLM response recived with status {response.status_code}")
+            try:
+                logger.debug(f"LLM response recived with status {response.status_code}")
 
-            if response.status_code == 422:
-                response_json = response.json()
-                logger.error(f"Input error by Pydantic: {response_json.get("message")}")
-                yield f"\n\n\n\n\n[ERROR] {response_json.get("message")}"
-                return
-            elif response.status_code == 404:
-                response_json = response.json()
-                logger.error(response_json.get("message"))
-                yield "\n\n\n\n\n[ERROR] DataBase error occured. Check logs"
-                return
-            elif response.status_code == 401:
-                response_json = response.json()
-                logger.error(response_json.get("message"))
-                yield "\n\n\n\n\n[ERROR] Could not validate credentials. Token might be outdated. Login."
-                return
-            elif response.status_code == 502:
-                response_json = response.json()
-                logger.error(response_json.get("message"))
-                yield "\n\n\n\n\n[ERROR] Ollama might not be working on your machine."
-                return
-            elif response.status_code == 409:
-                response_json = response.json()
-                logger.error(response_json.get("message"))
-                yield "\n\n\n\n\n[ERROR] This conversation is currently processing another request. Please wait until it finishes and try again."
-                return
+                if response.status_code == 422:
+                    response_json = response.json()
+                    logger.error(
+                        f"Input error by Pydantic: {response_json.get('message')}"
+                    )
+                    yield f"\n\n\n\n\n[ERROR] {response_json.get('message')}"
+                    return
+                elif response.status_code == 404:
+                    response_json = response.json()
+                    logger.error(response_json.get("message"))
+                    yield "\n\n\n\n\n[ERROR] DataBase error occured. Check logs"
+                    return
+                elif response.status_code == 401:
+                    response_json = response.json()
+                    logger.error(response_json.get("message"))
+                    yield "\n\n\n\n\n[ERROR] Could not validate credentials. Token might be outdated. Login."
+                    return
+                elif response.status_code == 502:
+                    response_json = response.json()
+                    logger.error(response_json.get("message"))
+                    yield "\n\n\n\n\n[ERROR] Ollama might not be working on your machine."
+                    return
+                elif response.status_code == 409:
+                    response_json = response.json()
+                    logger.error(response_json.get("message"))
+                    yield "\n\n\n\n\n[ERROR] This conversation is currently processing another request. Please wait until it finishes and try again."
+                    return
 
-            response.raise_for_status()
-
-            for chunk in response.iter_content(chunk_size=1024):
-                yield chunk.decode("utf-8")
+                response.raise_for_status()
+                client = sseclient.SSEClient(response)  # type: ignore
+                for event in client.events():
+                    if event.event == "token":
+                        yield event.data
+                    elif event.event == "error":
+                        logger.error(f"LLM SSE error: {event.data}")
+                        raise ChatStreamError(event.data)
+                    else:
+                        logger.warning(f"Unknown SSE event: {event.event}")
+            finally:
+                response.close()
 
         except requests.RequestException as error:
             logger.exception(f"Could not fetch LLM response. {error}")
@@ -483,6 +496,9 @@ def main() -> None:
 
     render_chat_history()
 
+    if error := st.session_state.pop("chat_error", None):
+        st.error(error)
+
     user_input = st.chat_input(
         "Write your message here...",
         disabled=st.session_state.disabled,
@@ -503,20 +519,26 @@ def main() -> None:
             with st.spinner("Thinking..."):
                 placeholder = st.empty()
                 ai_response = ""
-                for chunk in get_ai_response(
-                    user_input,
-                    model_name,  # type: ignore
-                    st.session_state.conversation_id,  # type: ignore,
-                    temperature,
-                    top_k,
-                    top_p,
-                    num_ctx,
-                    num_predict,
-                    repeat_penalty,
-                    reasoning,
-                ):
-                    ai_response += chunk
-                    placeholder.markdown(ai_response)
+                try:
+                    for chunk in get_ai_response(
+                        user_input,
+                        model_name,  # type: ignore
+                        st.session_state.conversation_id,  # type: ignore,
+                        temperature,
+                        top_k,
+                        top_p,
+                        num_ctx,
+                        num_predict,
+                        repeat_penalty,
+                        reasoning,
+                    ):
+                        ai_response += chunk
+                        placeholder.markdown(ai_response)
+                except ChatStreamError as error:
+                    st.session_state.chat_error = str(error)
+                    mark_conversation_history_stale()
+                    enable_conversation()
+                    st.rerun()
 
         st.session_state.messages.append(
             {

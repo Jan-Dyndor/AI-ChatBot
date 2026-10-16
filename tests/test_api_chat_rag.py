@@ -5,7 +5,6 @@ running Ollama server or a Chroma collection.  The service-level tests below
 then verify the important RAG contract independently.
 """
 
-from threading import Lock
 from unittest.mock import Mock
 
 import pytest

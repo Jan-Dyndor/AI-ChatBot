@@ -1,8 +1,6 @@
 from unittest.mock import Mock, patch
 
-import pytest
 import sseclient
-from sse_starlette import ServerSentEvent
 
 from backend.api.schemas.pydantic_schemas import UserDB
 from backend.database.models import Users

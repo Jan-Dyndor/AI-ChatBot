@@ -2,10 +2,9 @@ from datetime import timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
-from fastapi.responses import StreamingResponse
 
 from loguru import logger
-from sse_starlette import ServerSentEvent, EventSourceResponse
+from sse_starlette import EventSourceResponse
 from backend.api.schemas.pydantic_schemas import (
     ChatMessage,
     CreateUserRequest,

@@ -9,6 +9,8 @@ from threading import Lock
 from unittest.mock import Mock
 
 import pytest
+import sseclient
+from sse_starlette import ServerSentEvent
 
 import backend.service.chat_service as chat_service_module
 from backend.api.schemas.pydantic_schemas import UserDB
@@ -50,7 +52,11 @@ class FakeChatService:
 
     def thread_safe_rag_streaming_response(self, **kwargs):
         self.calls.append(("thread_safe_rag_streaming_response", kwargs))
-        yield from self.chunks
+        for chunk in self.chunks:
+            yield ServerSentEvent(
+                event="token",
+                data=chunk,
+            )
         kwargs["lock_object"].release()
 
 
@@ -77,9 +83,19 @@ def test_chat_streams_rag_answer_and_forwards_request_context(
     response = client.post("/v1/chat", json=happy_test_user_input_short)
 
     assert response.status_code == 200
-    assert response.headers["content-type"].startswith("text/plain")
-    assert response.text == "answer from RAG"
+    assert response.headers["content-type"].startswith("text/event-stream")
     assert lock.release_count == 1
+
+    response_client_generator = sseclient.SSEClient(response.iter_bytes())
+    response_client = iter(response_client_generator.events())
+    first_event = next(response_client)
+
+    assert first_event.event == "token"
+    assert first_event.data == "answer "
+
+    second_event = next(response_client)
+    assert second_event.event == "token"
+    assert second_event.data == "from RAG"
 
     names = [name for name, _ in service.calls]
     assert names == [
@@ -235,7 +251,10 @@ def test_rag_pipeline_retrieves_only_the_requesting_users_documents(monkeypatch)
     vector_storage.return_retiver.assert_called_once_with(
         serach_kwargs={"k": 3, "filter": {"user_id": 42}}
     )
-    assert chunks == ["grounded ", "answer"]
+    assert [(chunk.event, chunk.data) for chunk in chunks] == [
+        ("token", "grounded "),
+        ("token", "answer"),
+    ]
     rag_chain.stream.assert_called_once_with(
         {
             "input": "What does the manual say?",

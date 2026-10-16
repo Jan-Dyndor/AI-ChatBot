@@ -1,10 +1,11 @@
 from datetime import timedelta
 from pathlib import Path
-from backend.configuration.settings import Settings
+
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from fastapi.responses import StreamingResponse
-from loguru import logger
 
+from loguru import logger
+from sse_starlette import ServerSentEvent, EventSourceResponse
 from backend.api.schemas.pydantic_schemas import (
     ChatMessage,
     CreateUserRequest,
@@ -17,6 +18,7 @@ from backend.api.schemas.pydantic_schemas import (
     UserLogin,
 )
 from backend.authentication.auth import AuthService
+from backend.configuration.settings import Settings
 from backend.core.concurency.conversation_thread_lock import ConversationLockManager
 from backend.dependencies.depends import (
     create_file_vector_storage,
@@ -175,7 +177,7 @@ def rag_chat(
             lock.release()
             raise
 
-        return StreamingResponse(
+        return EventSourceResponse(
             service.thread_safe_rag_streaming_response(
                 model=user_input.model,
                 conversation_id=user_input.conversation_id,
@@ -190,8 +192,7 @@ def rag_chat(
                 chat_history=chat_history,
                 question=user_input.input,
                 lock_object=lock,
-            ),
-            media_type="text/plain",
+            )
         )
 
     else:

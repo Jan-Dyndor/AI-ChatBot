@@ -5,6 +5,7 @@ import streamlit as st
 from loguru import logger
 
 from backend.configuration.settings import get_settings
+from frontend.pages.chatbot_page import get_error_message
 
 settings = get_settings()
 REQUEST_ID: str = str(
@@ -49,7 +50,7 @@ with st.form("register_form"):
                         headers={
                             "Request-ID": f"{REQUEST_ID}",
                         },
-                        timeout=10,
+                        timeout=20,
                     )
                     logger.debug(f"User {email} registration request")
                     backend_request_id = response.headers.get("Request-ID")
@@ -76,6 +77,13 @@ with st.form("register_form"):
 
                     st.success("Account created successfully. You can now log in.")
                     logger.debug(f"Successfull User registration {email}")
+                except requests.HTTPError as error:
+                    response = error.response
+                    message = get_error_message(response)
+                    logger.warning(
+                        f"Error occured while registering User {email} - {error} "
+                    )
+                    st.error("Could not create the account. Please try again later.")
 
                 except requests.RequestException:
                     st.error("Backend is unavailable. Check if FastAPI is running.")

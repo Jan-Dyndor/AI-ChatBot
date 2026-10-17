@@ -5,6 +5,7 @@ import streamlit as st
 from loguru import logger
 
 from backend.configuration.settings import get_settings
+from frontend.pages.chatbot_page import get_error_message
 
 settings = get_settings()
 REQUEST_ID: str = str(
@@ -19,6 +20,9 @@ st.set_page_config(
 
 st.title("🔐 Login")
 st.caption("Log in to use the Conversational AI App")
+
+if login_notice := st.session_state.pop("login_notice", None):
+    st.warning(login_notice)
 
 
 # If user is already logged in, move to chatbot page
@@ -44,9 +48,10 @@ with st.form("login_form"):
                             "password": password,
                         },
                         headers={"Request-ID": f"{REQUEST_ID}"},
-                        timeout=10,
+                        timeout=20,
                     )
                     logger.debug(f"User {email} login request")
+
                     data = response.json()
 
                     backend_request_id = response.headers.get("Request-ID")
@@ -77,8 +82,16 @@ with st.form("login_form"):
                     st.success("Logged in successfully.")
                     st.switch_page("pages/chatbot_page.py")
 
-                except requests.RequestException:
-                    logger.exception(f"Exception occured while logging User {email}")
+                except requests.HTTPError as error:
+                    response_error = error.response
+                    message = get_error_message(response_error)
+                    logger.warning(f"Error occured while login {message}")
+                    st.error("Error occured while login")
+
+                except requests.RequestException as error:
+                    logger.exception(
+                        f"Exception occured while logging User {email} - {error}"
+                    )
                     st.error("Backend is unavailable. Check if FastAPI is running.")
 
 

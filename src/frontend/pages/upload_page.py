@@ -77,19 +77,28 @@ if st.button("Upload", type="primary", disabled=uploaded_file is None):
                 st.session_state.uploaded_file_name = file_name
                 st.rerun()
 
+            elif response.status_code == 401:
+                logger.warning("User token is invalid or expired ")
+                st.error("Invalid or expired token")
+
             try:
                 error_message = response.json().get("message", response.text)
             except ValueError:
                 error_message = response.text
+                logger.error(
+                    f"File upload failed: status={response.status_code}, message={error_message}"
+                )
+                st.error(f"Upload failed ({response.status_code}): {error_message}")
 
-            logger.error(
-                f"File upload failed: status={response.status_code}, message={error_message}"
-            )
-            st.error(f"Upload failed ({response.status_code}): {error_message}")
+        except requests.HTTPError as error:
+            logger.warning(f"HTTP error while upplading the file {error}")
+            st.error("HTTP error while uploading the file")
 
         except requests.RequestException as error:
             logger.exception(f"Could not upload file: {error}")
-            st.error("Backend is unavailable. Check if FastAPI is running.")
+            st.error(
+                "Backend is unavailable or there is network conenction issue. Check if FastAPI is running."
+            )
 
 if st.button("Back to chat"):
     st.switch_page("pages/chatbot_page.py")

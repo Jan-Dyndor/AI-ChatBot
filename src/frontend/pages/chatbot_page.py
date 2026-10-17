@@ -6,9 +6,34 @@ import streamlit as st
 from loguru import logger
 
 from backend.configuration.settings import get_settings
-from frontend.frontend_exceptions.frontend_exceptions import ChatStreamError
+from frontend.frontend_exceptions.frontend_exceptions import (
+    ChatStreamError,
+    ConversaionInUse,
+    DBError,
+    InvalidCredentials,
+    NetworkError,
+    OllamaConnectionError,
+    PydanticValidationError,
+    UnknownError,
+)
 
 settings = get_settings()
+
+
+def redirect_to_login_after_expired_session() -> None:
+    """Clear expired credentials and send the user to the login page."""
+    st.session_state.clear()
+    st.session_state.login_notice = "Your session has expired. Please log in again."
+    st.switch_page("pages/login_page.py")
+
+
+def block_chat_after_initialization_error(user_message: str) -> None:
+    """Persist an initialization error and prevent sending chat messages."""
+    st.session_state.disabled = True
+    st.session_state.messages = []
+    st.session_state.initialization_error = user_message
+    st.session_state.initialization_failed = True
+    st.session_state.initialization_error_toast = True
 
 
 def init_session_state() -> None:
@@ -27,6 +52,11 @@ def init_session_state() -> None:
     if "disabled" not in st.session_state:
         st.session_state.disabled = False
 
+    # Do not retry a failed request on every Streamlit rerun. The user can retry
+    # explicitly with the "Start new chat" button.
+    if st.session_state.get("initialization_failed", False):
+        return
+
     if "conversation_id" not in st.session_state:
         REQUEST_ID: str = str(uuid4())
         with logger.contextualize(request_id=REQUEST_ID):
@@ -38,28 +68,55 @@ def init_session_state() -> None:
                         "Authorization": f"Bearer {st.session_state.access_token}",
                         "Request-ID": f"{REQUEST_ID}",
                     },
+                    timeout=120,
                 )
                 response.raise_for_status()
                 conversetion_id_int = response.json()
                 logger.debug(f"Created conversation with ID {conversetion_id_int}")
 
                 st.session_state.conversation_id = conversetion_id_int
+                st.session_state.pop("initialization_error", None)
+                st.session_state.pop("initialization_failed", None)
                 st.session_state.messages = [
                     {
                         "role": "assistant",
                         "content": "Hi! How can I help you today?",
                     }
                 ]
+            except requests.HTTPError as error:
+                response_error = error.response
+                message = get_error_message(response_error)
+                status_code = (
+                    response_error.status_code
+                    if response_error is not None
+                    else "unknown"
+                )
+                if status_code == 401:
+                    logger.warning("Session expired while creating a conversation")
+                    redirect_to_login_after_expired_session()
+                logger.exception(
+                    f"Issue occured while creating new conversation - {message} with status {status_code}"
+                )
+                block_chat_after_initialization_error(
+                    "Could not create a new conversation. Start a new chat to try again."
+                )
 
             except requests.RequestException as error:
-                disable_conversation()
-                logger.exception(error)
-                st.session_state.messages = [
-                    {
-                        "role": "assistant",
-                        "content": "Hello. Could not create new conversation - check the logs of application. For now your are unable to write.",
-                    }
-                ]
+                logger.exception(
+                    f"Request failed while tring to create conversation {error}"
+                )
+                block_chat_after_initialization_error(
+                    "Could not connect to the backend. Start a new chat to try again."
+                )
+
+            except Exception as ex:
+                logger.exception(
+                    f"Unknon exception occured while creating conversation {ex}"
+                )
+                block_chat_after_initialization_error(
+                    "An unexpected error occurred while creating a conversation. "
+                    "Start a new chat to try again."
+                )
 
     else:
         if "messages" not in st.session_state:
@@ -94,17 +151,34 @@ def init_session_state() -> None:
                                 "content": "Hi! How can I help you today?",
                             }
                         ]
+                except requests.HTTPError as error:
+                    if error.response is not None and error.response.status_code == 401:
+                        logger.warning(
+                            "Session expired while loading conversation history"
+                        )
+                        redirect_to_login_after_expired_session()
+                    logger.exception(
+                        f" {error}. Could not fetch chat history for conversation {st.session_state.conversation_id}"
+                    )
+                    block_chat_after_initialization_error(
+                        "Could not load this conversation. Start a new chat to try again."
+                    )
 
                 except requests.RequestException as error:
                     logger.exception(
                         f" {error}. Could not fetch chat history for conversation {st.session_state.conversation_id}"
                     )
-                    st.session_state.messages = [
-                        {
-                            "role": "assistant",
-                            "content": "[ERROR] Hi! I could not fetch data from our previous conversation. Issue occured, check app logs",
-                        }
-                    ]
+                    block_chat_after_initialization_error(
+                        "Could not connect to the backend. Start a new chat to try again."
+                    )
+                except Exception as error:
+                    logger.exception(
+                        f"Unknon exception occured while creating conversation {error}"
+                    )
+                    block_chat_after_initialization_error(
+                        "An unexpected error occurred while loading the conversation. "
+                        "Start a new chat to try again."
+                    )
 
 
 def get_conversation_history_ids() -> list[list] | int | None:
@@ -127,6 +201,10 @@ def get_conversation_history_ids() -> list[list] | int | None:
 
             if response.status_code == 404:
                 return 0
+
+            if response.status_code == 401:
+                logger.warning("Session expired while fetching conversation list")
+                redirect_to_login_after_expired_session()
 
             response.raise_for_status()
 
@@ -196,6 +274,9 @@ def get_available_models() -> list[str]:
                 },
                 timeout=120,
             )
+            if response.status_code == 401:
+                logger.warning("Session expired while fetching available models")
+                redirect_to_login_after_expired_session()
             response.raise_for_status()
 
             models = [
@@ -301,16 +382,14 @@ def render_sidebar():
 
         if st.button("Start new chat"):
             logger.debug("Starting new chat")
-            del st.session_state.conversation_id
+            st.session_state.pop("conversation_id", None)
+            st.session_state.pop("messages", None)
+            st.session_state.pop("initialization_error", None)
+            st.session_state.pop("initialization_failed", None)
+            st.session_state.pop("initialization_error_toast", None)
+            enable_conversation()
             init_session_state()
             mark_conversation_history_stale()
-            st.session_state.messages = [
-                {
-                    "role": "assistant",
-                    "content": "Chat cleared. How can I help you now?",
-                }
-            ]
-
             st.rerun()
 
         if st.button("Upload document"):
@@ -330,8 +409,12 @@ def render_sidebar():
                     label=str(conversation_id_history[1]),
                     key=int(conversation_id_history[0]),
                 ):
-                    del st.session_state.conversation_id
-                    del st.session_state.messages
+                    st.session_state.pop("conversation_id", None)
+                    st.session_state.pop("messages", None)
+                    st.session_state.pop("initialization_error", None)
+                    st.session_state.pop("initialization_failed", None)
+                    st.session_state.pop("initialization_error_toast", None)
+                    enable_conversation()
                     st.session_state.conversation_id = conversation_id_history[0]
                     init_session_state()
                     st.rerun()
@@ -365,6 +448,22 @@ def render_chat_history() -> None:
             st.markdown(message["content"])
 
 
+def get_error_message(response: requests.Response | None) -> str:
+    """Extract a safe diagnostic message from an error response."""
+    if response is None:
+        return "Backend returned no response."
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return response.text[:500] or "Backend returned an empty error response."
+
+    if isinstance(payload, dict):
+        return str(payload.get("message") or payload.get("detail") or payload)
+
+    return str(payload)
+
+
 def get_ai_response(
     user_input: str,
     model: str,
@@ -393,6 +492,7 @@ def get_ai_response(
     REQUEST_ID: str = str(uuid4())
     with logger.contextualize(request_id=REQUEST_ID):
         logger.debug("Sending user input to LLM")
+        response = None
         try:
             response = requests.post(
                 "http://localhost:8000/v1/chat",
@@ -422,50 +522,66 @@ def get_ai_response(
                 logger.debug(f"LLM response recived with status {response.status_code}")
 
                 if response.status_code == 422:
-                    response_json = response.json()
-                    logger.error(
-                        f"Input error by Pydantic: {response_json.get('message')}"
-                    )
-                    yield f"\n\n\n\n\n[ERROR] {response_json.get('message')}"
-                    return
+                    response_json_message = get_error_message(response)
+                    logger.warning(response_json_message)
+                    raise PydanticValidationError(response_json_message)
                 elif response.status_code == 404:
-                    response_json = response.json()
-                    logger.error(response_json.get("message"))
-                    yield "\n\n\n\n\n[ERROR] DataBase error occured. Check logs"
-                    return
+                    response_json_message = get_error_message(response)
+                    logger.warning(response_json_message)
+                    raise DBError(response_json_message)
                 elif response.status_code == 401:
-                    response_json = response.json()
-                    logger.error(response_json.get("message"))
-                    yield "\n\n\n\n\n[ERROR] Could not validate credentials. Token might be outdated. Login."
-                    return
+                    response_json_message = get_error_message(response)
+                    logger.warning(response_json_message)
+                    raise InvalidCredentials(response_json_message)
                 elif response.status_code == 502:
-                    response_json = response.json()
-                    logger.error(response_json.get("message"))
-                    yield "\n\n\n\n\n[ERROR] Ollama might not be working on your machine."
-                    return
+                    response_json_message = get_error_message(response)
+                    logger.warning(response_json_message)
+                    raise OllamaConnectionError(response_json_message)
                 elif response.status_code == 409:
-                    response_json = response.json()
-                    logger.error(response_json.get("message"))
-                    yield "\n\n\n\n\n[ERROR] This conversation is currently processing another request. Please wait until it finishes and try again."
-                    return
+                    response_json_message = get_error_message(response)
+                    logger.warning(response_json_message)
+                    raise ConversaionInUse(
+                        message=response_json_message,
+                        user_message="Conversation process request. You can not send multiple requests to the same conversation in the same time.",
+                    )
 
                 response.raise_for_status()
+
                 client = sseclient.SSEClient(response)  # type: ignore
                 for event in client.events():
                     if event.event == "token":
                         yield event.data
                     elif event.event == "error":
-                        logger.error(f"LLM SSE error: {event.data}")
+                        logger.error(event.data)
                         raise ChatStreamError(event.data)
                     else:
                         logger.warning(f"Unknown SSE event: {event.event}")
-            finally:
-                response.close()
+
+            except requests.HTTPError as error:
+
+                response = error.response
+                status_code = (
+                    response.status_code if response is not None else "unknown"
+                )
+                message = get_error_message(response)
+                logger.warning(
+                    f"Backend HTTP error: status={status_code}, message={message}"
+                )
+                raise UnknownError(
+                    message=message,
+                    user_message="An unexpected backend error occurred. Please try again.",
+                ) from error
 
         except requests.RequestException as error:
-            logger.exception(f"Could not fetch LLM response. {error}")
-            yield "\n\n\n\n\n[ERROR] Backend is unavailable or stream was interrupted. Make sure you are not using embedding models to generate responses"
-            return
+            logger.exception(error)
+            raise NetworkError(
+                message=str(error),
+                user_message="Could not conenct to backend service",
+            ) from error
+
+        finally:
+            if response is not None:
+                response.close()
 
 
 def disable_conversation():
@@ -491,8 +607,13 @@ def main() -> None:
         reasoning,
     ) = render_sidebar()
 
-    st.title("Conversational AI App")
-    st.caption("Chat with your local LLM backend")
+    st.title("Conversational RAG AI App")
+    st.caption("Chat with your local docs with help of LLM on backend")
+
+    if initialization_error := st.session_state.get("initialization_error"):
+        if st.session_state.pop("initialization_error_toast", False):
+            st.toast(initialization_error, icon="⚠️")
+        st.error(initialization_error)
 
     render_chat_history()
 
@@ -536,6 +657,51 @@ def main() -> None:
                         placeholder.markdown(ai_response)
                 except ChatStreamError as error:
                     st.session_state.chat_error = str(error)
+                    mark_conversation_history_stale()
+                    enable_conversation()
+                    st.rerun()
+                except PydanticValidationError as error:
+                    st.session_state.chat_error = str(error.message)
+                    mark_conversation_history_stale()
+                    enable_conversation()
+                    st.rerun()
+                except DBError as error:
+                    st.session_state.chat_error = str(error.message)
+                    mark_conversation_history_stale()
+                    enable_conversation()
+                    st.rerun()
+                except InvalidCredentials as error:
+                    logger.warning(
+                        f"Session expired while sending chat message: {error}"
+                    )
+                    redirect_to_login_after_expired_session()
+                except OllamaConnectionError as error:
+                    st.session_state.chat_error = str(error.message)
+                    mark_conversation_history_stale()
+                    enable_conversation()
+                    st.rerun()
+                except ConversaionInUse as error:
+                    st.session_state.chat_error = str(error.user_message)
+                    mark_conversation_history_stale()
+                    enable_conversation()
+                    st.rerun()
+                except UnknownError as error:
+                    st.session_state.chat_error = str(error.user_message)
+                    mark_conversation_history_stale()
+                    enable_conversation()
+                    st.rerun()
+                except NetworkError as error:
+                    st.session_state.chat_error = str(error.user_message)
+                    mark_conversation_history_stale()
+                    enable_conversation()
+                    st.rerun()
+                except Exception as exception:
+                    logger.exception(
+                        f"Unexpected error while processing chat response - {exception}"
+                    )
+                    st.session_state.chat_error = (
+                        "An unexpected error occurred. Please try again."
+                    )
                     mark_conversation_history_stale()
                     enable_conversation()
                     st.rerun()

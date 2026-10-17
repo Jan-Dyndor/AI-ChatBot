@@ -23,6 +23,26 @@ def _request_headers(request_id: str) -> dict[str, str]:
     }
 
 
+def _get_error_message(response: requests.Response) -> str:
+    """Return an error message without assuming that the response is JSON."""
+    try:
+        payload = response.json()
+    except ValueError:
+        return response.text[:500] or "Backend returned an empty error response."
+
+    if isinstance(payload, dict):
+        return str(payload.get("message") or payload.get("detail") or payload)
+
+    return str(payload)
+
+
+def _redirect_to_login_after_expired_session() -> None:
+    """Clear an expired token and show the reason on the login page."""
+    st.session_state.clear()
+    st.session_state.login_notice = "Your session has expired. Please log in again."
+    st.switch_page("pages/login_page.py")
+
+
 if "access_token" not in st.session_state or not st.session_state.access_token:
     st.warning("You need to log in first.")
     st.switch_page("pages/login_page.py")
@@ -71,28 +91,32 @@ if st.button("Upload", type="primary", disabled=uploaded_file is None):
                 )
 
             if response.ok:
-                file_data = response.json()
+                try:
+                    file_data = response.json()
+                except ValueError:
+                    logger.error("Upload succeeded but backend returned invalid JSON")
+                    st.error("Upload failed: backend returned an invalid response.")
+                    st.stop()
+
+                if not isinstance(file_data, dict):
+                    logger.error(f"Upload response has unexpected shape: {file_data}")
+                    st.error("Upload failed: backend returned an invalid response.")
+                    st.stop()
+
                 file_name = file_data.get("file_name", uploaded_file.name)
                 logger.info(f"File uploaded successfully: file_name={file_name}")
                 st.session_state.uploaded_file_name = file_name
                 st.rerun()
 
-            elif response.status_code == 401:
-                logger.warning("User token is invalid or expired ")
-                st.error("Invalid or expired token")
+            if response.status_code == 401:
+                logger.warning("Session expired while uploading a file")
+                _redirect_to_login_after_expired_session()
 
-            try:
-                error_message = response.json().get("message", response.text)
-            except ValueError:
-                error_message = response.text
-                logger.error(
-                    f"File upload failed: status={response.status_code}, message={error_message}"
-                )
-                st.error(f"Upload failed ({response.status_code}): {error_message}")
-
-        except requests.HTTPError as error:
-            logger.warning(f"HTTP error while upplading the file {error}")
-            st.error("HTTP error while uploading the file")
+            error_message = _get_error_message(response)
+            logger.warning(
+                f"File upload failed: status={response.status_code}, message={error_message}"
+            )
+            st.error(f"Upload failed ({response.status_code}): {error_message}")
 
         except requests.RequestException as error:
             logger.exception(f"Could not upload file: {error}")

@@ -5,7 +5,7 @@ from loguru import logger
 from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.database.models import Conversations, Messages, Users
+from backend.database.models import Conversations, Messages, StatusMessage, Users
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound, UserNotFound
 
 
@@ -58,7 +58,12 @@ class ChatRepository:
             DataBaseError: Genral SQLAlchemy error
         """
 
-        mess = Messages(conversation_id=conversation_id, role="user", content=input)
+        mess = Messages(
+            conversation_id=conversation_id,
+            role="user",
+            content=input,
+            status=StatusMessage.PENDING,
+        )
 
         try:
             conversation = (
@@ -84,6 +89,7 @@ class ChatRepository:
             logger.debug(
                 f"Saved user {user_id} input  to conversation {conversation_id}"
             )
+            return mess.id
         except SQLAlchemyError as error:
             self.db.rollback()
             raise DataBaseError() from error
@@ -102,7 +108,10 @@ class ChatRepository:
         """
 
         bot_mess = Messages(
-            conversation_id=conversation_id, role="assistant", content=output
+            conversation_id=conversation_id,
+            role="assistant",
+            content=output,
+            status=StatusMessage.PENDING,
         )
 
         try:
@@ -128,7 +137,11 @@ class ChatRepository:
             logger.debug(
                 f"Saved LLM output with to conversation {conversation_id} connected to user {user_id}"
             )
+            return bot_mess.id
         except SQLAlchemyError as error:
+            logger.exception(
+                f"Can not save LLM output. Failed to save bot output after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
+            )
             self.db.rollback()
             raise DataBaseError() from error
 
@@ -148,6 +161,7 @@ class ChatRepository:
         """
 
         try:
+            # 1. Check if conversation exists and belongs to user
             conversation = (
                 self.db.query(Conversations)
                 .where(
@@ -157,21 +171,38 @@ class ChatRepository:
                 .first()
             )
 
+            if conversation is None:
+                logger.warning(
+                    f"User {user_id} does not own conversation {conversation_id}"
+                )
+                raise DataBaseResourceNotFound()
+
+            # 2. Fetch only COMPLETED messages
+            messages = (
+                self.db.query(Messages)
+                .where(
+                    Messages.conversation_id == conversation_id,
+                    Messages.status == StatusMessage.COMPLETED,
+                )
+                .order_by(Messages.created_at.asc(), Messages.id.asc())
+                .all()
+            )
+            if not messages:
+                logger.info(
+                    f"No completed messages found in conversation {conversation_id}"
+                )
+
+            logger.debug(
+                f"Returning chat messages from conversation {conversation_id} attached to user {user_id}"
+            )
+            return messages
+
         except SQLAlchemyError as error:
             self.db.rollback()
-            raise DataBaseError() from error
-
-        if conversation is None:
-            raise DataBaseResourceNotFound()
-
-        if conversation.messages == []:
-            logger.info(
-                f"Conversation with ID {conversation_id} does not yet stores data"
+            logger.exception(
+                f"Exception occured during fetching chat history from conversation{conversation_id} User_ID: {user_id}"
             )
-        logger.debug(
-            f"Returning chat messages from conversation {conversation_id} attached to user {user_id}"
-        )
-        return conversation.messages
+            raise DataBaseError() from error
 
     def user_lates_conversations_ids(self, user_id: int) -> list[tuple]:
         """Function fetches last 10 updated user conversations.
@@ -303,7 +334,66 @@ class ChatRepository:
                 .first()
             )
         except SQLAlchemyError as error:
+            logger.exception(
+                f"Can not save LLM output. Failed to save bot output after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
+            )
             raise DataBaseError() from error
 
         if conversation is None:
             raise DataBaseResourceNotFound()
+
+    def update_bot_message(
+        self,
+        conversation_id: int,
+        user_id: int,
+        llm_output: str,
+        message_id: int,
+        update_status: StatusMessage,
+    ):
+
+        try:
+            bot_mess = self.db.query(Messages).where(Messages.id == message_id).first()
+
+            if bot_mess is None:
+                logger.warning(
+                    f"Conversation not found or not owned by user. user_id={user_id}, conversation_id={conversation_id}"
+                )
+                raise DataBaseResourceNotFound()
+
+            bot_mess.content = llm_output
+            bot_mess.status = update_status
+            self.db.commit()
+
+        except SQLAlchemyError as error:
+            logger.exception(
+                f"Can not save LLM output. Failed to save bot output after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
+            )
+            self.db.rollback()
+            raise DataBaseError() from error
+
+    def update_user_message(
+        self,
+        conversation_id: int,
+        user_id: int,
+        message_id: int,
+        update_status: StatusMessage,
+    ):
+
+        try:
+            user_mess = self.db.query(Messages).where(Messages.id == message_id).first()
+
+            if user_mess is None:
+                logger.warning(
+                    f"Conversation not found or not owned by user. user_id={user_id}, conversation_id={conversation_id}"
+                )
+                raise DataBaseResourceNotFound()
+
+            user_mess.status = update_status
+            self.db.commit()
+
+        except SQLAlchemyError as error:
+            logger.exception(
+                f"Can not update User query. Failed to update user query after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
+            )
+            self.db.rollback()
+            raise DataBaseError() from error

@@ -1,3 +1,4 @@
+import time
 from threading import Lock
 
 import httpx
@@ -17,7 +18,7 @@ from sse_starlette import ServerSentEvent
 from backend.api.schemas.pydantic_schemas import Message
 from backend.chat_bot.client import ChatBotClient
 from backend.database.chat_repository import ChatRepository
-from backend.database.models import Messages
+from backend.database.models import Messages, StatusMessage
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound
 from RAG.file_vector_repository import FileVectorStorage
 
@@ -258,6 +259,7 @@ class ChatService:
         repeat_penalty,
         is_thinking,
         user_id: int,
+        user_message_id: int | None = None,
     ):
         """Generate a streaming RAG response using conversation history and user-specific documents.
 
@@ -297,8 +299,44 @@ class ChatService:
             is_thinking,
             user_id,
         )
-
+        logger.info("Builded RAG chain")
         full_llm_response = ""
+        message_id: int | None = None
+
+        def mark_messages_failed() -> None:
+            """Best-effort transition for an interrupted generation."""
+            try:
+                if message_id is not None:
+                    self.db.update_bot_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        llm_output=full_llm_response,
+                        message_id=message_id,
+                        update_status=StatusMessage.FAILED,
+                    )
+                if user_message_id is not None:
+                    self.db.update_user_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        message_id=user_message_id,
+                        update_status=StatusMessage.FAILED,
+                    )
+            except DataBaseResourceNotFound, DataBaseError:
+                logger.exception("Could not mark interrupted messages as failed")
+
+        try:
+            message_id = self.db.save_bot_output(
+                output="", conversation_id=conversation_id, user_id=user_id
+            )
+            last_save = time.monotonic()
+        except DataBaseResourceNotFound, DataBaseError:
+            # Streaming may still be useful after the HTTP response starts, but
+            # the user message must not remain pending indefinitely.
+            logger.exception("Could not create pending assistant message")
+            mark_messages_failed()
+            yield ServerSentEvent(event="error", data="Cound not save LLM message")
+            return
+
         try:
             for chunk in rag_chain.stream(
                 {"input": question, "chat_history": chat_history}
@@ -306,16 +344,29 @@ class ChatService:
                 if "answer" in chunk:
                     answer_chunk = chunk["answer"]
                     full_llm_response += answer_chunk
+
+                    if message_id is not None and time.monotonic() - last_save >= 5:
+                        self.db.update_bot_message(
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            llm_output=full_llm_response,
+                            message_id=message_id,
+                            update_status=StatusMessage.PENDING,
+                        )
+                        last_save = time.monotonic()
+
                     yield ServerSentEvent(event="token", data=answer_chunk)
 
         except httpx.ConnectError:
             logger.exception("Ollama in unavaliable")
+            mark_messages_failed()
             yield ServerSentEvent(
                 event="error",
                 data="Ollama is not available. Check if its running on your system",
             )
             return
         except ollama.ResponseError as error:
+            mark_messages_failed()
             if error.status_code == 404:
                 logger.exception(
                     f"Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
@@ -342,31 +393,72 @@ class ChatService:
             logger.exception(
                 "Ollama stopped responding and is unavailable. Check if its running on your system"
             )
+            mark_messages_failed()
             yield ServerSentEvent(
                 event="error",
                 data="Ollama stopped responding and is unavailable. Check if its running on your system",
             )
             return
+        except DataBaseResourceNotFound:
+            mark_messages_failed()
+            yield ServerSentEvent(
+                event="error",
+                data=f"Database Resource Error - conversation {conversation_id} not owned by {user_id}",
+            )
+            return
+
+        except DataBaseError:
+            mark_messages_failed()
+            yield ServerSentEvent(
+                event="error",
+                data="Database Error - 500",
+            )
+            return
 
         try:
-            self.db.save_bot_output(
-                output=full_llm_response,
+            if message_id is None:
+                return
+            self.db.update_bot_message(
                 conversation_id=conversation_id,
                 user_id=user_id,
+                llm_output=full_llm_response,
+                message_id=message_id,
+                update_status=StatusMessage.COMPLETED,
             )
+
+            if user_message_id is not None:
+                self.db.update_user_message(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    message_id=user_message_id,
+                    update_status=StatusMessage.COMPLETED,
+                )
 
         except DataBaseResourceNotFound:
             logger.exception(
                 f"Can not save LLM output. Conversation disappeared or access invalid after streaming Conversation_ID: {conversation_id} User_ID: {user_id}"
             )
+            mark_messages_failed()
+            yield ServerSentEvent(
+                event="error",
+                data="Database resource not found",
+            )
+            return
         except DataBaseError:
             logger.exception(
                 f"Can not save LLM output. Failed to save bot output after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
             )
+            mark_messages_failed()
+            yield ServerSentEvent(
+                event="error",
+                data="Database Error - 500",
+            )
+            return
 
     #! Thread Save response
     def thread_safe_rag_streaming_response(
         self,
+        user_message_id: int,
         model: str,
         temperature: float,
         top_k,
@@ -405,6 +497,7 @@ class ChatService:
 
         try:
             for chunk in self.rag_streaming_response(
+                user_message_id=user_message_id,
                 model=model,
                 temperature=temperature,
                 top_k=top_k,

@@ -10,6 +10,7 @@ from frontend.frontend_exceptions.frontend_exceptions import (
     ChatStreamError,
     ConversaionInUse,
     DBError,
+    EmbeddingModelError,
     InvalidCredentials,
     NetworkError,
     OllamaConnectionError,
@@ -537,6 +538,10 @@ def get_ai_response(
                     response_json_message = get_error_message(response)
                     logger.warning(response_json_message)
                     raise OllamaConnectionError(response_json_message)
+                elif response.status_code == 400:
+                    response_json_message = get_error_message(response)
+                    logger.warning(response_json_message)
+                    raise EmbeddingModelError(response_json_message)
                 elif response.status_code == 409:
                     response_json_message = get_error_message(response)
                     logger.warning(response_json_message)
@@ -692,6 +697,11 @@ def main() -> None:
                     st.rerun()
                 except NetworkError as error:
                     st.session_state.chat_error = str(error.user_message)
+                    mark_conversation_history_stale()
+                    enable_conversation()
+                    st.rerun()
+                except EmbeddingModelError as error:
+                    st.session_state.chat_error = str(error.message)
                     mark_conversation_history_stale()
                     enable_conversation()
                     st.rerun()

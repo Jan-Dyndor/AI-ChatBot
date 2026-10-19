@@ -2,9 +2,9 @@ from datetime import timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
-
 from loguru import logger
 from sse_starlette import EventSourceResponse
+
 from backend.api.schemas.pydantic_schemas import (
     ChatMessage,
     CreateUserRequest,
@@ -165,7 +165,7 @@ def rag_chat(
                 conversation_id=user_input.conversation_id, user_id=user.id
             )
 
-            service.save_user_input(
+            user_message_id: int = service.save_user_input(
                 user_input=user_input.input,
                 conversation_id=user_input.conversation_id,
                 user_id=user.id,
@@ -178,6 +178,7 @@ def rag_chat(
 
         return EventSourceResponse(
             service.thread_safe_rag_streaming_response(
+                user_message_id=user_message_id,
                 model=user_input.model,
                 conversation_id=user_input.conversation_id,
                 user_id=user.id,

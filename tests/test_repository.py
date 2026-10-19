@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.chat_repository import ChatRepository
-from backend.database.models import Conversations, Messages, Users
+from backend.database.models import Conversations, Messages, StatusMessage, Users
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound, UserNotFound
 
 
@@ -206,10 +206,16 @@ def test_chat_history_happy_with_messages(session, repo_service, test_user_db):
     conv_1 = Conversations(user_id=test_user_db.id)
 
     mess_user_1 = Messages(
-        conversation_id=1, role="user", content="First user message test"
+        conversation_id=1,
+        role="user",
+        content="First user message test",
+        status=StatusMessage.COMPLETED,
     )
     mess_bot_1 = Messages(
-        conversation_id=1, role="assistant", content="AI response to first user message"
+        conversation_id=1,
+        role="assistant",
+        content="AI response to first user message",
+        status=StatusMessage.COMPLETED,
     )
     session.add_all([conv_1, mess_user_1, mess_bot_1])
     session.commit()

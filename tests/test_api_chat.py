@@ -100,7 +100,7 @@ def test_chat_streaming_save_bot_output_error(
     repo_mock.save_bot_output.side_effect = DataBaseResourceNotFound()
     rag_chain = Mock()
     # rag_chain.stream.return_value = ServerSentEvent(event="token", data="answer")
-    rag_chain.stream.return_value = [{"answer": "answer"}]
+    rag_chain.stream.return_value = [{"data": "Cound not save LLM message"}]
 
     # Keep the real service generator in the request path: it is responsible for
     # catching persistence failures after the streamed response has started.
@@ -124,10 +124,10 @@ def test_chat_streaming_save_bot_output_error(
         response.status_code == 200
     )  # ! Even when error occured , StreamingResponse has already started so HTTP response is 200. Error is visible in logs only
     assert len(events) == 1
-    assert events[0].event == "token"
-    assert events[0].data == "answer"
+    assert events[0].event == "error"
+    assert events[0].data == "Cound not save LLM message"
     repo_mock.save_bot_output.assert_called_once_with(
-        output="answer", conversation_id=1, user_id=1
+        output="", conversation_id=1, user_id=1
     )
 
 

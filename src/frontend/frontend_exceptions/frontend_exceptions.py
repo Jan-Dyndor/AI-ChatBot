@@ -51,3 +51,7 @@ class NetworkError(FrontendExceptions):
     def __init__(self, message: str, user_message: str) -> None:
         self.user_message = user_message
         super().__init__(message)
+
+
+class EmbeddingModelError(FrontendExceptions):
+    pass

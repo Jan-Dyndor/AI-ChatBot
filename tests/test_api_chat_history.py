@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.database.models import Conversations, Messages, Users
+from backend.database.models import Conversations, Messages, StatusMessage, Users
 from backend.dependencies.depends import get_db
 
 
@@ -27,11 +27,13 @@ def test_chat_history_happy(client, valid_token):
         conversation_id=conversation.id,
         role="assistant",
         content="How are you? I am AI!",
+        status=StatusMessage.COMPLETED,
     )
     mess2 = Messages(
         conversation_id=conversation.id,
         role="user",
         content="I am ok, tell me about Arnold Schwarzenegger",
+        status=StatusMessage.COMPLETED,
     )
     session.add_all([mess1, mess2])
     session.commit()

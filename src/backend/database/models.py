@@ -1,9 +1,16 @@
 from datetime import UTC, datetime
+from enum import StrEnum
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database.db import Base
+
+
+class StatusMessage(StrEnum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class Conversations(Base):
@@ -39,6 +46,9 @@ class Messages(Base):
     content: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(tz=UTC)
+    )
+    status: Mapped[StatusMessage] = mapped_column(
+        default=StatusMessage.PENDING, nullable=False
     )
 
 

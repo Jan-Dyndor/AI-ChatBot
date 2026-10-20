@@ -261,5 +261,12 @@ def test_rag_pipeline_retrieves_only_the_requesting_users_documents(monkeypatch)
         }
     )
     db.save_bot_output.assert_called_once_with(
-        output="grounded answer", conversation_id=3, user_id=42
+        output="", conversation_id=3, user_id=42
+    )
+    db.update_bot_message.assert_called_once_with(
+        conversation_id=3,
+        user_id=42,
+        llm_output="grounded answer",
+        message_id=db.save_bot_output.return_value,
+        update_status=chat_service_module.StatusMessage.COMPLETED,
     )

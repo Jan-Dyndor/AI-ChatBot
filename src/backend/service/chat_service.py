@@ -1,3 +1,5 @@
+import time
+from contextlib import closing
 from threading import Lock
 
 import httpx
@@ -17,7 +19,7 @@ from sse_starlette import ServerSentEvent
 from backend.api.schemas.pydantic_schemas import Message
 from backend.chat_bot.client import ChatBotClient
 from backend.database.chat_repository import ChatRepository
-from backend.database.models import Messages
+from backend.database.models import Messages, StatusMessage
 from backend.exceptions.exc import DataBaseError, DataBaseResourceNotFound
 from RAG.file_vector_repository import FileVectorStorage
 
@@ -258,6 +260,7 @@ class ChatService:
         repeat_penalty,
         is_thinking,
         user_id: int,
+        user_message_id: int | None = None,
     ):
         """Generate a streaming RAG response using conversation history and user-specific documents.
 
@@ -286,87 +289,186 @@ class ChatService:
             Ollama errors are logged and returned as streamed error messages.
             Database persistence errors are logged without interrupting the response.
         """
-        rag_chain = self.build_rag_chain(
-            model,
-            temperature,
-            top_k,
-            top_p,
-            num_ctx,
-            num_predict,
-            repeat_penalty,
-            is_thinking,
-            user_id,
+
+        COMPLETED_TURN: bool = (
+            False  # check if streaming went ok, if user disconnected or any other issue - mark whole chat turn as FALIED
         )
-
         full_llm_response = ""
-        try:
-            for chunk in rag_chain.stream(
-                {"input": question, "chat_history": chat_history}
-            ):
-                if "answer" in chunk:
-                    answer_chunk = chunk["answer"]
-                    full_llm_response += answer_chunk
-                    yield ServerSentEvent(event="token", data=answer_chunk)
+        message_id: int | None = None
 
-        except httpx.ConnectError:
-            logger.exception("Ollama in unavaliable")
-            yield ServerSentEvent(
-                event="error",
-                data="Ollama is not available. Check if its running on your system",
+        def mark_messages_failed() -> None:
+            """Best-effort transition for an interrupted generation."""
+            try:
+                if message_id is not None:
+                    self.db.update_bot_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        llm_output=full_llm_response,
+                        message_id=message_id,
+                        update_status=StatusMessage.FAILED,
+                    )
+                if user_message_id is not None:
+                    self.db.update_user_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        message_id=user_message_id,
+                        update_status=StatusMessage.FAILED,
+                    )
+            except DataBaseResourceNotFound, DataBaseError:
+                logger.exception("Could not mark interrupted messages as failed")
+
+        try:  # Try on whole Streaming + Save in DB process - if went wrong mark user-bot turn as failed
+            rag_chain = self.build_rag_chain(
+                model,
+                temperature,
+                top_k,
+                top_p,
+                num_ctx,
+                num_predict,
+                repeat_penalty,
+                is_thinking,
+                user_id,
             )
-            return
-        except ollama.ResponseError as error:
-            if error.status_code == 404:
+            logger.info("Builded RAG chain")
+            try:
+                message_id = self.db.save_bot_output(
+                    output="", conversation_id=conversation_id, user_id=user_id
+                )
+                last_save = time.monotonic()
+            except DataBaseResourceNotFound, DataBaseError:
+                logger.exception("Could not create pending assistant message")
+                yield ServerSentEvent(event="error", data="Cound not save LLM message")
+                return
+
+            try:
+                for chunk in rag_chain.stream(
+                    {"input": question, "chat_history": chat_history}
+                ):
+                    if "answer" in chunk:
+                        answer_chunk = chunk["answer"]
+                        full_llm_response += answer_chunk
+
+                        if message_id is not None and time.monotonic() - last_save >= 5:
+                            self.db.update_bot_message(
+                                conversation_id=conversation_id,
+                                user_id=user_id,
+                                llm_output=full_llm_response,
+                                message_id=message_id,
+                                update_status=StatusMessage.PENDING,
+                            )
+                            last_save = time.monotonic()
+
+                        yield ServerSentEvent(event="token", data=answer_chunk)
+
+            except httpx.ConnectError:
+                logger.exception("Ollama in unavaliable")
+                yield ServerSentEvent(
+                    event="error",
+                    data="Ollama is not available. Check if its running on your system",
+                )
+                return
+            except ollama.ResponseError as error:
+                if error.status_code == 404:
+                    logger.exception(
+                        f"Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
+                    )
+                    yield ServerSentEvent(
+                        event="error",
+                        data=" Ollama error. Ollama model might not exists or its not downloaded",
+                    )
+                    return
+                elif error.status_code == 400:
+                    logger.exception(
+                        f"Ollama error: {error.status_code}. Error - {error}"
+                    )
+                    yield ServerSentEvent(
+                        event="error",
+                        data="Ollama error. Keep in mind that embedding models can not generate responses and some models do not support THINKING",
+                    )
+                    return
+                else:
+                    logger.exception(f"Ollama error {error.status_code}")
+                    yield ServerSentEvent(
+                        event="error", data=f"Ollama error: {error.status_code}."
+                    )
+                    return
+            except httpx.RemoteProtocolError:
                 logger.exception(
-                    f"Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
+                    "Ollama stopped responding and is unavailable. Check if its running on your system"
                 )
                 yield ServerSentEvent(
                     event="error",
-                    data=" Ollama error. Ollama model might not exists or its not downloaded",
+                    data="Ollama stopped responding and is unavailable. Check if its running on your system",
                 )
                 return
-            elif error.status_code == 400:
-                logger.exception(f"Ollama error: {error.status_code}. Error - {error}")
+            except DataBaseResourceNotFound:
                 yield ServerSentEvent(
                     event="error",
-                    data="Ollama error. Keep in mind that embedding models can not generate responses and some models do not support THINKING",
+                    data=f"Database Resource Error - conversation {conversation_id} not owned by {user_id}",
                 )
                 return
+
+            except DataBaseError:
+                yield ServerSentEvent(
+                    event="error",
+                    data="Database Error - 500",
+                )
+                return
+
+            try:
+                if message_id is None:
+                    return
+                self.db.update_bot_message(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    llm_output=full_llm_response,
+                    message_id=message_id,
+                    update_status=StatusMessage.COMPLETED,
+                )
+
+                if user_message_id is not None:
+                    self.db.update_user_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        message_id=user_message_id,
+                        update_status=StatusMessage.COMPLETED,
+                    )
+
+                COMPLETED_TURN = True  # If all processes went OK
+            except DataBaseResourceNotFound:
+                logger.exception(
+                    f"Can not save LLM output. Conversation disappeared or access invalid after streaming Conversation_ID: {conversation_id} User_ID: {user_id}"
+                )
+                yield ServerSentEvent(
+                    event="error",
+                    data="Database resource not found",
+                )
+                return
+            except DataBaseError:
+                logger.exception(
+                    f"Can not save LLM output. Failed to save bot output after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
+                )
+                yield ServerSentEvent(
+                    event="error",
+                    data="Database Error - 500",
+                )
+                return
+
+        finally:
+            if not COMPLETED_TURN:
+                logger.warning(
+                    f"User {user_id} LLM turn in conversation {conversation_id} marked as FAILED due to the errors"
+                )
+                mark_messages_failed()
             else:
-                logger.exception(f"Ollama error {error.status_code}")
-                yield ServerSentEvent(
-                    event="error", data=f"Ollama error: {error.status_code}."
+                logger.info(
+                    f"User {user_id} LLM turn in conversation {conversation_id} COMPLETED"
                 )
-                return
-        except httpx.RemoteProtocolError:
-            logger.exception(
-                "Ollama stopped responding and is unavailable. Check if its running on your system"
-            )
-            yield ServerSentEvent(
-                event="error",
-                data="Ollama stopped responding and is unavailable. Check if its running on your system",
-            )
-            return
-
-        try:
-            self.db.save_bot_output(
-                output=full_llm_response,
-                conversation_id=conversation_id,
-                user_id=user_id,
-            )
-
-        except DataBaseResourceNotFound:
-            logger.exception(
-                f"Can not save LLM output. Conversation disappeared or access invalid after streaming Conversation_ID: {conversation_id} User_ID: {user_id}"
-            )
-        except DataBaseError:
-            logger.exception(
-                f"Can not save LLM output. Failed to save bot output after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
-            )
 
     #! Thread Save response
     def thread_safe_rag_streaming_response(
         self,
+        user_message_id: int,
         model: str,
         temperature: float,
         top_k,
@@ -404,22 +506,26 @@ class ChatService:
         """
 
         try:
-            for chunk in self.rag_streaming_response(
-                model=model,
-                temperature=temperature,
-                top_k=top_k,
-                top_p=top_p,
-                num_ctx=num_ctx,
-                num_predict=num_predict,
-                repeat_penalty=repeat_penalty,
-                is_thinking=is_thinking,
-                user_id=user_id,
-                chat_history=chat_history,
-                question=question,
-                conversation_id=conversation_id,
-            ):
-                yield chunk
-
+            #! Make sure if client gets disconected / ther was an issue Python will close the nner generator and invoke its finally method to mark user and bot messages in DB as FALIED
+            with closing(
+                self.rag_streaming_response(
+                    user_message_id=user_message_id,
+                    model=model,
+                    temperature=temperature,
+                    top_k=top_k,
+                    top_p=top_p,
+                    num_ctx=num_ctx,
+                    num_predict=num_predict,
+                    repeat_penalty=repeat_penalty,
+                    is_thinking=is_thinking,
+                    user_id=user_id,
+                    chat_history=chat_history,
+                    question=question,
+                    conversation_id=conversation_id,
+                )
+            ) as stream:
+                for chunk in stream:
+                    yield chunk
         finally:
             #! realase LOCK after streaming
             lock_object.release()

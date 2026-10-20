@@ -336,10 +336,7 @@ class ChatService:
                 )
                 last_save = time.monotonic()
             except DataBaseResourceNotFound, DataBaseError:
-                # Streaming may still be useful after the HTTP response starts, but
-                # the user message must not remain pending indefinitely.
                 logger.exception("Could not create pending assistant message")
-                # mark_messages_failed()
                 yield ServerSentEvent(event="error", data="Cound not save LLM message")
                 return
 
@@ -365,14 +362,12 @@ class ChatService:
 
             except httpx.ConnectError:
                 logger.exception("Ollama in unavaliable")
-                # mark_messages_failed()
                 yield ServerSentEvent(
                     event="error",
                     data="Ollama is not available. Check if its running on your system",
                 )
                 return
             except ollama.ResponseError as error:
-                # mark_messages_failed()
                 if error.status_code == 404:
                     logger.exception(
                         f"Ollama error: {error.status_code}. Ollama model might not exists or its not downloaded"
@@ -401,14 +396,12 @@ class ChatService:
                 logger.exception(
                     "Ollama stopped responding and is unavailable. Check if its running on your system"
                 )
-                # mark_messages_failed()
                 yield ServerSentEvent(
                     event="error",
                     data="Ollama stopped responding and is unavailable. Check if its running on your system",
                 )
                 return
             except DataBaseResourceNotFound:
-                # mark_messages_failed()
                 yield ServerSentEvent(
                     event="error",
                     data=f"Database Resource Error - conversation {conversation_id} not owned by {user_id}",
@@ -416,7 +409,6 @@ class ChatService:
                 return
 
             except DataBaseError:
-                # mark_messages_failed()
                 yield ServerSentEvent(
                     event="error",
                     data="Database Error - 500",
@@ -447,7 +439,6 @@ class ChatService:
                 logger.exception(
                     f"Can not save LLM output. Conversation disappeared or access invalid after streaming Conversation_ID: {conversation_id} User_ID: {user_id}"
                 )
-                # mark_messages_failed()
                 yield ServerSentEvent(
                     event="error",
                     data="Database resource not found",
@@ -457,7 +448,6 @@ class ChatService:
                 logger.exception(
                     f"Can not save LLM output. Failed to save bot output after streaming response Conversation_ID: {conversation_id} User_ID: {user_id}"
                 )
-                # mark_messages_failed()
                 yield ServerSentEvent(
                     event="error",
                     data="Database Error - 500",
@@ -470,6 +460,10 @@ class ChatService:
                     f"User {user_id} LLM turn in conversation {conversation_id} marked as FAILED due to the errors"
                 )
                 mark_messages_failed()
+            else:
+                logger.info(
+                    f"User {user_id} LLM turn in conversation {conversation_id} COMPLETED"
+                )
 
     #! Thread Save response
     def thread_safe_rag_streaming_response(
@@ -512,7 +506,7 @@ class ChatService:
         """
 
         try:
-            #! Make sure if client gets disconected / ther was an issue Python will close the inenr generator adn invoke its finally method to mark user and bot messages in DB as FALIED
+            #! Make sure if client gets disconected / ther was an issue Python will close the nner generator and invoke its finally method to mark user and bot messages in DB as FALIED
             with closing(
                 self.rag_streaming_response(
                     user_message_id=user_message_id,

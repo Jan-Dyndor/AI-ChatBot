@@ -31,7 +31,11 @@ from backend.dependencies.depends import (
     get_thread_lock,
     get_user_service,
 )
-from backend.exceptions.exc import ConversationIDConflict, NotEnoughtFileParameters
+from backend.exceptions.exc import (
+    ConversationIDConflict,
+    NotEnoughtFileParameters,
+    ValidationErrorCredentials,
+)
 from backend.service.chat_service import ChatService
 from backend.service.file_service import FileService
 from backend.service.user_service import UserService
@@ -95,9 +99,7 @@ def login_for_access_token(
     except ValidationError as e:
         variable_name = e.errors()[0]["loc"][0]
         issue_message: str = e.errors()[0]["msg"]
-        raise HTTPException(
-            status_code=422, detail=f"{variable_name} - {issue_message}"
-        )
+        raise ValidationErrorCredentials(variable_name, issue_message)
 
     user = auth_service.authenticate_user(
         user_email=valid_user_data.username, password=valid_user_data.password

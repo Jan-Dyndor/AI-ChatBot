@@ -181,3 +181,13 @@ class DatabaseNoRetryError(AppExceptions):
             status_code=500,
             client_message="Database operation failed. Could not save file metadata.",
         )
+
+
+#! AUTH HTTP validation
+class ValidationErrorCredentials(AppExceptions):
+    def __init__(self, variable_name, issue_message: str) -> None:
+        super().__init__(
+            message=f"Input data validation failed {variable_name} -> {issue_message}",
+            status_code=422,
+            client_message=f"Input data validation failed. {variable_name} -> {issue_message}",
+        )

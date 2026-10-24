@@ -43,8 +43,8 @@ with st.form("login_form"):
                 try:
                     response = requests.post(
                         settings.api_token_url,
-                        json={
-                            "email": email,
+                        data={
+                            "username": email,
                             "password": password,
                         },
                         headers={"Request-ID": f"{REQUEST_ID}"},

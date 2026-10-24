@@ -5,12 +5,7 @@ from uuid import uuid4
 
 from fastapi import UploadFile
 from loguru import logger
-from sqlalchemy.exc import (
-    DataError,
-    IntegrityError,
-    ProgrammingError,
-    SQLAlchemyError,
-)
+from sqlalchemy.exc import DataError, IntegrityError, ProgrammingError, SQLAlchemyError
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -25,7 +20,7 @@ from backend.exceptions.exc import (
     FailedFileCleanUp,
     FileNotSaved,
 )
-from backend.retry.retry_logs import log_retry
+from backend.retry.retry_logs import log_and_delete_file, log_retry
 
 
 class FileRepository:
@@ -118,6 +113,7 @@ class FileRepository:
         reraise=True,
         wait=wait_exponential_jitter(initial=1, max=5, jitter=1),
         retry=retry_if_exception_type(DataBaseFileError),
+        retry_error_callback=log_and_delete_file,
     )
     def save_file_metadata(
         self,
@@ -167,7 +163,8 @@ class FileRepository:
             self.db.rollback()
             raise DataBaseFileError(user_id, file_name) from e
 
-    def delete_file_from_storage(self, file_path: Path):
+    @staticmethod
+    def delete_file_from_storage(file_path: Path):
         """Delete File from storage
 
         Args:

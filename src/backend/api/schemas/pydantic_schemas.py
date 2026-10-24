@@ -10,7 +10,6 @@ class ChatMessage(BaseModel):
 
 
 class ModelParameters(BaseModel):
-
     temperature: float = Field(
         default=0.8,
         ge=0,

@@ -61,7 +61,6 @@ def init_session_state() -> None:
     if "conversation_id" not in st.session_state:
         REQUEST_ID: str = str(uuid4())
         with logger.contextualize(request_id=REQUEST_ID):
-
             try:
                 response = requests.post(
                     "http://localhost:8000/v1/conversations",
@@ -563,7 +562,6 @@ def get_ai_response(
                         logger.warning(f"Unknown SSE event: {event.event}")
 
             except requests.HTTPError as error:
-
                 response = error.response
                 status_code = (
                     response.status_code if response is not None else "unknown"

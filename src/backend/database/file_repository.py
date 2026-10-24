@@ -95,7 +95,7 @@ class FileRepository:
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
             logger.info(
-                f"Transferred user's { user_id } file {file_name} to given location in storage"
+                f"Transferred user's {user_id} file {file_name} to given location in storage"
             )
             return file_path
         except OSError as e:

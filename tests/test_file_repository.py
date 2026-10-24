@@ -32,9 +32,7 @@ def test_save_file_saves_content_and_metadata(file_repository, tmp_path):
     path = tmp_path / "storage" / "1" / "stored.txt"
     path.parent.mkdir(parents=True)
 
-    with patch.object(
-        file_repository, "create_file_storage_place", return_value=path
-    ):
+    with patch.object(file_repository, "create_file_storage_place", return_value=path):
         result = file_repository.save_file(
             upload_file(b"file contents"), "original.txt", 1
         )
@@ -53,9 +51,7 @@ def test_save_file_raises_cleanup_error_when_destination_is_not_writable(
     invalid_parent.write_bytes(b"not a directory")
     path = invalid_parent / "stored.txt"
 
-    with patch.object(
-        file_repository, "create_file_storage_place", return_value=path
-    ):
+    with patch.object(file_repository, "create_file_storage_place", return_value=path):
         with pytest.raises(FailedFileCleanUp):
             file_repository.save_file(upload_file(), "example.txt", 3)
 
@@ -71,10 +67,10 @@ def test_save_file_metadata_rolls_back_three_times_when_database_fails(
     )
     monkeypatch.setattr(file_repository.save_file_metadata.retry, "wait", wait_none())
 
-    with patch.object(
-        file_repository, "create_file_storage_place", return_value=path
-    ):
-        with patch.object(file_repository.db, "rollback", wraps=file_repository.db.rollback) as rollback:
+    with patch.object(file_repository, "create_file_storage_place", return_value=path):
+        with patch.object(
+            file_repository.db, "rollback", wraps=file_repository.db.rollback
+        ) as rollback:
             with pytest.raises(DataBaseFileError):
                 file_repository.save_file_metadata("example.txt", 3, path)
 

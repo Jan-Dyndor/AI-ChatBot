@@ -260,9 +260,7 @@ def test_rag_pipeline_retrieves_only_the_requesting_users_documents(monkeypatch)
             "chat_history": [{"role": "user", "content": "old"}],
         }
     )
-    db.save_bot_output.assert_called_once_with(
-        output="", conversation_id=3, user_id=42
-    )
+    db.save_bot_output.assert_called_once_with(output="", conversation_id=3, user_id=42)
     db.update_bot_message.assert_called_once_with(
         conversation_id=3,
         user_id=42,

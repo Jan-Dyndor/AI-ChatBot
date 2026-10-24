@@ -1,7 +1,7 @@
 from datetime import timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
 from pydantic import ValidationError
@@ -99,7 +99,7 @@ def login_for_access_token(
     except ValidationError as e:
         variable_name = e.errors()[0]["loc"][0]
         issue_message: str = e.errors()[0]["msg"]
-        raise ValidationErrorCredentials(variable_name, issue_message)
+        raise ValidationErrorCredentials(variable_name, issue_message) from e
 
     user = auth_service.authenticate_user(
         user_email=valid_user_data.username, password=valid_user_data.password
@@ -173,7 +173,6 @@ def rag_chat(
     lock = thread_lock.get_or_create_lock(conversation_id=user_input.conversation_id)
     if lock.acquire(blocking=False):
         try:
-
             service.conversation_summary(
                 user_input=user_input.input,
                 conversation_id=user_input.conversation_id,

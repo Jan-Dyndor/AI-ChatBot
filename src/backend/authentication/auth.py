@@ -15,7 +15,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/token")
 
 
 class AuthService:
-
     def __init__(self, user_repository: UserRepository, settings: Settings) -> None:
         self.db = user_repository
         self.settings = settings

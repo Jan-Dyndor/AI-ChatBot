@@ -34,6 +34,7 @@ class DocumentIndexingService:
 
         loader = PyPDFLoader(file_path=file_path)
         doc = loader.load()
+        logger.info("Loaded file")
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap,

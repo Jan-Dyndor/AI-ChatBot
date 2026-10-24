@@ -134,7 +134,12 @@ def upload_file(
         file, file_name=safe_file_name, user_id=user.id
     )
 
+    file_service.save_file_metadata(
+        file_name=safe_file_name, user_id=user.id, file_path=saved_file_path
+    )
+
     #! background task - embed document
+
     background_task.add_task(
         vector_file_storage.add_document, file_path=saved_file_path, user_id=user.id
     )

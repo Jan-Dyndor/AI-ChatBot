@@ -1,3 +1,6 @@
+from pathlib import Path
+
+
 # App Error
 class AppExceptions(Exception):
     def __init__(self, message: str, status_code: int, client_message: str) -> None:
@@ -146,9 +149,9 @@ class NotEnoughtFileParameters(AppExceptions):
 class DataBaseFileError(AppExceptions):
     def __init__(self, user_id: int, file_name: str) -> None:
         super().__init__(
-            message=f"Database operation to save user's {user_id} file {file_name} failed. File is being deleted from storage.",
+            message=f"Database operation to save user's {user_id} file {file_name} failed. ",
             status_code=500,
-            client_message="Database operation failed. File is deleted. Upload file again.",
+            client_message="Database operation to save file failed. Upload file again.",
         )
 
 
@@ -158,4 +161,23 @@ class FileToLarge(AppExceptions):
             message=f"User's {user_id} file {file_name} is too large. It exceeds {max_size} MB limit",
             status_code=400,
             client_message=f"Given file is to large. It exceeds current {max_size} MB limit",
+        )
+
+
+class FailedFileCleanUp(AppExceptions):
+    def __init__(self, file_path: Path) -> None:
+
+        super().__init__(
+            message=f"Cound not cleanup after failed file save. Operation is aborted. Manually delete file {file_path}",
+            status_code=500,
+            client_message="Issue occured while saving the file",
+        )
+
+
+class DatabaseNoRetryError(AppExceptions):
+    def __init__(self) -> None:
+        super().__init__(
+            message="Database operation failed with a non-retryable error",
+            status_code=500,
+            client_message="Database operation failed. Could not save file metadata.",
         )

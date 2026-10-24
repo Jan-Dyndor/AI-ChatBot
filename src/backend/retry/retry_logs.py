@@ -24,8 +24,16 @@ def log_and_delete_file(retry_state):
     from backend.database.file_repository import FileRepository
 
     error = retry_state.outcome.exception()
-    file_path = Path(retry_state.kwargs["file_path"])
-    user_id = retry_state.kwargs["user_id"]
+    # Tenacity preserves the caller's argument style. The service calls this
+    # method with keywords, while unit tests and other callers can use
+    # positional arguments: (self, file_name, user_id, file_path).
+    file_path = retry_state.kwargs.get("file_path")
+    user_id = retry_state.kwargs.get("user_id")
+    if file_path is None:
+        file_path = retry_state.args[3]
+    if user_id is None:
+        user_id = retry_state.args[2]
+    file_path = Path(file_path)
 
     logger.opt(exception=error).error(
         f"All retry attempts failed for user {user_id}. "

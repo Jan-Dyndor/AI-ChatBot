@@ -5,10 +5,27 @@ from uuid import uuid4
 
 from fastapi import UploadFile
 from loguru import logger
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import (
+    DataError,
+    IntegrityError,
+    ProgrammingError,
+    SQLAlchemyError,
+)
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential_jitter,
+)
 
 from backend.database.models import Files
-from backend.exceptions.exc import DataBaseFileError, FileNotSaved
+from backend.exceptions.exc import (
+    DataBaseFileError,
+    DatabaseNoRetryError,
+    FailedFileCleanUp,
+    FileNotSaved,
+)
+from backend.retry.retry_logs import log_retry
 
 
 class FileRepository:
@@ -41,42 +58,91 @@ class FileRepository:
         )
         return file_path
 
+    @retry(
+        stop=stop_after_attempt(3),
+        reraise=True,
+        wait=wait_exponential_jitter(initial=1, max=5, jitter=1),
+        retry=retry_if_exception_type(FileNotSaved),
+        before_sleep=log_retry,
+    )
     def save_file(
         self,
         file: UploadFile,
         file_name: str,
         user_id: int,
     ) -> Path:
-        """Save an uploaded file to local storage and persist its metadata in the database.
+        """Save an uploaded file to local storage with automatic retries.
 
-        The file is first written to the filesystem. If the file is saved successfully,
-        its metadata is stored in the database. If the database operation fails, the
-        transaction is rolled back and a best-effort cleanup is performed to remove
-        the previously saved file.
+        Generates a unique storage path and copies the uploaded file to disk.
+        The source stream is reset before each attempt. If writing fails,
+        a best-effort cleanup removes the partially saved file.
+
+        Retries up to three times for FileNotSaved exceptions using
+        exponential backoff with jitter.
 
         Args:
-            file (UploadFile): Uploaded file object received from FastAPI.
+            file (UploadFile): Uploaded file received from FastAPI.
             file_name (str): Original name of the uploaded file.
-            user_id (int): ID of the user who uploaded the file.
+            user_id (int): ID of the user uploading the file.
+
+        Returns:
+            Path: Path to the successfully saved file.
 
         Raises:
-            FileNotSaved: If the file cannot be written to local storage.
-            DataBaseFileError: If the file metadata cannot be persisted in the database.
+            FileNotSaved: If writing fails after all retry attempts.
+            FailedFileCleanUp: If cleanup of a partially saved file fails.
         """
 
         file_path: Path = self.create_file_storage_place(user_id, file_name)
 
         try:
+            file.file.seek(0)
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
+            logger.info(
+                f"Transferred user's { user_id } file {file_name} to given location in storage"
+            )
+            return file_path
         except OSError as e:
+            try:
+                self.delete_file_from_storage(file_path)
+            except OSError as err:
+                raise FailedFileCleanUp(file_path=file_path) from err
+
             raise FileNotSaved(
                 file_name=file_name, user_id=user_id, file_path=file_path
             ) from e
 
-        logger.info(
-            f"Transferred user's { user_id } file {file_name} to given location in storage"
-        )
+    @retry(
+        stop=stop_after_attempt(3),
+        reraise=True,
+        wait=wait_exponential_jitter(initial=1, max=5, jitter=1),
+        retry=retry_if_exception_type(DataBaseFileError),
+    )
+    def save_file_metadata(
+        self,
+        file_name: str,
+        user_id: int,
+        file_path: Path,
+    ) -> None:
+        """Persist uploaded file metadata in PostgreSQL using SQLAlchemy.
+
+        Creates a database record containing the file name, owner ID,
+        and storage path. Rolls back the transaction if persistence fails.
+
+        Retries up to three times for DataBaseFileError exceptions using
+        exponential backoff with jitter. IntegrityError, DataError,
+        and ProgrammingError are treated as non-retryable errors.
+
+        Args:
+            file_name (str): Original name of the uploaded file.
+            user_id (int): ID of the user who uploaded the file.
+            file_path (Path): Path to the file stored on disk.
+
+        Raises:
+            DatabaseNoRetryError: If a non-retryable database error occurs.
+            DataBaseFileError: If database persistence fails after retries.
+        """
         try:
             file_to_save = Files(
                 user_id=user_id,
@@ -87,19 +153,19 @@ class FileRepository:
             self.db.add(file_to_save)
             self.db.commit()
             logger.info(f"Saved user's {user_id} file {file_name} metadata in DB")
+        except IntegrityError as e:
+            self.db.rollback()
+            raise DatabaseNoRetryError() from e
+        except DataError as e:
+            self.db.rollback()
+            raise DatabaseNoRetryError() from e
+        except ProgrammingError as e:
+            self.db.rollback()
+            raise DatabaseNoRetryError() from e
+
         except SQLAlchemyError as e:
             self.db.rollback()
-            try:
-                self.delete_file_from_storage(file_path)
-
-            except OSError:
-                logger.exception(
-                    f"Failed to cleanup user's {user_id} file {file_name} after database error. File may still be under path {file_path}"
-                )
-
             raise DataBaseFileError(user_id, file_name) from e
-
-        return file_path
 
     def delete_file_from_storage(self, file_path: Path):
         """Delete File from storage

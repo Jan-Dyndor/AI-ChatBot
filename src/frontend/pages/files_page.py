@@ -74,7 +74,9 @@ def _fetch_files() -> list[dict[str, object]] | None:
             payload = response.json()
             if not isinstance(payload, list):
                 logger.error(f"Files response has unexpected shape: {payload}")
-                st.error("Could not load your documents: backend returned an invalid response.")
+                st.error(
+                    "Could not load your documents: backend returned an invalid response."
+                )
                 return None
 
             files = [
@@ -86,7 +88,9 @@ def _fetch_files() -> list[dict[str, object]] | None:
             ]
             if len(files) != len(payload):
                 logger.error(f"Files response contains invalid records: {payload}")
-                st.error("Could not load your documents: backend returned invalid file data.")
+                st.error(
+                    "Could not load your documents: backend returned invalid file data."
+                )
                 return None
 
             logger.debug(f"Loaded {len(files)} files for the current user")
@@ -136,7 +140,9 @@ def _fetch_pdf(file_id: int) -> bytes | None:
             response.raise_for_status()
             pdf_data = response.content
             if not pdf_data:
-                logger.error(f"File endpoint returned an empty response: file_id={file_id}")
+                logger.error(
+                    f"File endpoint returned an empty response: file_id={file_id}"
+                )
                 st.error("Could not open this document: the file is empty.")
                 return None
 
@@ -232,7 +238,9 @@ elif files:
                     }
                     cached_pdf = st.session_state.selected_file_pdf
 
-            if isinstance(cached_pdf, dict) and isinstance(cached_pdf.get("data"), bytes):
+            if isinstance(cached_pdf, dict) and isinstance(
+                cached_pdf.get("data"), bytes
+            ):
                 st.pdf(
                     cached_pdf["data"],
                     height=800,

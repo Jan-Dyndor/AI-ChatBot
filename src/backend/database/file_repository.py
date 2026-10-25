@@ -176,6 +176,19 @@ class FileRepository:
         os.remove(path=file_path)
 
     def get_all_user_files(self, user_id: int) -> list:
+        """Retrieve the IDs and original names of all files owned by a user.
+
+        Args:
+            user_id (int): ID of the user whose files are being retrieved.
+
+        Raises:
+            DataBaseResourceNotFound: If the user has no files stored in the database.
+            DataBaseError: If a SQLAlchemy database operation fails.
+
+        Returns:
+            list[Row]: List of SQLAlchemy Row objects containing file IDs
+                and original file names.
+        """
         try:
             query = select(Files.id, Files.original_file_name).where(
                 Files.user_id == user_id
@@ -190,6 +203,20 @@ class FileRepository:
             raise DataBaseError() from err
 
     def get_file(self, user_id: int, file_id: int) -> str:
+        """Retrieve the storage path of a file owned by the specified user.
+
+        Args:
+            user_id (int): ID of the user who owns the file.
+            file_id (int): ID of the requested file.
+
+        Raises:
+            DataBaseResourceNotFound: If the file does not exist or does not
+                belong to the specified user.
+            DataBaseError: If a SQLAlchemy database operation fails.
+
+        Returns:
+            str: Local storage path of the requested file.
+        """
         try:
             query = select(Files).where(Files.user_id == user_id, Files.id == file_id)
 
@@ -201,6 +228,3 @@ class FileRepository:
 
         except SQLAlchemyError as err:
             raise DataBaseError() from err
-
-
-#! Co ja kbedzie none>? ogarnij to

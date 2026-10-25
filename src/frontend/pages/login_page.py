@@ -43,8 +43,8 @@ with st.form("login_form"):
                 try:
                     response = requests.post(
                         settings.api_token_url,
-                        json={
-                            "email": email,
+                        data={
+                            "username": email,
                             "password": password,
                         },
                         headers={"Request-ID": f"{REQUEST_ID}"},
@@ -68,9 +68,9 @@ with st.form("login_form"):
                         st.stop()
                     elif response.status_code == 422:
                         logger.warning(
-                            f"User {email} entered wrongly formated input data - {data.get("message")}"
+                            f"User {email} entered wrongly formated input data - {data.get('message')}"
                         )
-                        st.error(f"Invalid data provided: {data.get("message")}")
+                        st.error(f"Invalid data provided: {data.get('message')}")
                         st.stop()
 
                     response.raise_for_status()

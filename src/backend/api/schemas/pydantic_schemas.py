@@ -10,7 +10,6 @@ class ChatMessage(BaseModel):
 
 
 class ModelParameters(BaseModel):
-
     temperature: float = Field(
         default=0.8,
         ge=0,
@@ -76,7 +75,7 @@ class CreateUserResponse(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr = Field(min_length=1, max_length=100)
+    username: EmailStr = Field(min_length=1, max_length=100)
     password: str = Field(min_length=1, max_length=100)
 
 

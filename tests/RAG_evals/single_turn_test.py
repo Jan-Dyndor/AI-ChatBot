@@ -84,7 +84,6 @@ metric_recall = ContextualRecallMetric(
     threshold=0.7, model=model, async_mode=False, include_reason=True
 )
 for data_input in golden_json_data:
-
     question: str = data_input["input"]
     expected_output: str = data_input["expected_output"]
     result = rag_chain.invoke({"input": question, "chat_history": []})

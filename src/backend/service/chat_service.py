@@ -290,9 +290,7 @@ class ChatService:
             Database persistence errors are logged without interrupting the response.
         """
 
-        COMPLETED_TURN: bool = (
-            False  # check if streaming went ok, if user disconnected or any other issue - mark whole chat turn as FALIED
-        )
+        COMPLETED_TURN: bool = False  # check if streaming went ok, if user disconnected or any other issue - mark whole chat turn as FALIED
         full_llm_response = ""
         message_id: int | None = None
 

@@ -76,7 +76,9 @@ def test_upload_file_saves_file_returns_sanitized_name_and_indexes_in_background
     vector_store.add_documents.assert_called_once_with(documents=chunks)
 
 
-def test_upload_file_retries_background_indexing_until_success(client, upload_dependencies):
+def test_upload_file_retries_background_indexing_until_success(
+    client, upload_dependencies
+):
     _, index_service, vector_store = upload_dependencies
     chunks = [Mock()]
     index_service.load_and_split_pdf.side_effect = [

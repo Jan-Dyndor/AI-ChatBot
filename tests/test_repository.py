@@ -349,7 +349,7 @@ def test_user_lates_conversations_ids_less_than_10_conversetions(
     session.add(test_user_db)
     session.commit()
     for _ in range(5):
-        session.add(Conversations(user_id=test_user_db.id, summary=f"{_+1} test"))
+        session.add(Conversations(user_id=test_user_db.id, summary=f"{_ + 1} test"))
         session.commit()
     ids = repo_service.user_lates_conversations_ids(user_id=test_user_db.id)
     assert ids is not None

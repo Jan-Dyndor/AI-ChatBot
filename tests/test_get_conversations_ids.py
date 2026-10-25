@@ -22,7 +22,7 @@ def test_get_conversations_ids_happy(client, test_user_db, valid_token):
     session.commit()
 
     for _ in range(11):
-        c = Conversations(user_id=test_user_db.id, summary=f"{_+1} test")
+        c = Conversations(user_id=test_user_db.id, summary=f"{_ + 1} test")
         session.add(c)
         session.commit()
 
@@ -62,7 +62,7 @@ def test_get_conversations_ids_less_than_10(client, test_user_db, valid_token):
     session.commit()
 
     for _ in range(5):
-        c = Conversations(user_id=test_user_db.id, summary=f"{_+1} test")
+        c = Conversations(user_id=test_user_db.id, summary=f"{_ + 1} test")
         session.add(c)
         session.commit()
 

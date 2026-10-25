@@ -2,7 +2,9 @@ from datetime import timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
+from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
+from pydantic import ValidationError
 from sse_starlette import EventSourceResponse
 
 from backend.api.schemas.pydantic_schemas import (
@@ -29,7 +31,11 @@ from backend.dependencies.depends import (
     get_thread_lock,
     get_user_service,
 )
-from backend.exceptions.exc import ConversationIDConflict, NotEnoughtFileParameters
+from backend.exceptions.exc import (
+    ConversationIDConflict,
+    NotEnoughtFileParameters,
+    ValidationErrorCredentials,
+)
 from backend.service.chat_service import ChatService
 from backend.service.file_service import FileService
 from backend.service.user_service import UserService
@@ -82,12 +88,21 @@ def create_user(
 
 @router.post("/token")
 def login_for_access_token(
-    user_data: UserLogin,
+    user_data=Depends(OAuth2PasswordRequestForm),
     settings: Settings = Depends(get_settings),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> Token:
+    try:
+        valid_user_data = UserLogin.model_validate(
+            {"username": user_data.username, "password": user_data.password}
+        )
+    except ValidationError as e:
+        variable_name = e.errors()[0]["loc"][0]
+        issue_message: str = e.errors()[0]["msg"]
+        raise ValidationErrorCredentials(variable_name, issue_message) from e
+
     user = auth_service.authenticate_user(
-        user_email=user_data.email, password=user_data.password
+        user_email=valid_user_data.username, password=valid_user_data.password
     )
     access_token_expires = timedelta(minutes=settings.token_expires_minutes)
     token = auth_service.create_access_token(
@@ -158,7 +173,6 @@ def rag_chat(
     lock = thread_lock.get_or_create_lock(conversation_id=user_input.conversation_id)
     if lock.acquire(blocking=False):
         try:
-
             service.conversation_summary(
                 user_input=user_input.input,
                 conversation_id=user_input.conversation_id,

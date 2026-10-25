@@ -109,3 +109,10 @@ class Message(BaseModel):
 class UploadFileResponse(BaseModel):
     file_name: str
     status: str = Field(default="UPLOADED")
+
+
+class FilesResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    original_file_name: str

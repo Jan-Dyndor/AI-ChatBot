@@ -395,6 +395,9 @@ def render_sidebar():
         if st.button("Upload document"):
             st.switch_page("pages/upload_page.py")
 
+        if st.button("My documents"):
+            st.switch_page("pages/files_page.py")
+
         st.markdown("---")
 
         if st.button("Logout"):

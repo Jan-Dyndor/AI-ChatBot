@@ -210,7 +210,8 @@ AI-ChatBot/
 │           ├── chatbot_page.py # Chat UI
 │           ├── login_page.py   # Login UI
 │           ├── register_page.py # Registration UI
-│           └── upload_page.py  # PDF upload UI
+│           ├── upload_page.py  # PDF upload UI
+│           └── files_page.py   # User document list UI
 │
 ├── tests/                      # Unit and integration tests
 ├── alembic/                     # Database migration environment and revisions

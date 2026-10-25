@@ -23,6 +23,7 @@ jobs:
       API_TOKEN_URL:  ${{ vars.TEST_API_TOKEN_URL }}
       API_UPLOAD_FILE_URL:  ${{ vars.API_UPLOAD_FILE_URL }}
       API_URL: ${{ vars.TEST_API_URL }}
+      API_FILES_URL : ${{ vars.TEST_API_FILES_URL }}
       DB_URL: ${{ vars.TEST_DB_URL }}
       JWT_EXPIRES_TIME_MINUTES: ${{ vars.TEST_JWT_EXPIRES_TIME_MINUTES }}
       LANGSMITH_TRACING : ${{ vars.TEST_LANGSMITH_TRACING }}

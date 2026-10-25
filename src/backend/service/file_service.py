@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import UploadFile
 
+from backend.api.schemas.pydantic_schemas import FilesResponse
 from backend.database.file_repository import FileRepository
 from backend.exceptions.exc import FileToLarge
 
@@ -70,3 +71,39 @@ class FileService:
         """
         if size > max_size:
             raise FileToLarge(file_name, user_id, max_size)
+
+    def get_all_users_files(self, user_id) -> list[FilesResponse]:
+        """Retrieve and validate all files belonging to the specified user.
+
+        Args:
+            user_id (int): ID of the user whose files are being retrieved.
+
+        Raises:
+            DataBaseResourceNotFound: If the user has no files stored in the database.
+            DataBaseError: If a database operation fails.
+            ValidationError: If the retrieved data does not match the FilesResponse schema.
+
+        Returns:
+            list[FilesResponse]: List of validated file response objects
+                containing file IDs and original file names.
+        """
+        user_files = self.db.get_all_user_files(user_id=user_id)
+
+        return [FilesResponse.model_validate(file) for file in user_files]
+
+    def get_file(self, user_id: int, file_id: int) -> str:
+        """Retrieve the storage path of a file owned by the specified user.
+
+        Args:
+            user_id (int): ID of the user who owns the file.
+            file_id (int): ID of the requested file.
+
+        Raises:
+            DataBaseResourceNotFound: If the file does not exist or does not
+                belong to the specified user.
+            DataBaseError: If a database operation fails.
+
+        Returns:
+            str: Local storage path of the requested file.
+        """
+        return self.db.get_file(user_id=user_id, file_id=file_id)

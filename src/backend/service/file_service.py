@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import UploadFile
 
+from backend.api.schemas.pydantic_schemas import FilesResponse
 from backend.database.file_repository import FileRepository
 from backend.exceptions.exc import FileToLarge
 
@@ -70,3 +71,11 @@ class FileService:
         """
         if size > max_size:
             raise FileToLarge(file_name, user_id, max_size)
+
+    def get_all_users_files(self, user_id) -> list[FilesResponse]:
+        user_files = self.db.get_all_user_files(user_id=user_id)
+
+        return [FilesResponse.model_validate(file) for file in user_files]
+
+    def get_file(self, user_id: int, file_id: int):
+        return self.db.get_file(user_id=user_id, file_id=file_id)

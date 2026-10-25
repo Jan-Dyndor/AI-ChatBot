@@ -2,6 +2,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
+from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
 from pydantic import ValidationError
@@ -11,6 +12,7 @@ from backend.api.schemas.pydantic_schemas import (
     ChatMessage,
     CreateUserRequest,
     CreateUserResponse,
+    FilesResponse,
     Models,
     Token,
     UploadFileResponse,
@@ -216,3 +218,22 @@ def rag_chat(
 
     else:
         raise ConversationIDConflict(conversation_id=user_input.conversation_id)
+
+
+@router.get("/files", response_model=list[FilesResponse] | None)
+def get_files(
+    user: UserDB = Depends(get_current_user),
+    file_service: FileService = Depends(get_file_service),
+):
+    return file_service.get_all_users_files(user.id)
+
+
+@router.get("/files/{file_id}", response_class=FileResponse)
+def get_file(
+    file_id: int,
+    user: UserDB = Depends(get_current_user),
+    file_service: FileService = Depends(get_file_service),
+):
+
+    file_path: Path = Path(file_service.get_file(user_id=user.id, file_id=file_id))
+    return file_path

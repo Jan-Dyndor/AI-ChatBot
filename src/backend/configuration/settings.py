@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     api_token_url: str = Field(validation_alias="API_TOKEN_URL")
     api_create_user_url: str = Field(validation_alias="API_CREATE_USER")
     api_upload_file_url: str = Field(validation_alias="API_UPLOAD_FILE_URL")
+    api_files_url: str = Field(
+        validation_alias="API_FILES_URL",
+    )
 
     secret_key_jwt: str = Field(validation_alias="SECRET_KEY")
     algorythm_jwt: str = Field(validation_alias="ALGORITHM")

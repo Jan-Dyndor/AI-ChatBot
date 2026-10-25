@@ -28,6 +28,8 @@ dependencies = [
     "sse-starlette>=3.5.0",
     "sseclient-py>=1.9.0",
     "streamlit>=1.56.0",
+    "streamlit-pdf>=2.1.0",
+    "streamlit-pdf-viewer>=0.0.30",
     "tenacity>=9.1.4",
     "uvicorn>=0.44.0",
 ]

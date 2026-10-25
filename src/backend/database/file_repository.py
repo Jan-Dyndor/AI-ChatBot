@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from fastapi import UploadFile
 from loguru import logger
+from sqlalchemy import select
 from sqlalchemy.exc import DataError, IntegrityError, ProgrammingError, SQLAlchemyError
 from tenacity import (
     retry,
@@ -15,8 +16,10 @@ from tenacity import (
 
 from backend.database.models import Files
 from backend.exceptions.exc import (
+    DataBaseError,
     DataBaseFileError,
     DatabaseNoRetryError,
+    DataBaseResourceNotFound,
     FailedFileCleanUp,
     FileNotSaved,
 )
@@ -171,3 +174,33 @@ class FileRepository:
             file_path (Path): path to file
         """
         os.remove(path=file_path)
+
+    def get_all_user_files(self, user_id: int) -> list:
+        try:
+            query = select(Files.id, Files.original_file_name).where(
+                Files.user_id == user_id
+            )
+            user_files = self.db.execute(query).all()
+
+            if not user_files:
+                raise DataBaseResourceNotFound()
+
+            return user_files
+        except SQLAlchemyError as err:
+            raise DataBaseError() from err
+
+    def get_file(self, user_id: int, file_id: int) -> str:
+        try:
+            query = select(Files).where(Files.user_id == user_id, Files.id == file_id)
+
+            file = self.db.scalar(query)
+            if not file:
+                raise DataBaseResourceNotFound()
+
+            return file.storage_path
+
+        except SQLAlchemyError as err:
+            raise DataBaseError() from err
+
+
+#! Co ja kbedzie none>? ogarnij to

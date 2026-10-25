@@ -35,6 +35,8 @@ dependencies = [
     { name = "sse-starlette" },
     { name = "sseclient-py" },
     { name = "streamlit" },
+    { name = "streamlit-pdf" },
+    { name = "streamlit-pdf-viewer" },
     { name = "tenacity" },
     { name = "uvicorn" },
 ]
@@ -64,6 +66,8 @@ requires-dist = [
     { name = "sse-starlette", specifier = ">=3.5.0" },
     { name = "sseclient-py", specifier = ">=1.9.0" },
     { name = "streamlit", specifier = ">=1.56.0" },
+    { name = "streamlit-pdf", specifier = ">=2.1.0" },
+    { name = "streamlit-pdf-viewer", specifier = ">=0.0.30" },
     { name = "tenacity", specifier = ">=9.1.4" },
     { name = "uvicorn", specifier = ">=0.44.0" },
 ]
@@ -2703,6 +2707,27 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/03/85/7c669b3a1336d34ef39fa9760fbd343185f3b15db2ad0838fd78423d1c7f/streamlit-1.56.0.tar.gz", hash = "sha256:1176acfa89ae1318b79078e8efe689a9d02e8d58e325c00fc0e55fa2f3fe8d6a", size = 8559239, upload-time = "2026-03-31T22:29:38.59Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e4/91/cb6f13a89e376ef179309d74f37a70ea0041d5e4b5ba5c4836dbf6e020ad/streamlit-1.56.0-py3-none-any.whl", hash = "sha256:8677a335734a30a51bc57ad0ec910e365d95f7c456fc02c60032927cd0729dc5", size = 9052089, upload-time = "2026-03-31T22:29:36.342Z" },
+]
+
+[[package]]
+name = "streamlit-pdf"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/db/eb/2d4c6311874469102ee94e20152b775bae762644f4c628d54916daf5b51e/streamlit_pdf-2.1.0.tar.gz", hash = "sha256:2e2a79140335087517e83b024277750fb910d61fd24052d886c0def4f856fc2d", size = 1950894, upload-time = "2026-09-28T17:48:20.361Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/5b/310ff1c5cb48a70a8532b92c523b420a6906d693a2e00e11ef6f3a59dcc8/streamlit_pdf-2.1.0-py3-none-any.whl", hash = "sha256:a5ba2e19571abab0254d5296499fa0fc508f1e66e6a2b3bb13e167037410067e", size = 2083846, upload-time = "2026-09-28T17:48:18.358Z" },
+]
+
+[[package]]
+name = "streamlit-pdf-viewer"
+version = "0.0.30"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "streamlit" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0c/d5/651308e5a8403ec40cfb818f462d86618443f8b9bb1d8872085637f2517d/streamlit_pdf_viewer-0.0.30.tar.gz", hash = "sha256:316ac73e123652e1afc8ae4a7fa78a9f08c7999cc9c46cb1e3890b34305f770e", size = 2162525, upload-time = "2026-07-20T10:27:10.379Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a4/95/bd99dea7b49e4df054592d5f488b4d85decf841c4300f9d697c3409ae654/streamlit_pdf_viewer-0.0.30-py3-none-any.whl", hash = "sha256:6cd8ae37627d881c8ad4930ff720d1569f026eed45462ee5329272dedb497679", size = 2200957, upload-time = "2026-07-20T10:27:09.08Z" },
 ]
 
 [[package]]

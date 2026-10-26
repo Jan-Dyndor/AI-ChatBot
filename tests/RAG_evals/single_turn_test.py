@@ -148,10 +148,10 @@ with tempfile.TemporaryDirectory() as dir_storage_test:
         test_cases=tests,
         metrics=[
             metric_context,
-            # metric_relevancy,
-            # metric_faithfulness,
-            # metric_precision,
-            # metric_recall,
+            metric_relevancy,
+            metric_faithfulness,
+            metric_precision,
+            metric_recall,
         ],
         async_config=AsyncConfig(run_async=False),
         display_config=DisplayConfig(

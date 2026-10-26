@@ -91,21 +91,24 @@ uv run uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000 --no-acc
 
 ## DeepEval RAG evaluations
 
-The repository contains two DeepEval RAG evaluation scripts:
+The repository contains two standalone DeepEval scripts. They run the real RAG
+pipeline against a local benchmark PDF and Ollama; they are excluded from the
+default `pytest` run.
 
 - `tests/RAG_evals/single_turn_test.py` — evaluates independent, single-turn RAG questions.
 - `tests/RAG_evals/multi_turn_rag_test.py` — evaluates conversations containing multiple related turns.
 
-Run the evaluations from the repository root with `uv`:
+Start Ollama and download the default chat and embedding models:
 
 ```bash
-uv run python tests/RAG_evals/single_turn_test.py
-uv run python tests/RAG_evals/multi_turn_rag_test.py
+ollama pull llama3:8b
+ollama pull nomic-embed-text
 ```
 
-The evaluations use the RAG evaluation settings in the repository-root `.env` file. The default configuration uses the local `llama3:8b` model. Configure the model, generation parameters, and the account whose documents are searched with these variables:
+Set the model configuration in the repository-root `.env` file:
 
 ```env
+EMBEDDING_MODEL="nomic-embed-text"
 TEST_DEEPEVALS_MODEL="llama3:8b"
 TEST_DEEPEVALS_TEMP=0
 TEST_DEEPEVALS_TOP_K=40
@@ -114,10 +117,42 @@ TEST_DEEPEVALS_NUM_CTX=4096
 TEST_DEEPEVALS_NUM_PREDICT=300
 TEST_DEEPEVALS_REPEAT_PENALTY=1.1
 TEST_DEEPEVALS_IS_THINKING=false
-TEST_DEEPEVALS_USER_ID=1
 ```
 
-`TEST_DEEPEVALS_USER_ID` must be the ID of the dedicated user who owns the evaluation documents. These values belong in `.env`, not `.env.tests`.
+Run one script at a time from the repository root:
+
+```bash
+uv run python tests/RAG_evals/single_turn_test.py
+# or
+uv run python tests/RAG_evals/multi_turn_rag_test.py
+```
+
+### How it works
+
+Each script loads the benchmark PDF from `tests/RAG_evals/data/`, splits it into
+chunks, creates embeddings, and puts them in a temporary Chroma collection. It
+then reads the matching golden file (`single_turn_goldens.json` or
+`multi_turn_goldens.json`), asks the RAG chain each question, and compares its
+answer and retrieved context with the expected result.
+
+The test document and all searches use the isolated `user_id = -1`, so only its
+chunks can be retrieved. This mirrors the application's user-level document
+filtering without requiring a backend server, database, account, or file upload.
+The temporary vectors are deleted after the script ends.
+
+To test another document, replace the PDF at
+`tests/RAG_evals/data/harborline_rag_benchmark_10_pages.pdf` (or update
+`test_docs_path` in both scripts) and update the corresponding golden JSON with
+questions and expected answers. Use the single-turn golden file for independent
+questions; use the multi-turn file for follow-up questions that depend on chat
+history.
+
+The single-turn evaluation currently measures contextual relevancy. The
+multi-turn evaluation measures faithfulness plus contextual relevancy,
+precision, and recall. Results are saved as HTML reports under
+`evals_results/single/basic/test_results/` or
+`evals_results/multi/basic/test_results/`; each run also overwrites its saved
+configuration and an example of the generated chunks in `evals_results/`.
 
 If DeepEval reports a timeout, increase its per-attempt and per-task timeouts before running the command again:
 
@@ -131,16 +166,6 @@ uv run python tests/RAG_evals/multi_turn_rag_test.py
 ```
 
 The value `600` is only a starting point. Adjust it to match the available hardware, the selected model, and whether the evaluation is running asynchronously.
-
-### Preparing documents for RAG evaluation
-
-The RAG evaluation scripts retrieve context from the vector store, so the source document used by the goldens must be uploaded and indexed before running an evaluation. Upload the document through the `POST /v1/file` endpoint defined in `src/backend/api/router/v1.py`. The endpoint saves the file, splits it into chunks, and creates embeddings for those chunks.
-
-For repeatable evaluation runs, create a dedicated test account, upload the evaluation document while authenticated as that user, and set `TEST_DEEPEVALS_USER_ID` in `.env` to the returned user ID, for example `42`. Do not add this value to `.env.tests`.
-
-This is important because retrieval is scoped by `user_id`: the RAG chain must return only documents and chunks belonging to the test user. If the document is uploaded under a different account, or the script uses the wrong ID, the evaluation may retrieve no context or context from the wrong user's documents.
-
-In the future, I will improve the functionality or rethink this approach to make preparing and running the evaluations easier.
 
 ## Architecture
 

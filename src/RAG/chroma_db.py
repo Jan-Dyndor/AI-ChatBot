@@ -1,11 +1,11 @@
-from pathlib import Path
-
 from langchain_chroma import Chroma
 from langchain_core.vectorstores import VectorStore
 from langchain_ollama.embeddings import OllamaEmbeddings
 
 
-def create_vector_store(embedding_model: str, collection_name: str) -> VectorStore:
+def create_vector_store(
+    embedding_model: str, collection_name: str, storage_dir: str
+) -> VectorStore:
     """Create and configure a persistent Chroma vector store using Ollama embeddings.
 
     Args:
@@ -23,8 +23,6 @@ def create_vector_store(embedding_model: str, collection_name: str) -> VectorSto
         The collection is created if it does not exist or reused if it
         already exists. The embedding model must be available in Ollama.
     """
-
-    storage_dir = str(Path(__file__).parents[2].resolve() / "vector_storage")
 
     embeddings = OllamaEmbeddings(model=embedding_model)
 

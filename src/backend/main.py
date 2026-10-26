@@ -16,6 +16,7 @@ from backend.middleware.request_id_middleware import RequestIDMiddleware
 from RAG.chroma_db import create_vector_store
 
 set_up_logging()
+storage_dir: str = str(Path(__file__).parents[2].resolve() / "vector_storage")
 
 
 def create_lifespan(env_file_location: str | Path | None = None):
@@ -31,6 +32,7 @@ def create_lifespan(env_file_location: str | Path | None = None):
         vector_store: VectorStore = create_vector_store(
             embedding_model=settings.embedding_model,
             collection_name=settings.collection_name_vector_store,
+            storage_dir=storage_dir,
         )
         app.state.vector_store = vector_store
         with engine.connect() as connection:  # Test DB connection

@@ -56,12 +56,13 @@ with tempfile.TemporaryDirectory() as test_temp_dir:
         chunk_overlap=settings.chunk_overlap, chunk_size=settings.chunk_size
     )
 
-    chat_client = ChatBotClient()
+    chat_client = ChatBotClient(ollama_url=settings.ollama_url)
 
     test_vector_store = create_vector_store(
         embedding_model=settings.embedding_model,
         collection_name=TEST_COLLECTION_NAME,
         storage_dir=test_temp_dir,
+        ollama_url=settings.ollama_url,
     )
 
     file_vector_storage = FileVectorStorage(

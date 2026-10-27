@@ -63,7 +63,7 @@ def init_session_state() -> None:
         with logger.contextualize(request_id=REQUEST_ID):
             try:
                 response = requests.post(
-                    "http://localhost:8000/v1/conversations",
+                    settings.api_conversations_url,
                     headers={
                         "Authorization": f"Bearer {st.session_state.access_token}",
                         "Request-ID": f"{REQUEST_ID}",
@@ -125,7 +125,7 @@ def init_session_state() -> None:
             with logger.contextualize(request_id=REQUEST_ID):
                 try:
                     response = requests.get(
-                        f"http://localhost:8000/v1/conversations/{st.session_state.conversation_id}/messages",
+                        f"{settings.api_conversations_url_by_ID_part}{st.session_state.conversation_id}/messages",
                         headers={
                             "Authorization": f"Bearer {st.session_state.access_token}",
                             "Request-ID": f"{REQUEST_ID}",
@@ -191,7 +191,7 @@ def get_conversation_history_ids() -> list[list] | int | None:
     with logger.contextualize(request_id=REQUEST_ID):
         try:
             response = requests.get(
-                "http://localhost:8000/v1/conversations",
+                settings.api_conversations_url,
                 headers={
                     "Authorization": f"Bearer {st.session_state.access_token}",
                     "Request-ID": f"{REQUEST_ID}",
@@ -267,7 +267,7 @@ def get_available_models() -> list[str]:
     with logger.contextualize(request_id=REQUEST_ID):
         try:
             response = requests.get(
-                "http://localhost:8000/v1/models",
+                settings.api_models,
                 headers={
                     "Authorization": f"Bearer {st.session_state.access_token}",
                     "Request-ID": f"{REQUEST_ID}",
@@ -498,7 +498,7 @@ def get_ai_response(
         response = None
         try:
             response = requests.post(
-                "http://localhost:8000/v1/chat",
+                settings.api_url_ai_chat,
                 json={
                     "input": user_input,
                     "model": model,

@@ -33,6 +33,7 @@ def create_lifespan(env_file_location: str | Path | None = None):
             embedding_model=settings.embedding_model,
             collection_name=settings.collection_name_vector_store,
             storage_dir=storage_dir,
+            ollama_url=settings.ollama_url,
         )
         app.state.vector_store = vector_store
         with engine.connect() as connection:  # Test DB connection

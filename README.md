@@ -51,7 +51,7 @@ then starts the containers defined in `compose.yaml`.
 1. Docker Desktop must be running.
 2. Ollama must be installed natively on the same computer as Docker.
 3. The Ollama service must listen on its default port, `11434`.
-4. Download both required models :
+4. Download both required models (or choose  embedding one since llama3:8b is required in DeepEval tests). You can download more models and use them as you like :
 
    ```bash
    ollama pull llama3:8b
@@ -61,9 +61,10 @@ then starts the containers defined in `compose.yaml`.
 
    `llama3:8b` is the default conversation model. The application uses it for
    responses, conversation summaries, and conversation titles; users can later
-   select another downloaded model. `embeddinggemma` is the embedding model:
+   select another downloaded model. `embeddinggemma` is the example embedding model:
    it indexes PDFs and retrieves RAG context. An embedding model cannot generate
-   chat responses.
+   chat responses. You may use another Ollama embedding model, but it must be
+   installed and its name must exactly match `EMBEDDING_MODEL` in env files.
 
    The Ollama macOS app normally starts its server automatically. If
    `curl http://localhost:11434/api/tags` does not return a response, run:
@@ -82,52 +83,6 @@ Create your private file and replace every `CHANGE_ME` value:
 
 ```bash
 cp .env.docker.example .env.docker
-```
-
-The complete file format is below. The password in `POSTGRES_PASSWORD` and
-`DB_URL` must be identical. If the password includes URL-special characters
-such as `@`, `:`, `/`, or `#`, percent-encode it in `DB_URL`.
-
-```env
-POSTGRES_USER=ai_chatbot
-POSTGRES_PASSWORD=CHANGE_ME_USE_A_STRONG_DATABASE_PASSWORD
-POSTGRES_DB=ai_chatbot
-DB_URL=postgresql://ai_chatbot:CHANGE_ME_USE_A_STRONG_DATABASE_PASSWORD@postgres:5432/ai_chatbot
-
-API_URL=http://backend:8000/v1/chat
-API_CHAT_HISTORY_URL=http://backend:8000/v1/conversations/
-API_CREATE_CONVERSATION_URL=http://backend:8000/v1/conversations
-API_LATEST_CONVERSATIONS_IDS_URL=http://backend:8000/v1/conversations
-API_TOKEN_URL=http://backend:8000/v1/token
-API_CREATE_USER=http://backend:8000/v1/users
-API_UPLOAD_FILE_URL=http://backend:8000/v1/file
-API_FILES_URL=http://backend:8000/v1/files
-API_CONVERSATIONS=http://backend:8000/v1/conversations
-API_CONVERSATIONS_BY_ID_PART=http://backend:8000/v1/conversations/
-API_MODELS=http://backend:8000/v1/models
-
-OLLAMA_API=http://host.docker.internal:11434
-EMBEDDING_MODEL=nomic-embed-text
-
-SECRET_KEY=CHANGE_ME_USE_A_LONG_RANDOM_VALUE
-ALGORITHM=HS256
-JWT_EXPIRES_TIME_MINUTES=60
-MAX_FILE_SIZE_BYTES=10485760
-
-LANGSMITH_TRACING=false
-LANGSMITH_ENDPOINT=https://api.smith.langchain.com
-LANGSMITH_API_KEY=
-LANGSMITH_PROJECT=ai-chatbot
-
-TEST_DEEPEVALS_MODEL=llama3:8b
-TEST_DEEPEVALS_TEMP=0
-TEST_DEEPEVALS_TOP_K=40
-TEST_DEEPEVALS_TOP_P=0.9
-TEST_DEEPEVALS_NUM_CTX=4096
-TEST_DEEPEVALS_NUM_PREDICT=300
-TEST_DEEPEVALS_REPEAT_PENALTY=1.1
-TEST_DEEPEVALS_IS_THINKING=false
-TEST_DEEPEVALS_USER_ID=1
 ```
 
 `backend` and `postgres` are Docker Compose service names. Inside the Compose
@@ -156,6 +111,22 @@ They are safe API URLs, although the current frontend uses the newer
 optional: with `LANGSMITH_TRACING=false`, its API key may remain empty.
 `TEST_DEEPEVALS_*` is only used when manually running RAG evaluations, not in
 normal application use.
+
+`EMBEDDING_MODEL` is the model used to create vectors for document indexing and
+RAG retrieval. It can name any embedding-capable model installed in Ollama. For
+example, if you use `embeddinggemma`, both commands must agree:
+
+```bash
+ollama pull embeddinggemma
+```
+
+```env
+EMBEDDING_MODEL=embeddinggemma
+```
+
+If you change the embedding model after documents have already been indexed,
+rebuild the Chroma collection and reindex the documents. Vectors produced by
+different embedding models should not share one collection.
 
 For local deployment simplicity, the same environment file is currently passed
 to both the frontend and backend. A production deployment should separate
@@ -251,13 +222,13 @@ Start Ollama and download the default chat and embedding models:
 
 ```bash
 ollama pull llama3:8b
-ollama pull nomic-embed-text
+ollama pull embeddinggemma
 ```
 
 Set the model configuration in the repository-root `.env` file:
 
 ```env
-EMBEDDING_MODEL="nomic-embed-text"
+EMBEDDING_MODEL="embeddinggemma"
 TEST_DEEPEVALS_MODEL="llama3:8b"
 TEST_DEEPEVALS_TEMP=0
 TEST_DEEPEVALS_TOP_K=40

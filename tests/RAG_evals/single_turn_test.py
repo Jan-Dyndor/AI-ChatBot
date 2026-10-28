@@ -57,13 +57,14 @@ with tempfile.TemporaryDirectory() as dir_storage_test:
         embedding_model=settings.embedding_model,
         collection_name=TEST_COLLECTION_NAME,
         storage_dir=dir_storage_test,
+        ollama_url=settings.ollama_url,
     )
 
     document_index_service = DocumentIndexingService(
         chunk_overlap=settings.chunk_overlap, chunk_size=settings.chunk_size
     )
 
-    chat_client = ChatBotClient()
+    chat_client = ChatBotClient(ollama_url=settings.ollama_url)
 
     file_vector_storage = FileVectorStorage(
         vector_db=test_vector_store,

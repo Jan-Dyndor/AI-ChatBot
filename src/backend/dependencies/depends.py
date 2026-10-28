@@ -41,19 +41,19 @@ def get_chat_repo(db=Depends(get_db)) -> ChatRepository:
     return ChatRepository(db_session=db)
 
 
-def get_chat_bot_client() -> ChatBotClient:
+#! Settings
+def get_settings(request: Request) -> Settings:
+    return request.app.state.settings
+
+
+def get_chat_bot_client(settings=Depends(get_settings)) -> ChatBotClient:
     """Function is used to create ChatBotClient object that has methods to communicate with Ollama.
     It chains the Depends function of FastAPI
 
     Returns:
         ChatBotClient: Object of Ollama client
     """
-    return ChatBotClient()
-
-
-#! Settings
-def get_settings(request: Request) -> Settings:
-    return request.app.state.settings
+    return ChatBotClient(ollama_url=settings.ollama_url)
 
 
 #! User Repository

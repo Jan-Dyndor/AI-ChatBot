@@ -3,6 +3,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama import ChatOllama
 from langsmith import traceable
+from ollama import Client
 
 from backend.configuration.logging_config import logger
 from backend.exceptions.exc import (
@@ -14,6 +15,10 @@ from backend.exceptions.exc import (
 
 
 class ChatBotClient:
+    def __init__(self, ollama_url: str) -> None:
+        self.ollama_url = ollama_url
+        pass
+
     """Stateless class to communicate with Ollama"""
 
     @traceable(name="create_conversation_title")
@@ -69,7 +74,11 @@ class ChatBotClient:
 
         try:
             llm = ChatOllama(
-                model=model, num_predict=20, temperature=0, reasoning=False
+                model=model,
+                num_predict=20,
+                temperature=0,
+                reasoning=False,
+                base_url=self.ollama_url,
             )
             prompt = PromptTemplate.from_template(system_prompt)
 
@@ -91,7 +100,7 @@ class ChatBotClient:
     def show_avaliable_models(self):
         """Function returns list of avaliable models via Ollama"""
         try:
-            model_list = ollama.list()
+            model_list = Client(host=self.ollama_url).list()
             logger.debug("Returning avaliable AI models")
             return model_list
         except ConnectionError as error:
@@ -135,4 +144,5 @@ class ChatBotClient:
             num_predict=num_predict,
             repeat_penalty=repeat_penalty,
             reasoning=is_thinking,
+            base_url=self.ollama_url,
         )

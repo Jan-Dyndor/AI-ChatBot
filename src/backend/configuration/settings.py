@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     api_files_url: str = Field(
         validation_alias="API_FILES_URL",
     )
+    api_conversations_url: str = Field(validation_alias="API_CONVERSATIONS")
+    api_conversations_url_by_ID_part: str = Field(
+        validation_alias="API_CONVERSATIONS_BY_ID_PART"
+    )
+    api_models: str = Field(validation_alias="API_MODELS")
+    ollama_url: str = Field(validation_alias="OLLAMA_API")
 
     secret_key_jwt: str = Field(validation_alias="SECRET_KEY")
     algorythm_jwt: str = Field(validation_alias="ALGORITHM")
@@ -64,12 +70,6 @@ class Settings(BaseSettings):
     )
     test_deepevals_is_thinking: bool = Field(
         default=False, validation_alias="TEST_DEEPEVALS_IS_THINKING"
-    )
-    #! DEFOULT VALUE FOR NOW
-    # Later I will implement soenm TEst account that will onely hacve its one docs or figure out better way than manuap file update on account
-    # That allows testing
-    test_deepevals_user_id: int = Field(
-        default=1, validation_alias="TEST_DEEPEVALS_USER_ID"
     )
 
     model_config = SettingsConfigDict(

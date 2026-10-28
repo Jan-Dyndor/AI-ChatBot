@@ -14,3 +14,5 @@ vector_storage/*
 evals_results/*
 !evals_results/.gitkeep
 .DS_Store
+.env.docker
+!.env.docker.example

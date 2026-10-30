@@ -48,6 +48,7 @@ def create_vector_store(
         embedding_function=embeddings,
         host=host,
         port=port,
+        persist_directory=storage_dir,
     )
 
     return vector_store

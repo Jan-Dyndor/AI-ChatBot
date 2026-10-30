@@ -28,186 +28,81 @@ Important technical decisions are recorded as Architecture Decision Records
 
 - [ADR 0001: Run Ollama natively instead of in Docker Compose](docs/adr/0001-native-ollama-outside-docker-compose.md)
 
-## Running with Docker Compose
+## Run the application
 
-Docker Compose runs three parts of the application: the Streamlit frontend,
-the FastAPI backend, and PostgreSQL. Ollama is intentionally **not** a Compose
-container: it runs natively on the user's computer. The reasoning behind this
-decision is documented in [ADR 0001](docs/adr/0001-native-ollama-outside-docker-compose.md).
-
-```text
-Browser -> frontend:8501 -> backend:8000 -> PostgreSQL
-                                  |
-                                  +-> Ollama on the host:11434
-```
-
-A Dockerfile is a recipe for an image, an image is a packaged version of the
-application, and a container is a running instance of an image.
-`docker compose up --build` builds images, creates the network and volumes, and
-then starts the containers defined in `compose.yaml`.
-
-### Requirements
-
-1. Docker Desktop must be running.
-2. Ollama must be installed natively on the same computer as Docker.
-3. The Ollama service must listen on its default port, `11434`.
-4. Download both required models (or choose  embedding one since llama3:8b is required in DeepEval tests). You can download more models and use them as you like :
-
-   ```bash
-   ollama pull llama3:8b
-   ollama pull embeddinggemma
-   ollama list
-   ```
-
-   `llama3:8b` is the default conversation model. The application uses it for
-   responses, conversation summaries, and conversation titles; users can later
-   select another downloaded model. `embeddinggemma` is the example embedding model:
-   it indexes PDFs and retrieves RAG context. An embedding model cannot generate
-   chat responses. You may use another Ollama embedding model, but it must be
-   installed and its name must exactly match `EMBEDDING_MODEL` in env files.
-
-   The Ollama macOS app normally starts its server automatically. If
-   `curl http://localhost:11434/api/tags` does not return a response, run:
-
-   ```bash
-   ollama serve
-   ```
-
-### `.env.docker` configuration
-
-Do not share or commit a real `.env.docker`: it contains the database password
-and JWT secret. Git ignores this file. The safe, versioned template is
-[`.env.docker.example`](.env.docker.example).
-
-Create your private file and replace every `CHANGE_ME` value:
+The FastAPI backend uses port `8001`, ChromaDB uses `8000`, and the Streamlit
+frontend uses `8501`. Ollama runs on the host at `11434` and needs the chat and
+embedding models before either setup can be used. Start Docker Desktop and make
+sure Ollama is running, then download the models:
 
 ```bash
-cp .env.docker.example .env.docker
-```
-
-`backend` and `postgres` are Docker Compose service names. Inside the Compose
-network, `localhost` means the current container, so the frontend cannot reach
-the backend at `http://localhost:8000`.
-
-`OLLAMA_API=http://host.docker.internal:11434` has a different role: it routes
-from the backend container to the Ollama service running on the host computer.
-This is the correct value for Docker Desktop on macOS and Windows.
-
-`API_CONVERSATIONS_BY_ID_PART` must end with a slash. The code constructs the
-conversation-history URL by concatenation:
-
-```text
-http://backend:8000/v1/conversations/ + 42 + /messages
-= http://backend:8000/v1/conversations/42/messages
-```
-
-The legacy endpoint variables (`API_CHAT_HISTORY_URL`,
-`API_CREATE_CONVERSATION_URL`, and `API_LATEST_CONVERSATIONS_IDS_URL`) remain
-in the file because the current `Settings` object validates them as required.
-They are safe API URLs, although the current frontend uses the newer
-`API_CONVERSATIONS*` variables.
-
-`LANGSMITH_*` is required by the configuration, but LangSmith is functionally
-optional: with `LANGSMITH_TRACING=false`, its API key may remain empty.
-`TEST_DEEPEVALS_*` is only used when manually running RAG evaluations, not in
-normal application use.
-
-`EMBEDDING_MODEL` is the model used to create vectors for document indexing and
-RAG retrieval. It can name any embedding-capable model installed in Ollama. For
-example, if you use `embeddinggemma`, both commands must agree:
-
-```bash
+ollama pull llama3:8b
 ollama pull embeddinggemma
 ```
 
-```env
-EMBEDDING_MODEL=embeddinggemma
-```
+### 1. Run everything with Docker Compose
 
-If you change the embedding model after documents have already been indexed,
-rebuild the Chroma collection and reindex the documents. Vectors produced by
-different embedding models should not share one collection.
-
-For local deployment simplicity, the same environment file is currently passed
-to both the frontend and backend. A production deployment should separate
-service-specific variables and not pass database credentials to the frontend
-container.
-
-### First startup
-
-From the repository root, run these commands in order:
+Use this option when you want the complete application stack in containers.
+Copy [`.env.docker.example`](.env.docker.example) to `.env.docker` and replace
+every `CHANGE_ME` value. The template already uses the Compose service names
+for the backend, PostgreSQL, and ChromaDB. Use the same password in
+`POSTGRES_PASSWORD` and `DB_URL`.
 
 ```bash
-# 1. Build the images and start the frontend, backend, and PostgreSQL in the background.
-docker compose -p ai-chatbot up --build -d
+cp .env.docker.example .env.docker
+docker compose up --build -d
 
-# 2. Check that the services are running.
-docker compose -p ai-chatbot ps
-docker compose -p ai-chatbot logs --tail=100 backend
-
-# 3. Create or update the PostgreSQL tables.
-docker compose -p ai-chatbot exec backend uv run alembic upgrade head
-
-# 4. Check the backend health endpoint.
-curl http://localhost:8000/v1/
+# First run, and again after pulling a migration.
+docker compose exec backend uv run alembic upgrade head
 ```
 
-The Alembic migration is intentionally a separate step. The PostgreSQL
-container creates an empty database, but it does not know about the
-application's SQLAlchemy models; `alembic upgrade head` creates its tables.
-Run this command on first startup and after pulling a version that contains a
-new migration. Then open the frontend at `http://localhost:8501`.
+Open `http://localhost:8501`. Docker Compose starts the frontend, backend,
+PostgreSQL, and ChromaDB.
 
-For later starts with no code changes, use:
+For later starts, run `docker compose up -d`. Use `docker compose down` to stop
+the stack. The `postgres_data`, `uploaded_files`, and `chroma_data` volumes
+keep their data unless you use `docker compose down -v`.
 
-```bash
-docker compose -p ai-chatbot up -d
-```
+### 2. Debug FastAPI and Streamlit locally
 
-After changing code, dependencies, a Dockerfile, or image configuration, use:
+Use this option when you want automatic reload and debugger access for the
+Python applications while PostgreSQL and ChromaDB remain in Docker.
 
-```bash
-docker compose -p ai-chatbot up --build -d
-```
-
-Stopping the application does not remove data:
+Create both environment files. `.env.docker` configures the Docker services;
+`.env` configures the local FastAPI and Streamlit processes. Set the same
+PostgreSQL password in `.env.docker` and in the `DB_URL` value in `.env`.
 
 ```bash
-docker compose -p ai-chatbot down
-```
-
-The `postgres_data`, `uploaded_files`, and `chroma_db` volumes persist the
-database, uploaded files, and vector index respectively. Do not use `down -v`
-when you want to preserve them: that option removes the volumes and their data.
-
-### What can be shared safely
-
-[`.env.example`](.env.example) is the public template for running without
-Docker: its endpoints point to `localhost` and `OLLAMA_API` is
-`http://localhost:11434`. [`.env.docker.example`](.env.docker.example) is the
-public Compose template and uses the `backend` and `postgres` service names.
-
-The repository can contain endpoint URLs, model names, limits, and blank or
-descriptive placeholders. Never add real values for `SECRET_KEY`,
-`POSTGRES_PASSWORD`, a complete production `DB_URL`, or `LANGSMITH_API_KEY`.
-Those values belong only in ignored `.env` or `.env.docker` files, or in a
-secret manager on the target infrastructure.
-
-## Running without Docker (local development)
-
-Copy [`.env.example`](.env.example) to `.env`, configure a local PostgreSQL
-database, start Ollama, and apply the migration:
-
-```bash
+cp .env.docker.example .env.docker
 cp .env.example .env
+```
+
+Start only the supporting services, then create the database schema:
+
+```bash
+docker compose up -d postgres chroma
 uv run alembic upgrade head
-uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000 --no-access-log
+```
+
+Run the application processes from the repository root in separate terminals:
+
+```bash
+# Terminal 1 — FastAPI with automatic reload
+uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8001 --no-access-log
+```
+
+```bash
+# Terminal 2 — Streamlit
 uv run streamlit run src/frontend/main.py
 ```
 
-To process more parallel requests, start Ollama with
-`OLLAMA_NUM_PARALLEL=<number> ollama serve`. A larger value increases the RAM
-used by loaded models.
+Open `http://localhost:8501`. In this mode, [`.env.example`](.env.example)
+points the local applications to FastAPI at `localhost:8001`, ChromaDB at
+`localhost:8000`, and PostgreSQL at `localhost:5433`.
+
+Run `uv run alembic upgrade head` on the first start and whenever the project
+contains a new database migration. Stop the supporting services with
+`docker compose down`.
 
 ## DeepEval RAG evaluations
 
@@ -361,7 +256,7 @@ AI-ChatBot/
 ├── tests/                      # Unit and integration tests
 ├── alembic/                     # Database migration environment and revisions
 ├── storage/                     # Uploaded files, organized by user at runtime
-├── vector_storage/              # Persistent Chroma data at runtime
+├── compose.yaml                 # Frontend, backend, PostgreSQL, and ChromaDB services
 ├── .gitignore
 ├── .env                        # Env file with env variables
 ├── .env.tests                  # Env file with env variables for tests purposes 
@@ -379,7 +274,8 @@ Authenticated users can upload PDF documents from the Streamlit upload page. The
 1. `PyPDFLoader` loads the PDF.
 2. `RecursiveCharacterTextSplitter` creates chunks using the configured `chunk_size` and `chunk_overlap` settings.
 3. `OllamaEmbeddings` creates embeddings for each chunk.
-4. Chroma persists the embeddings in `vector_storage/`.
+4. The ChromaDB service persists the embeddings in the `chroma_data` Docker
+   volume.
 5. Each chunk receives the owning `user_id` as metadata.
 
 When a user sends a chat message, the RAG pipeline uses the conversation history to rewrite follow-up questions into standalone questions. A history-aware LangChain retriever then searches the user's documents only (`k=3`), and the retrieved context is passed to the Ollama chat model to generate a streamed answer. The completed answer is saved to the conversation history.

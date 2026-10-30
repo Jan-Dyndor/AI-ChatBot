@@ -8,8 +8,8 @@ __pycache__/
 .env.tests
 storage/*
 !storage/.gitkeep
-vector_storage/*
-!vector_storage/.gitkeep
+chroma-data/*
+!chroma_data/.gitkeep
 .deepeval
 evals_results/*
 !evals_results/.gitkeep

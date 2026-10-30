@@ -21,6 +21,6 @@ COPY alembic.ini ./
 
 RUN uv sync --locked --no-dev
 
-EXPOSE 8000
+EXPOSE 8001
 
-CMD ["uv", "run", "--no-dev", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+CMD ["uv", "run", "--no-dev", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8001", "--no-access-log"]

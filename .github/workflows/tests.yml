@@ -37,7 +37,8 @@ jobs:
       SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
       ALGORITHM:  ${{ secrets.TEST_ALGORITHM }}
       LANGSMITH_API_KEY: ${{secrets.TEST_LANGSMITH_API_KEY}}
-      EMBEDDING_MODEL : ${{vars.EMBEDDING_MODEL}}
+      CHROMA_DB_HOST : ${{vars.CHROMA_DB_HOST}}
+      CHROMA_DB_PORT : ${{vars.CHROMA_DB_PORT}}
       
 
     steps:

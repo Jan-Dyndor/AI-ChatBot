@@ -1,6 +1,7 @@
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import jwt
 import pytest
@@ -160,6 +161,7 @@ def test_user_db() -> Users:
 
 @pytest.fixture
 def client(session_maker):
+    fake_vector_store = Mock()
 
     get_settings.cache_clear()
 
@@ -175,13 +177,16 @@ def client(session_maker):
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
+    with patch(
+        "backend.main.create_vector_store",
+        return_value=fake_vector_store,
+    ) as mock_factory:
+        with TestClient(app=app) as client:
+            client.app.state.session_maker = session_maker  # type: ignore
+            # point current session_maker to the one in memmory not one created in create_app in lifespan
+            yield client
 
-    with TestClient(app=app) as client:
-        client.app.state.session_maker = session_maker  # type: ignore
-        # point current session_maker to the one in memmory not one created in create_app in lifespan
-        yield client
-
-    app.dependency_overrides.clear()
+        app.dependency_overrides.clear()
 
     get_settings.cache_clear()
 

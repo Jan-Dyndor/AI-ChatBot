@@ -6,14 +6,15 @@ services:
     env_file:
       - .env.docker
     ports:
-      - "8000:8000"
+      - "8001:8001"
     restart: unless-stopped 
     volumes:
       - uploaded_files:/app_backend/storage
-      - chroma_db:/app_backend/vector_storage
     depends_on:
       postgres:
         condition: service_healthy
+      chroma:
+        condition: service_started
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -36,11 +37,23 @@ services:
       - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped 
+    ports:
+      - "5433:5432"
+
+  chroma:
+    image: chromadb/chroma:latest
+    volumes:
+      - chroma_data:/data
+    env_file:
+      - .env.docker
+    ports:
+      - "8000:8000"
+
 
 
 
@@ -48,5 +61,5 @@ services:
 volumes:
   postgres_data:
   uploaded_files:
-  chroma_db:
+  chroma_data:
 

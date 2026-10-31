@@ -57,16 +57,20 @@ docker compose exec backend uv run alembic upgrade head
 ```
 
 Open `http://localhost:8501`. Docker Compose starts the frontend, backend,
-PostgreSQL, and ChromaDB.
+Celery worker, Flower, PostgreSQL, ChromaDB, and Redis. Flower is available at
+`http://localhost:5555`.
 
 For later starts, run `docker compose up -d`. Use `docker compose down` to stop
-the stack. The `postgres_data`, `uploaded_files`, and `chroma_data` volumes
-keep their data unless you use `docker compose down -v`.
+the stack. The `postgres_data`, `uploaded_files`, `chroma_data`, and `redis_data`
+volumes keep their data unless you use `docker compose down -v`.
 
-### 2. Debug FastAPI and Streamlit locally
+### 2. Debug FastAPI, Streamlit, and Celery locally
 
 Use this option when you want automatic reload and debugger access for the
-Python applications while PostgreSQL and ChromaDB remain in Docker.
+Python applications and Celery worker while PostgreSQL, ChromaDB, and Redis
+remain in Docker. The locally running FastAPI process and worker share the
+repository's `storage/` directory, so uploaded files are available to the
+worker without a Docker volume mount.
 
 Create both environment files. `.env.docker` configures the Docker services;
 `.env` configures the local FastAPI and Streamlit processes. Set the same
@@ -80,7 +84,7 @@ cp .env.example .env
 Start only the supporting services, then create the database schema:
 
 ```bash
-docker compose up -d postgres chroma
+docker compose up -d postgres chroma redis
 uv run alembic upgrade head
 ```
 
@@ -96,9 +100,22 @@ uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8001 --no-access-
 uv run streamlit run src/frontend/main.py
 ```
 
-Open `http://localhost:8501`. In this mode, [`.env.example`](.env.example)
-points the local applications to FastAPI at `localhost:8001`, ChromaDB at
-`localhost:8000`, and PostgreSQL at `localhost:5433`.
+```bash
+# Terminal 3 — Celery worker
+# macOS only: required when using Celery's prefork pool.
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+export FORKED_BY_MULTIPROCESSING=1
+
+uv run celery -A backend.celery_app.celery:celery_app \
+  worker --loglevel=INFO --pool=prefork --concurrency=4
+```
+
+Flower does not need to run locally: Docker Compose runs it and exposes the
+dashboard at `http://localhost:5555`. Open `http://localhost:8501` for the
+application. In this mode, [`.env.example`](.env.example) points the local
+applications and Celery to FastAPI at `localhost:8001`, ChromaDB at
+`localhost:8000`, PostgreSQL at `localhost:5433`, and Redis at
+`localhost:6379`.
 
 Run `uv run alembic upgrade head` on the first start and whenever the project
 contains a new database migration. Stop the supporting services with

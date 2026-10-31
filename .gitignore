@@ -16,3 +16,4 @@ evals_results/*
 .DS_Store
 .env.docker
 !.env.docker.example
+dump.rdb

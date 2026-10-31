@@ -1,7 +1,7 @@
 from datetime import timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, status
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
@@ -21,6 +21,7 @@ from backend.api.schemas.pydantic_schemas import (
     UserLogin,
 )
 from backend.authentication.auth import AuthService
+from backend.celery_app.celery_tasks import index_and_save_file
 from backend.configuration.settings import Settings
 from backend.core.concurency.conversation_thread_lock import ConversationLockManager
 from backend.dependencies.depends import (
@@ -123,9 +124,10 @@ def show_models(service: ChatService = Depends(get_chat_service)):
     return service.show_avaliable_models()
 
 
-@router.post("/file", response_model=UploadFileResponse)
+@router.post(
+    "/file", response_model=UploadFileResponse, status_code=status.HTTP_202_ACCEPTED
+)
 def upload_file(
-    background_task: BackgroundTasks,
     file: UploadFile,
     file_service: FileService = Depends(get_file_service),
     user: UserDB = Depends(get_current_user),
@@ -155,12 +157,8 @@ def upload_file(
         file_name=safe_file_name, user_id=user.id, file_path=saved_file_path
     )
 
-    #! background task - embed document
-
-    background_task.add_task(
-        vector_file_storage.add_document, file_path=saved_file_path, user_id=user.id
-    )
-
+    #! CELERY TASK
+    task = index_and_save_file.delay(str(saved_file_path), user.id)  # type: ignore
     return UploadFileResponse(file_name=safe_file_name)
 
 

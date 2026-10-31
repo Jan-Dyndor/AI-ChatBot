@@ -37,12 +37,14 @@ services:
       - .env.docker
     command: >
       uv run celery -A backend.celery_app.celery:celery_app
-      worker --loglevel=info --concurrency=2
+      worker --loglevel=info --concurrency=4
     volumes:
       - uploaded_files:/app_backend/storage
     depends_on:
       - redis
       - chroma
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   celery_flower:
     image: mher/flower

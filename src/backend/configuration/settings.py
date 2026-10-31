@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     chunk_overlap: int = Field(default=50)
     embedding_model: str = Field(validation_alias="EMBEDDING_MODEL")
     collection_name_vector_store: str = Field(default="AI_chat_bot_collection")
+    chroma_db_host: str = Field(validation_alias="CHROMA_DB_HOST")
+    chroma_db_port: int = Field(validation_alias="CHROMA_DB_PORT")
 
     # TEST RAG EVALS
     test_deepevals_model: str = Field(

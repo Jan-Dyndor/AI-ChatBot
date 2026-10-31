@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     collection_name_vector_store: str = Field(default="AI_chat_bot_collection")
     chroma_db_host: str = Field(validation_alias="CHROMA_DB_HOST")
     chroma_db_port: int = Field(validation_alias="CHROMA_DB_PORT")
+    redis_broker: str = Field(validation_alias="CELERY_BROKER_URL")
+    redis_backend: str = Field(validation_alias="CELERY_RESULT_BACKEND")
 
     # TEST RAG EVALS
     test_deepevals_model: str = Field(

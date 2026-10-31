@@ -6,8 +6,10 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.19.1",
+    "celery[redis]>=5.6.3",
     "deepeval>=4.2.8",
     "fastapi>=0.136.0",
+    "flower>=2.2.0",
     "langchain>=1.4.3",
     "langchain-chroma>=1.1.0",
     "langchain-community>=0.4.2",

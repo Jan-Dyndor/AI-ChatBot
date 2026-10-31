@@ -108,7 +108,7 @@ class Message(BaseModel):
 
 class UploadFileResponse(BaseModel):
     file_name: str
-    status: str = Field(default="UPLOADED")
+    status: str = Field(default="Recived document for indexing")
 
 
 class FilesResponse(BaseModel):

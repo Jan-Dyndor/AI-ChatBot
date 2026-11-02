@@ -25,8 +25,8 @@ from backend.exceptions.exc import (
 )
 from backend.retry.retry_logs import (
     log_and_delete_file,
-    log_retry,
     log_final_retry_failure,
+    log_retry,
 )
 
 
@@ -260,6 +260,12 @@ class FileRepository:
             )
             logger.info(f"Updating user's {user_id} file {file_id} status")
             result = self.db.execute(query)
+            if result.rowcount == 0:
+                self.db.rollback()
+                raise DataBaseResourceNotFound()
+
+            self.db.commit()
+            logger.info(f"Sucessfully updated user's {user_id} file {file_id} status")
 
         except IntegrityError as e:
             self.db.rollback()
@@ -270,14 +276,6 @@ class FileRepository:
         except ProgrammingError as e:
             self.db.rollback()
             raise DatabaseNoRetryError() from e
-
         except SQLAlchemyError as err:
             self.db.rollback()
             raise DataBaseError() from err
-
-        if result.rowcount == 0:
-            self.db.rollback()
-            raise DataBaseResourceNotFound()
-
-        self.db.commit()
-        logger.info(f"Sucessfully updated user's {user_id} file {file_id} status")

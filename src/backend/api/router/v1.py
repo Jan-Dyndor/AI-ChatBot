@@ -252,7 +252,7 @@ def get_file(
     return file_path
 
 
-@router.get("tasks/{task_id}")
+@router.get("/tasks/{task_id}")
 def check_celery_task(task_id: str):
     result = AsyncResult(id=task_id, app=celery_app)
     return CeleryTaskUpdateResponse(task_id=task_id, state=result.state)

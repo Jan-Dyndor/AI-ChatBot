@@ -2,7 +2,12 @@ from pathlib import Path
 
 from langchain_core.vectorstores import VectorStore
 from loguru import logger
-from tenacity import retry, stop_after_attempt, wait_exponential_jitter
+from tenacity import (
+    retry,
+    retry_if_not_exception_type,
+    stop_after_attempt,
+    wait_exponential_jitter,
+)
 
 from backend.retry.retry_logs import log_final_retry_failure, log_retry
 from RAG.document_indexing_seervice import DocumentIndexingService
@@ -21,6 +26,7 @@ class FileVectorStorage:
         wait=wait_exponential_jitter(initial=1, max=5, jitter=1),
         before_sleep=log_retry,
         retry_error_callback=log_final_retry_failure,
+        retry=retry_if_not_exception_type(FileNotFoundError),
     )
     def add_document(self, file_path: Path, user_id: int):
 

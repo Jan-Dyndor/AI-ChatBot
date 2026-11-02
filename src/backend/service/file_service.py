@@ -32,11 +32,8 @@ class FileService:
         return self.db.save_file(file, file_name, user_id)
 
     def save_file_metadata(
-        self,
-        file_name: str,
-        user_id: int,
-        file_path: Path,
-    ) -> None:
+        self, file_name: str, user_id: int, file_path: Path, task_id: str
+    ) -> int:
         """Persist uploaded file metadata through the repository.
 
         Delegates the database operation to the repository, which handles
@@ -51,8 +48,8 @@ class FileService:
             DataBaseFileError: If metadata persistence fails after retries.
             DatabaseNoRetryError: If a non-retryable database error occurs.
         """
-        self.db.save_file_metadata(
-            file_name=file_name, user_id=user_id, file_path=file_path
+        return self.db.save_file_metadata(
+            file_name=file_name, user_id=user_id, file_path=file_path, task_id=task_id
         )
 
     def validate_file_size(
@@ -107,3 +104,15 @@ class FileService:
             str: Local storage path of the requested file.
         """
         return self.db.get_file(user_id=user_id, file_id=file_id)
+
+    def update_idnexing_status(self, user_id: int, file_id: int, new_status: str):
+        """Update the indexing status of a file owned by a user.
+
+        Args:
+            user_id: ID of the file owner.
+            file_id: ID of the file to update.
+            new_status: Status to assign to the file.
+        """
+        self.db.update_file_idnexing_status(
+            user_id=user_id, file_id=file_id, new_status=new_status
+        )

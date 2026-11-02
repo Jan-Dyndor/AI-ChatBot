@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi import UploadFile
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import DataError, IntegrityError, ProgrammingError, SQLAlchemyError
 from tenacity import (
     retry,
@@ -23,7 +23,11 @@ from backend.exceptions.exc import (
     FailedFileCleanUp,
     FileNotSaved,
 )
-from backend.retry.retry_logs import log_and_delete_file, log_retry
+from backend.retry.retry_logs import (
+    log_and_delete_file,
+    log_final_retry_failure,
+    log_retry,
+)
 
 
 class FileRepository:
@@ -119,11 +123,8 @@ class FileRepository:
         retry_error_callback=log_and_delete_file,
     )
     def save_file_metadata(
-        self,
-        file_name: str,
-        user_id: int,
-        file_path: Path,
-    ) -> None:
+        self, file_name: str, user_id: int, file_path: Path, task_id: str
+    ) -> int:
         """Persist uploaded file metadata in PostgreSQL using SQLAlchemy.
 
         Creates a database record containing the file name, owner ID,
@@ -147,11 +148,13 @@ class FileRepository:
                 user_id=user_id,
                 original_file_name=file_name,
                 storage_path=str(file_path),
+                task_id=task_id,
             )
 
             self.db.add(file_to_save)
             self.db.commit()
             logger.info(f"Saved user's {user_id} file {file_name} metadata in DB")
+            return file_to_save.id
         except IntegrityError as e:
             self.db.rollback()
             raise DatabaseNoRetryError() from e
@@ -190,9 +193,9 @@ class FileRepository:
                 and original file names.
         """
         try:
-            query = select(Files.id, Files.original_file_name).where(
-                Files.user_id == user_id
-            )
+            query = select(
+                Files.id, Files.original_file_name, Files.index_status
+            ).where(Files.user_id == user_id)
             user_files = self.db.execute(query).all()
 
             if not user_files:
@@ -227,4 +230,52 @@ class FileRepository:
             return file.storage_path
 
         except SQLAlchemyError as err:
+            raise DataBaseError() from err
+
+    @retry(
+        stop=stop_after_attempt(3),
+        reraise=True,
+        wait=wait_exponential_jitter(initial=1, max=5, jitter=1),
+        retry=retry_if_exception_type(DataBaseError),
+        before_sleep=log_retry,
+        retry_error_callback=log_final_retry_failure,
+    )
+    def update_file_idnexing_status(self, user_id: int, file_id: int, new_status: str):
+        """Update the indexing status for a user's file.
+
+        Args:
+            user_id: ID of the file owner.
+            file_id: ID of the file to update.
+            new_status: New indexing status to save.
+
+        Raises:
+            DataBaseError: If the database update fails.
+            DataBaseResourceNotFound: If no file with the given ID belongs to the user.
+        """
+        try:
+            query = (
+                update(Files)
+                .where(Files.user_id == user_id, Files.id == file_id)
+                .values(index_status=new_status)
+            )
+            logger.info(f"Updating user's {user_id} file {file_id} status")
+            result = self.db.execute(query)
+            if result.rowcount == 0:
+                self.db.rollback()
+                raise DataBaseResourceNotFound()
+
+            self.db.commit()
+            logger.info(f"Sucessfully updated user's {user_id} file {file_id} status")
+
+        except IntegrityError as e:
+            self.db.rollback()
+            raise DatabaseNoRetryError() from e
+        except DataError as e:
+            self.db.rollback()
+            raise DatabaseNoRetryError() from e
+        except ProgrammingError as e:
+            self.db.rollback()
+            raise DatabaseNoRetryError() from e
+        except SQLAlchemyError as err:
+            self.db.rollback()
             raise DataBaseError() from err

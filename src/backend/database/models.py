@@ -76,3 +76,14 @@ class Files(Base):
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(tz=UTC)
     )
+    index_status: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="PENDING",
+        server_default="PENDING",
+    )
+    task_id: Mapped[str | None] = mapped_column(
+        String,
+        unique=True,
+        nullable=True,
+    )

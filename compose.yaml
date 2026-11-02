@@ -36,7 +36,7 @@ services:
     env_file:
       - .env.docker
     command: >
-      uv run celery -A backend.celery_app.celery:celery_app
+      uv run celery -A backend.celery_app.celery_app:celery_app
       worker --loglevel=info --concurrency=4
     volumes:
       - uploaded_files:/app_backend/storage

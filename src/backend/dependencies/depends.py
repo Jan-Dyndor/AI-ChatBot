@@ -28,6 +28,15 @@ def get_db(request: Request):
         db.close()
 
 
+def get_request_id(request: Request) -> str:
+    """Function Request object to retrive saved request_id from middleware
+
+    Yields:
+        str: request ID
+    """
+    return request.state.request_id
+
+
 def get_chat_repo(db=Depends(get_db)) -> ChatRepository:
     """Function is used to create ChatRepository object that needs to have database session parameter whitch is provided by get_db function.
     It chains the Depends function of FastAPI

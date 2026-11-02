@@ -180,7 +180,7 @@ def client(session_maker):
     with patch(
         "backend.main.create_vector_store",
         return_value=fake_vector_store,
-    ) as mock_factory:
+    ) as mock_factory:  # noqa: F841
         with TestClient(app=app) as client:
             client.app.state.session_maker = session_maker  # type: ignore
             # point current session_maker to the one in memmory not one created in create_app in lifespan

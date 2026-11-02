@@ -1,7 +1,8 @@
 from datetime import timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, status
+from celery.result import AsyncResult
+from fastapi import APIRouter, Depends, UploadFile, status
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
@@ -9,6 +10,7 @@ from pydantic import ValidationError
 from sse_starlette import EventSourceResponse
 
 from backend.api.schemas.pydantic_schemas import (
+    CeleryTaskUpdateResponse,
     ChatMessage,
     CreateUserRequest,
     CreateUserResponse,
@@ -21,15 +23,16 @@ from backend.api.schemas.pydantic_schemas import (
     UserLogin,
 )
 from backend.authentication.auth import AuthService
+from backend.celery_app.celery_app import celery_app
 from backend.celery_app.celery_tasks import index_and_save_file
 from backend.configuration.settings import Settings
 from backend.core.concurency.conversation_thread_lock import ConversationLockManager
 from backend.dependencies.depends import (
-    create_file_vector_storage,
     get_auth_service,
     get_chat_service,
     get_current_user,
     get_file_service,
+    get_request_id,
     get_settings,
     get_thread_lock,
     get_user_service,
@@ -42,7 +45,6 @@ from backend.exceptions.exc import (
 from backend.service.chat_service import ChatService
 from backend.service.file_service import FileService
 from backend.service.user_service import UserService
-from RAG.file_vector_repository import FileVectorStorage
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 
@@ -132,7 +134,7 @@ def upload_file(
     file_service: FileService = Depends(get_file_service),
     user: UserDB = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
-    vector_file_storage: FileVectorStorage = Depends(create_file_vector_storage),
+    request_id: str = Depends(get_request_id),
 ):
 
     if file.filename is None:
@@ -153,13 +155,24 @@ def upload_file(
         file, file_name=safe_file_name, user_id=user.id
     )
 
-    file_service.save_file_metadata(
-        file_name=safe_file_name, user_id=user.id, file_path=saved_file_path
+    file_id: int = file_service.save_file_metadata(
+        file_name=safe_file_name,
+        user_id=user.id,
+        file_path=saved_file_path,
+        task_id=request_id,
     )
 
     #! CELERY TASK
-    task = index_and_save_file.delay(str(saved_file_path), user.id)  # type: ignore
-    return UploadFileResponse(file_name=safe_file_name)
+    task = index_and_save_file.apply_async(  # type: ignore
+        kwargs={
+            "file_path": str(saved_file_path),
+            "user_id": user.id,
+            "request_id": request_id,
+            "file_id": file_id,
+        },
+        task_id=request_id,
+    )
+    return UploadFileResponse(file_name=safe_file_name, request_id=task.id)
 
 
 @router.post("/chat")
@@ -223,7 +236,9 @@ def get_files(
     user: UserDB = Depends(get_current_user),
     file_service: FileService = Depends(get_file_service),
 ):
-    return file_service.get_all_users_files(user.id)
+    x = file_service.get_all_users_files(user.id)
+    print(x)
+    return x
 
 
 @router.get("/files/{file_id}", response_class=FileResponse)
@@ -235,3 +250,9 @@ def get_file(
 
     file_path: Path = Path(file_service.get_file(user_id=user.id, file_id=file_id))
     return file_path
+
+
+@router.get("tasks/{task_id}")
+def check_celery_task(task_id: str):
+    result = AsyncResult(id=task_id, app=celery_app)
+    return CeleryTaskUpdateResponse(task_id=task_id, state=result.state)

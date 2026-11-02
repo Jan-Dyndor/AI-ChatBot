@@ -109,6 +109,7 @@ class Message(BaseModel):
 class UploadFileResponse(BaseModel):
     file_name: str
     status: str = Field(default="Recived document for indexing")
+    request_id: str
 
 
 class FilesResponse(BaseModel):
@@ -116,3 +117,9 @@ class FilesResponse(BaseModel):
 
     id: int
     original_file_name: str
+    index_status: str
+
+
+class CeleryTaskUpdateResponse(BaseModel):
+    task_id: str
+    state: str

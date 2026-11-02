@@ -9,7 +9,12 @@ from tenacity import wait_none
 
 import backend.database.file_repository as file_repository_module
 from backend.database.file_repository import FileRepository
-from backend.exceptions.exc import DataBaseFileError, FailedFileCleanUp
+from backend.database.models import Files, Users
+from backend.exceptions.exc import (
+    DataBaseFileError,
+    DataBaseResourceNotFound,
+    FailedFileCleanUp,
+)
 
 
 def upload_file(content: bytes = b"example") -> UploadFile:
@@ -72,7 +77,7 @@ def test_save_file_metadata_rolls_back_three_times_when_database_fails(
             file_repository.db, "rollback", wraps=file_repository.db.rollback
         ) as rollback:
             with pytest.raises(DataBaseFileError):
-                file_repository.save_file_metadata("example.txt", 3, path)
+                file_repository.save_file_metadata("example.txt", 3, path, "task-1")
 
     # Tenacity performs three total attempts, therefore each failed commit is rolled back.
     assert rollback.call_count == 3
@@ -89,7 +94,7 @@ def test_save_file_metadata_raises_database_error_after_retries(
     monkeypatch.setattr(file_repository.save_file_metadata.retry, "wait", wait_none())
 
     with pytest.raises(DataBaseFileError):
-        file_repository.save_file_metadata("example.txt", 3, path)
+        file_repository.save_file_metadata("example.txt", 3, path, "task-1")
 
 
 def test_delete_file_from_storage_removes_file(tmp_path):
@@ -99,3 +104,28 @@ def test_delete_file_from_storage_removes_file(tmp_path):
     FileRepository(Mock()).delete_file_from_storage(path)
 
     assert not path.exists()
+
+
+def test_update_indexing_status_rejects_another_users_file(file_repository, session):
+    owner = Users(email="file-owner@example.com", password_hash="hash")
+    other_user = Users(email="other-user@example.com", password_hash="hash")
+    session.add_all([owner, other_user])
+    session.flush()
+
+    document = Files(
+        user_id=owner.id,
+        original_file_name="private.pdf",
+        storage_path="/tmp/private.pdf",
+    )
+    session.add(document)
+    session.commit()
+
+    with pytest.raises(DataBaseResourceNotFound):
+        file_repository.update_file_idnexing_status(
+            user_id=other_user.id,
+            file_id=document.id,
+            new_status="SUCCESS",
+        )
+
+    session.refresh(document)
+    assert document.index_status == "PENDING"

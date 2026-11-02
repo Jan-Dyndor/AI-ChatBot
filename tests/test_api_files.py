@@ -2,6 +2,7 @@
 
 import pytest
 
+from backend.celery_app.celery_tasks import FileTask
 from backend.database.models import Files, Users
 
 
@@ -53,10 +54,59 @@ def test_get_files_returns_only_authenticated_users_file_metadata(
 
         assert response.status_code == 200
         assert response.json() == [
-            {"id": own_file.id, "original_file_name": "current-user.pdf"}
+            {
+                "id": own_file.id,
+                "original_file_name": "current-user.pdf",
+                "index_status": "PENDING",
+            }
         ]
     finally:
         session.close()
+
+
+def test_completed_indexing_task_updates_status_visible_in_file_list(
+    client, valid_token, monkeypatch
+):
+    session = client.app.state.session_maker()
+    try:
+        current_user = _create_user(session, "test@gmail.com")
+        document = _create_file(
+            session,
+            current_user.id,
+            "indexed.pdf",
+            "/tmp/indexed.pdf",
+        )
+        session.commit()
+        file_id = document.id
+        user_id = current_user.id
+    finally:
+        session.close()
+
+    monkeypatch.setattr(
+        FileTask,
+        "create_session_factory",
+        classmethod(lambda cls: client.app.state.session_maker),
+    )
+
+    FileTask().after_return(
+        status="SUCCESS",
+        retval=None,
+        task_id="task-indexed",
+        args=(),
+        kwargs={"user_id": user_id, "file_id": file_id},
+        einfo=None,
+    )
+
+    response = client.get("/v1/files", headers=_authorization_header(valid_token))
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": file_id,
+            "original_file_name": "indexed.pdf",
+            "index_status": "SUCCESS",
+        }
+    ]
 
 
 def test_get_files_returns_404_when_authenticated_user_has_no_documents(

@@ -43,6 +43,18 @@ def _redirect_to_login_after_expired_session() -> None:
     st.switch_page("pages/login_page.py")
 
 
+def _show_index_status(status: object) -> None:
+    """Show a clear, user-friendly badge for a document indexing result."""
+    normalized_status = status.strip().upper() if isinstance(status, str) else ""
+
+    if normalized_status == "SUCCESS":
+        st.badge("Indexing successful", icon=":material/check_circle:", color="green")
+    elif normalized_status == "PENDING":
+        st.badge("Indexing in progress", icon=":material/schedule:", color="orange")
+    else:
+        st.badge("Indexing failed", icon=":material/error:", color="red")
+
+
 def _fetch_files() -> list[dict[str, object]] | None:
     """Return the current user's files; an empty account is represented by []."""
     request_id = str(uuid4())
@@ -85,6 +97,7 @@ def _fetch_files() -> list[dict[str, object]] | None:
                 if isinstance(file, dict)
                 and isinstance(file.get("id"), int)
                 and isinstance(file.get("original_file_name"), str)
+                and isinstance(file.get("index_status"), str)
             ]
             if len(files) != len(payload):
                 logger.error(f"Files response contains invalid records: {payload}")
@@ -210,6 +223,8 @@ elif files:
             name_column, action_column = st.columns([7, 3])
             name_column.markdown(f"#### 📄 {file['original_file_name']}")
             name_column.caption(f"Document ID: {file['id']}")
+            with name_column:
+                _show_index_status(file["index_status"])
             if action_column.button("Open PDF", key=f"open-file-{file['id']}"):
                 st.session_state.selected_file = {
                     "id": file["id"],

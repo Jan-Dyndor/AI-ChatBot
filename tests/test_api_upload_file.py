@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -25,6 +26,7 @@ def upload_dependencies(client, uploaded_user):
     """Replace dependencies unrelated to enqueuing the Celery task."""
     file_service = Mock(spec=FileService)
     file_service.save_file.return_value = Path("/tmp/stored-report.pdf")
+    file_service.save_file_metadata.return_value = 17
 
     index_service = Mock()
     vector_store = Mock()
@@ -46,9 +48,10 @@ def upload_dependencies(client, uploaded_user):
 @pytest.fixture
 def enqueue_indexing(monkeypatch):
     """Prevent the API test from connecting to the real Celery broker."""
-    delay = Mock()
-    monkeypatch.setattr(v1.index_and_save_file, "delay", delay)
-    return delay
+    task = Mock()
+    task.apply_async.return_value = SimpleNamespace(id="task-123")
+    monkeypatch.setattr(v1, "index_and_save_file", task)
+    return task
 
 
 def test_upload_file_saves_file_and_enqueues_indexing_task(
@@ -59,12 +62,14 @@ def test_upload_file_saves_file_and_enqueues_indexing_task(
     response = client.post(
         "/v1/file",
         files={"file": ("../../report.pdf", b"pdf-content", "application/pdf")},
+        headers={"Request-ID": "request-123"},
     )
 
     assert response.status_code == 202
     assert response.json() == {
         "file_name": "report.pdf",
         "status": "Recived document for indexing",
+        "request_id": "task-123",
     }
     file_service.validate_file_size.assert_called_once()
     file_service.save_file.assert_called_once()
@@ -76,8 +81,17 @@ def test_upload_file_saves_file_and_enqueues_indexing_task(
         file_name="report.pdf",
         user_id=7,
         file_path=Path("/tmp/stored-report.pdf"),
+        task_id="request-123",
     )
-    enqueue_indexing.assert_called_once_with("/tmp/stored-report.pdf", 7)
+    enqueue_indexing.apply_async.assert_called_once_with(
+        kwargs={
+            "file_path": "/tmp/stored-report.pdf",
+            "user_id": 7,
+            "request_id": "request-123",
+            "file_id": 17,
+        },
+        task_id="request-123",
+    )
 
 
 def test_upload_file_does_not_save_or_index_when_file_is_too_large(
@@ -95,7 +109,7 @@ def test_upload_file_does_not_save_or_index_when_file_is_too_large(
 
     assert response.status_code == 400
     file_service.save_file.assert_not_called()
-    enqueue_indexing.assert_not_called()
+    enqueue_indexing.apply_async.assert_not_called()
 
 
 def test_upload_file_returns_safe_error_when_cleanup_of_failed_save_fails(
@@ -114,4 +128,4 @@ def test_upload_file_returns_safe_error_when_cleanup_of_failed_save_fails(
     assert response.status_code == 500
     assert response.json() == {"message": "Issue occured while saving the file"}
     file_service.save_file_metadata.assert_not_called()
-    enqueue_indexing.assert_not_called()
+    enqueue_indexing.apply_async.assert_not_called()

@@ -65,6 +65,6 @@ jobs:
         VIRTUAL_ENV: ${{ github.workspace }}/.venv
       run: |
           "$VIRTUAL_ENV/bin/maturin" develop --release
-          "$VIRTUAL_ENV/bin/python" -c "import rust_sha; print(rust_sha.__file__)"
+          "$VIRTUAL_ENV/bin/python" -c "import rust_sha256; print(rust_sha256.__file__)"
     - name: Run Tests    
       run: uv run pytest

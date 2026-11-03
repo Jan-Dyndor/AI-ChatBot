@@ -183,6 +183,15 @@ class DatabaseNoRetryError(AppExceptions):
         )
 
 
+class FileAlreadyExists(AppExceptions):
+    def __init__(self, file_name: str, user_id: int) -> None:
+        super().__init__(
+            message=f"User's {user_id} file {file_name} already exists in DB",
+            status_code=409,
+            client_message=f"File {file_name} already exists. Check indexing process on page 'files page'",
+        )
+
+
 #! AUTH HTTP validation
 class ValidationErrorCredentials(AppExceptions):
     def __init__(self, variable_name, issue_message: str) -> None:

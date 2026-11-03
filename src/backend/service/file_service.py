@@ -1,10 +1,12 @@
 from pathlib import Path
 
 from fastapi import UploadFile
+from rust_sha256 import calculate_sha  # type: ignore
 
 from backend.api.schemas.pydantic_schemas import FilesResponse
 from backend.database.file_repository import FileRepository
-from backend.exceptions.exc import FileToLarge
+from backend.exceptions.exc import FileAlreadyExists, FileToLarge
+from loguru import logger
 
 
 class FileService:
@@ -32,7 +34,7 @@ class FileService:
         return self.db.save_file(file, file_name, user_id)
 
     def save_file_metadata(
-        self, file_name: str, user_id: int, file_path: Path, task_id: str
+        self, file_name: str, user_id: int, file_path: Path, task_id: str, sha: str
     ) -> int:
         """Persist uploaded file metadata through the repository.
 
@@ -49,7 +51,11 @@ class FileService:
             DatabaseNoRetryError: If a non-retryable database error occurs.
         """
         return self.db.save_file_metadata(
-            file_name=file_name, user_id=user_id, file_path=file_path, task_id=task_id
+            file_name=file_name,
+            user_id=user_id,
+            file_path=file_path,
+            task_id=task_id,
+            sha=sha,
         )
 
     def validate_file_size(
@@ -116,3 +122,15 @@ class FileService:
         self.db.update_file_idnexing_status(
             user_id=user_id, file_id=file_id, new_status=new_status
         )
+
+    def validate_if_file_exists(
+        self, user_id: int, file_path: Path, file_name: str
+    ) -> str:
+        #
+
+        sha = calculate_sha(str(file_path))
+
+        if self.db.is_sha_present(user_id=user_id, sha=sha, file_name=file_name):
+            self.db.delete_file_from_storage(file_path=file_path)
+            raise FileAlreadyExists(user_id=user_id, file_name=file_name)
+        return sha

@@ -123,7 +123,7 @@ class FileRepository:
         retry_error_callback=log_and_delete_file,
     )
     def save_file_metadata(
-        self, file_name: str, user_id: int, file_path: Path, task_id: str
+        self, file_name: str, user_id: int, file_path: Path, task_id: str, sha: str
     ) -> int:
         """Persist uploaded file metadata in PostgreSQL using SQLAlchemy.
 
@@ -149,6 +149,7 @@ class FileRepository:
                 original_file_name=file_name,
                 storage_path=str(file_path),
                 task_id=task_id,
+                file_sha=sha,
             )
 
             self.db.add(file_to_save)
@@ -279,3 +280,25 @@ class FileRepository:
         except SQLAlchemyError as err:
             self.db.rollback()
             raise DataBaseError() from err
+
+    def is_sha_present(self, user_id: int, sha: str, file_name: str) -> bool:
+        """_summary_
+
+        Args:
+            user_id (int): _description_
+            sha (str): _description_
+
+        Returns:
+            bool: _description_
+        """
+        query = select(Files.file_sha).where(
+            Files.user_id == user_id, Files.file_sha == sha
+        )
+        try:
+            result = self.db.scalar(query)
+            if not result:
+                return False
+            else:
+                return True
+        except SQLAlchemyError:
+            raise DataBaseError()

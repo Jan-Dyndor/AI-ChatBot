@@ -22,6 +22,10 @@ def _create_file(session, user_id: int, name: str, path: str) -> Files:
         user_id=user_id,
         original_file_name=name,
         storage_path=path,
+        # ``file_sha`` is mandatory in the production schema.  Test documents
+        # are created directly rather than through FileService, so provide a
+        # deterministic stand-in digest here.
+        file_sha=f"test-sha-{user_id}-{name}",
     )
     session.add(document)
     session.flush()

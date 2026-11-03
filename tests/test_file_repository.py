@@ -77,7 +77,9 @@ def test_save_file_metadata_rolls_back_three_times_when_database_fails(
             file_repository.db, "rollback", wraps=file_repository.db.rollback
         ) as rollback:
             with pytest.raises(DataBaseFileError):
-                file_repository.save_file_metadata("example.txt", 3, path, "task-1")
+                file_repository.save_file_metadata(
+                    "example.txt", 3, path, "task-1", "sha-example"
+                )
 
     # Tenacity performs three total attempts, therefore each failed commit is rolled back.
     assert rollback.call_count == 3
@@ -94,7 +96,9 @@ def test_save_file_metadata_raises_database_error_after_retries(
     monkeypatch.setattr(file_repository.save_file_metadata.retry, "wait", wait_none())
 
     with pytest.raises(DataBaseFileError):
-        file_repository.save_file_metadata("example.txt", 3, path, "task-1")
+        file_repository.save_file_metadata(
+            "example.txt", 3, path, "task-1", "sha-example"
+        )
 
 
 def test_delete_file_from_storage_removes_file(tmp_path):
@@ -116,6 +120,7 @@ def test_update_indexing_status_rejects_another_users_file(file_repository, sess
         user_id=owner.id,
         original_file_name="private.pdf",
         storage_path="/tmp/private.pdf",
+        file_sha="test-sha-private",
     )
     session.add(document)
     session.commit()

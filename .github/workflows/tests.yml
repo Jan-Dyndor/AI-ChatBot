@@ -46,6 +46,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain 
+      uses: dtolnay/rust-toolchain@stable
+    - name: Check Rust 
+      run: rustc --version && cargo --version
     - name: Install UV
       uses: astral-sh/setup-uv@v7
     - name: Setup Python
@@ -54,5 +59,12 @@ jobs:
       run: |
           uv sync --locked  
           uv pip install -e .
+    - name: Build Rust extension
+      working-directory: src/backend/rust_sha256
+      env:
+        VIRTUAL_ENV: ${{ github.workspace }}/.venv
+      run: |
+          "$VIRTUAL_ENV/bin/maturin" develop --release
+          "$VIRTUAL_ENV/bin/python" -c "import rust_sha; print(rust_sha.__file__)"
     - name: Run Tests    
       run: uv run pytest

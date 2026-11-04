@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from fastapi import UploadFile
-from loguru import logger
 from rust_sha256 import calculate_sha  # type: ignore
 
 from backend.api.schemas.pydantic_schemas import FilesResponse

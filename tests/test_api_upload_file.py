@@ -26,6 +26,7 @@ def upload_dependencies(client, uploaded_user):
     """Replace dependencies unrelated to enqueuing the Celery task."""
     file_service = Mock(spec=FileService)
     file_service.save_file.return_value = Path("/tmp/stored-report.pdf")
+    file_service.validate_if_file_exists.return_value = "sha-123"
     file_service.save_file_metadata.return_value = 17
 
     index_service = Mock()
@@ -82,6 +83,7 @@ def test_upload_file_saves_file_and_enqueues_indexing_task(
         user_id=7,
         file_path=Path("/tmp/stored-report.pdf"),
         task_id="request-123",
+        sha="sha-123",
     )
     enqueue_indexing.apply_async.assert_called_once_with(
         kwargs={

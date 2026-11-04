@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database.db import Base
@@ -66,6 +66,17 @@ class Users(Base):
 
 class Files(Base):
     __tablename__ = "files"
+
+    __table_args__ = (
+        Index(
+            "uq_user_file_sha",
+            "user_id",
+            "file_sha",
+            unique=True,
+            postgresql_where=text("file_sha != 'NOT COMPUTED'"),
+        ),
+    )
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
@@ -87,3 +98,4 @@ class Files(Base):
         unique=True,
         nullable=True,
     )
+    file_sha: Mapped[str] = mapped_column(String, nullable=False, unique=False)

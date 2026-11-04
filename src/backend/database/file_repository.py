@@ -281,15 +281,19 @@ class FileRepository:
             self.db.rollback()
             raise DataBaseError() from err
 
-    def is_sha_present(self, user_id: int, sha: str, file_name: str) -> bool:
-        """_summary_
+    def is_sha_present(self, user_id: int, sha: str) -> bool:
+        """Check whether a file with the given SHA-256 hash exists for a user.
 
         Args:
-            user_id (int): _description_
-            sha (str): _description_
+            user_id (int): ID of the user who owns the file.
+            sha (str): SHA-256 hash of the file to check.
+            file_name (str): Original name of the file.
 
         Returns:
-            bool: _description_
+            bool: True if a matching file exists, False otherwise.
+
+        Raises:
+            DataBaseError: If a SQLAlchemy database operation fails.
         """
         query = select(Files.file_sha).where(
             Files.user_id == user_id, Files.file_sha == sha

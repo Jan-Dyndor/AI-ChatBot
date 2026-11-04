@@ -1,12 +1,12 @@
 from pathlib import Path
 
 from fastapi import UploadFile
+from loguru import logger
 from rust_sha256 import calculate_sha  # type: ignore
 
 from backend.api.schemas.pydantic_schemas import FilesResponse
 from backend.database.file_repository import FileRepository
 from backend.exceptions.exc import FileAlreadyExists, FileToLarge
-from loguru import logger
 
 
 class FileService:
@@ -126,11 +126,27 @@ class FileService:
     def validate_if_file_exists(
         self, user_id: int, file_path: Path, file_name: str
     ) -> str:
-        #
+        """Validate that the uploaded file does not already exist for the user.
+
+        Calculates the file's SHA-256 hash and checks for duplicates in the database.
+        If a duplicate is found, removes the uploaded file from storage.
+
+        Args:
+            user_id (int): ID of the user uploading the file.
+            file_path (Path): Path to the uploaded file.
+            file_name (str): Original name of the uploaded file.
+
+        Returns:
+            str: SHA-256 hash of the file if no duplicate exists.
+
+        Raises:
+            FileAlreadyExists: If the user has already uploaded a file
+                with the same SHA-256 hash.
+        """
 
         sha = calculate_sha(str(file_path))
 
-        if self.db.is_sha_present(user_id=user_id, sha=sha, file_name=file_name):
+        if self.db.is_sha_present(user_id=user_id, sha=sha):
             self.db.delete_file_from_storage(file_path=file_path)
             raise FileAlreadyExists(user_id=user_id, file_name=file_name)
         return sha

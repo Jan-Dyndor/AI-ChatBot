@@ -145,7 +145,6 @@ def test_update_indexing_status_rejects_another_users_file(file_repository, sess
         original_file_name="private.pdf",
         storage_path="/tmp/private.pdf",
         file_sha="test-sha-private",
-        file_sha="test-sha-private",
     )
     session.add(document)
     session.commit()

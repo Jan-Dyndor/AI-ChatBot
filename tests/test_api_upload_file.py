@@ -25,9 +25,11 @@ def uploaded_user() -> UserDB:
 def upload_dependencies(client, uploaded_user):
     """Replace dependencies unrelated to enqueuing the Celery task."""
     file_service = Mock(spec=FileService)
-    file_service.save_file.return_value = Path("/tmp/stored-report.pdf")
+    file_service.update_and_save_file_metadata.return_value = Path(
+        "/tmp/stored-report.pdf"
+    )
     file_service.validate_if_file_exists.return_value = "sha-123"
-    file_service.save_file_metadata.return_value = 17
+    file_service.save_partially_file_metadata.return_value = 17
 
     index_service = Mock()
     vector_store = Mock()
@@ -73,18 +75,24 @@ def test_upload_file_saves_file_and_enqueues_indexing_task(
         "request_id": "task-123",
     }
     file_service.validate_file_size.assert_called_once()
-    file_service.save_file.assert_called_once()
-    assert file_service.save_file.call_args.kwargs == {
-        "file_name": "report.pdf",
-        "user_id": 7,
-    }
-    file_service.save_file_metadata.assert_called_once_with(
-        file_name="report.pdf",
+    file_service.validate_if_file_exists.assert_called_once_with(
         user_id=7,
-        file_path=Path("/tmp/stored-report.pdf"),
-        task_id="request-123",
-        sha="sha-123",
+        file_name="../../report.pdf",
+        file_bytes=b"pdf-content",
     )
+    file_service.save_partially_file_metadata.assert_called_once_with(
+        user_id=7,
+        file_name="../../report.pdf",
+        sha="sha-123",
+        task_id="request-123",
+    )
+    file_service.update_and_save_file_metadata.assert_called_once()
+    assert (
+        file_service.update_and_save_file_metadata.call_args.kwargs["file_name"]
+        == "report.pdf"
+    )
+    assert file_service.update_and_save_file_metadata.call_args.kwargs["user_id"] == 7
+    assert file_service.update_and_save_file_metadata.call_args.kwargs["file_id"] == 17
     enqueue_indexing.apply_async.assert_called_once_with(
         kwargs={
             "file_path": "/tmp/stored-report.pdf",
@@ -110,7 +118,8 @@ def test_upload_file_does_not_save_or_index_when_file_is_too_large(
     )
 
     assert response.status_code == 400
-    file_service.save_file.assert_not_called()
+    file_service.save_partially_file_metadata.assert_not_called()
+    file_service.update_and_save_file_metadata.assert_not_called()
     enqueue_indexing.apply_async.assert_not_called()
 
 
@@ -118,7 +127,9 @@ def test_upload_file_returns_safe_error_when_cleanup_of_failed_save_fails(
     client, upload_dependencies, enqueue_indexing
 ):
     file_service, _, _ = upload_dependencies
-    file_service.save_file.side_effect = FailedFileCleanUp(Path("/tmp/partial.pdf"))
+    file_service.update_and_save_file_metadata.side_effect = FailedFileCleanUp(
+        Path("/tmp/partial.pdf"), file_id=17, user_id=7
+    )
 
     response = client.post(
         "/v1/file",
@@ -129,5 +140,5 @@ def test_upload_file_returns_safe_error_when_cleanup_of_failed_save_fails(
     # handler converts it to the client-safe response rather than exposing a path.
     assert response.status_code == 500
     assert response.json() == {"message": "Issue occured while saving the file"}
-    file_service.save_file_metadata.assert_not_called()
+    file_service.save_partially_file_metadata.assert_called_once()
     enqueue_indexing.apply_async.assert_not_called()

@@ -149,22 +149,22 @@ def upload_file(
         file_name=file.filename,
     )
 
+    file_bytes: bytes = file.file.read()
+
+    sha: str = file_service.validate_if_file_exists(
+        user_id=user.id,
+        file_name=file.filename,
+        file_bytes=file_bytes,
+    )
+
+    file_id_db: int = file_service.save_partially_file_metadata(
+        user_id=user.id, file_name=file.filename, sha=sha, task_id=request_id
+    )
+
     safe_file_name = str(Path(file.filename).name)
 
-    saved_file_path = file_service.save_file(
-        file, file_name=safe_file_name, user_id=user.id
-    )
-
-    sha = file_service.validate_if_file_exists(
-        user_id=user.id, file_path=saved_file_path, file_name=file.filename
-    )
-
-    file_id: int = file_service.save_file_metadata(
-        file_name=safe_file_name,
-        user_id=user.id,
-        file_path=saved_file_path,
-        task_id=request_id,
-        sha=sha,
+    saved_file_path: Path = file_service.update_and_save_file_metadata(
+        file=file, file_name=safe_file_name, user_id=user.id, file_id=file_id_db
     )
 
     #! CELERY TASK
@@ -173,7 +173,7 @@ def upload_file(
             "file_path": str(saved_file_path),
             "user_id": user.id,
             "request_id": request_id,
-            "file_id": file_id,
+            "file_id": file_id_db,
         },
         task_id=request_id,
     )

@@ -11,24 +11,29 @@ class DocumentIndexingService:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
-    def load_and_split_pdf(self, user_id: int, file_path: Path) -> list[Document]:
-        """Load a PDF file, split its content into chunks, and assign user metadata.
+    def load_and_split_pdf(
+        self, user_id: int, file_path: Path, file_db_id: int
+    ) -> tuple[list[Document], list[str]]:
+        """Load a PDF, split it into chunks, and generate unique chunk identifiers.
+
+        Extracts text from the PDF using PyPDFLoader and splits it into chunks
+        using RecursiveCharacterTextSplitter with the configured chunk size
+        and overlap.
+
+        Each chunk is assigned user_id and file_id metadata to support
+        user-specific filtering and document management in the vector database.
+        Unique chunk IDs are generated using the file database ID and chunk index.
 
         Args:
             user_id (int): ID of the user who owns the document.
             file_path (Path): Path to the PDF file to be processed.
+            file_db_id (int): ID of the file record in the application database.
 
         Returns:
-            list[Document]: List of document chunks containing text, original
-                document metadata, and the associated user ID.
-
-        Notes:
-            Uses PyPDFLoader to extract PDF content and
-            RecursiveCharacterTextSplitter to split it into chunks based on
-            the configured chunk size and overlap.
-
-            Each chunk is assigned a user_id in its metadata to enable
-            user-specific filtering during vector similarity search.
+            tuple[list[Document], list[str]]: A tuple containing:
+                - List of document chunks with user and file metadata.
+                - List of unique chunk IDs in the format "{file_db_id}_{index}",
+                  corresponding to the document chunks in the same order.
         """
 
         loader = PyPDFLoader(file_path=file_path)
@@ -43,6 +48,9 @@ class DocumentIndexingService:
 
         for doc in doc_split:
             doc.metadata["user_id"] = user_id
+            doc.metadata["file_id"] = file_db_id
+
+        ids = [f"{file_db_id}_{i}" for i in range(len(doc_split))]
 
         logger.info("Splitted DOC into chunks")
-        return doc_split
+        return doc_split, ids

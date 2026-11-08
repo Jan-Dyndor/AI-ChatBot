@@ -6,14 +6,16 @@ from rust_sha256 import calculate_sha  # type: ignore
 
 from backend.api.schemas.pydantic_schemas import FilesResponse
 from backend.database.file_repository import FileRepository
-from backend.exceptions.exc import FileAlreadyExists, FileToLarge
+from backend.exceptions.exc import FileAlreadyExists, FileToLarge, SHACalcuationError
 
 
 class FileService:
     def __init__(self, file_repository: FileRepository) -> None:
         self.db = file_repository
 
-    def save_file(self, file: UploadFile, file_name: str, user_id: int) -> Path:
+    def update_and_save_file_metadata(
+        self, file: UploadFile, file_name: str, user_id: int, file_id: int
+    ):
         """Save an uploaded file to local storage through the repository.
 
         Delegates file persistence to the repository, which handles
@@ -31,11 +33,33 @@ class FileService:
             FileNotSaved: If file writing fails after all retry attempts.
             FailedFileCleanUp: If cleanup fails after a write error.
         """
-        return self.db.save_file(file, file_name, user_id)
+        logger.debug(f"Attempting to save User's {user_id} file {file_id} to storage")
 
-    def save_file_metadata(
-        self, file_name: str, user_id: int, file_path: Path, task_id: str, sha: str
-    ) -> int:
+        file_path: Path = self.db.create_file_storage_place(
+            user_id=user_id, file_name=file_name, file_id=file_id
+        )
+
+        self.db.update_file_metadata(
+            user_id=user_id, file_path=file_path, file_id=file_id, file_name=file_name
+        )
+
+        self.db.save_file(
+            file=file,
+            file_name=file_name,
+            user_id=user_id,
+            file_id=file_id,
+            file_path=file_path,
+        )
+
+        self.db.mark_file_as_ready_best_effort(
+            user_id=user_id, file_id=file_id, file_path=file_path
+        )
+
+        return file_path
+
+    def update_file_metadata(
+        self, file_name: str, user_id: int, file_path: Path, file_id: int
+    ):
         """Persist uploaded file metadata through the repository.
 
         Delegates the database operation to the repository, which handles
@@ -50,12 +74,12 @@ class FileService:
             DataBaseFileError: If metadata persistence fails after retries.
             DatabaseNoRetryError: If a non-retryable database error occurs.
         """
-        return self.db.save_file_metadata(
-            file_name=file_name,
-            user_id=user_id,
-            file_path=file_path,
-            task_id=task_id,
-            sha=sha,
+        logger.debug(
+            f"Attempting to update User's {user_id} file {file_id} metadata in DB"
+        )
+
+        return self.db.update_file_metadata(
+            file_name=file_name, user_id=user_id, file_path=file_path, file_id=file_id
         )
 
     def validate_file_size(
@@ -124,29 +148,62 @@ class FileService:
         )
 
     def validate_if_file_exists(
-        self, user_id: int, file_path: Path, file_name: str
+        self, user_id: int, file_name: str, file_bytes: bytes
     ) -> str:
-        """Validate that the uploaded file does not already exist for the user.
+        """Validate that a file does not already exist for the given user.
 
-        Calculates the file's SHA-256 hash and checks for duplicates in the database.
-        If a duplicate is found, removes the uploaded file from storage.
+        Calculate the file's SHA-256 hash and check whether the same hash
+        is already stored in the database for the specified user.
 
         Args:
-            user_id (int): ID of the user uploading the file.
-            file_path (Path): Path to the uploaded file.
-            file_name (str): Original name of the uploaded file.
-
-        Returns:
-            str: SHA-256 hash of the file if no duplicate exists.
+            user_id: ID of the user uploading the file.
+            file_name: Original name of the uploaded file.
+            file_bytes: Binary content of the uploaded file.
 
         Raises:
-            FileAlreadyExists: If the user has already uploaded a file
-                with the same SHA-256 hash.
-        """
+            SHACalcuationError: If the SHA-256 hash calculation fails.
+            FileAlreadyExists: If a file with the same hash already exists
+                for the given user.
 
-        sha = calculate_sha(str(file_path))
+        Returns:
+            str: SHA-256 hash of the unique file.
+        """
+        try:
+            logger.debug(f"Calculating User's {user_id} file SHA")
+            sha = calculate_sha(file_bytes)
+        except Exception as e:
+            raise SHACalcuationError(user_id=user_id, file_name=file_name) from e
 
         if self.db.is_sha_present(user_id=user_id, sha=sha):
-            self.db.delete_file_from_storage(file_path=file_path)
             raise FileAlreadyExists(user_id=user_id, file_name=file_name)
+
+        logger.debug(f"User {user_id} file {file_name} is unique")
         return sha
+
+    def save_partially_file_metadata(
+        self, user_id: int, file_name: str, sha: str, task_id: str
+    ) -> int:
+        """Save initial file metadata to reserve a unique user-file SHA combination.
+
+        Persist the required metadata before further file processing to prevent
+        concurrent uploads of the same file by the same user. Remaining fields
+        are populated with placeholder values.
+
+        The database's unique constraint on (user_id, file_sha) ensures that
+        duplicate records cannot be inserted concurrently.
+
+        Args:
+            user_id: ID of the user uploading the file.
+            file_name: Original name of the uploaded file.
+            sha: SHA-256 hash of the file content.
+            task_id: Unique identifier of the associated Celery task.
+
+        Returns:
+            int: ID of the newly created file record.
+        """
+        logger.debug(
+            f"Saving Users' {user_id} partial of file metadata to lock unique constrians of USER ID and SHA of file"
+        )
+        return self.db.partially_save_file_metadata(
+            user_id=user_id, file_name=file_name, sha=sha, task_id=task_id
+        )

@@ -601,3 +601,29 @@ class FileRepository:
         except SQLAlchemyError as err:
             self.db.rollback()
             raise DataBaseError() from err
+
+    def is_sha_present(self, user_id: int, sha: str) -> bool:
+        """Check whether a file with the given SHA-256 hash exists for a user.
+
+        Args:
+            user_id (int): ID of the user who owns the file.
+            sha (str): SHA-256 hash of the file to check.
+            file_name (str): Original name of the file.
+
+        Returns:
+            bool: True if a matching file exists, False otherwise.
+
+        Raises:
+            DataBaseError: If a SQLAlchemy database operation fails.
+        """
+        query = select(Files.file_sha).where(
+            Files.user_id == user_id, Files.file_sha == sha
+        )
+        try:
+            result = self.db.scalar(query)
+            if not result:
+                return False
+            else:
+                return True
+        except SQLAlchemyError:
+            raise DataBaseError()

@@ -90,6 +90,16 @@ class Files(Base):
         ),
     )
 
+    __table_args__ = (
+        Index(
+            "uq_user_file_sha",
+            "user_id",
+            "file_sha",
+            unique=True,
+            postgresql_where=text("file_sha != 'NOT COMPUTED'"),
+        ),
+    )
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False

@@ -44,15 +44,41 @@ def _redirect_to_login_after_expired_session() -> None:
 
 
 def _show_index_status(status: object) -> None:
-    """Show a clear, user-friendly badge for a document indexing result."""
+    """Show the indexing state returned by the files endpoint."""
     normalized_status = status.strip().upper() if isinstance(status, str) else ""
 
     if normalized_status == "SUCCESS":
         st.badge("Indexing successful", icon=":material/check_circle:", color="green")
     elif normalized_status == "PENDING":
-        st.badge("Indexing in progress", icon=":material/schedule:", color="orange")
-    else:
+        st.badge("Indexing pending", icon=":material/schedule:", color="gray")
+    elif normalized_status == "PROCESSING":
+        st.badge("Indexing in progress", icon=":material/sync:", color="orange")
+    elif normalized_status == "FAILURE":
         st.badge("Indexing failed", icon=":material/error:", color="red")
+    else:
+        st.badge("Indexing status unknown", icon=":material/help:", color="gray")
+
+
+def _show_file_status(status: object) -> None:
+    """Show upload/storage state, including why a file needs deletion."""
+    normalized_status = status.strip().upper() if isinstance(status, str) else ""
+
+    if normalized_status == "READY":
+        st.badge("File ready", icon=":material/check_circle:", color="green")
+    elif normalized_status == "PROCESSING":
+        st.badge("File processing", icon=":material/sync:", color="orange")
+    elif normalized_status == "DELETING":
+        st.badge(
+            "Pending deletion",
+            icon=":material/delete:",
+            color="red",
+            help=(
+                "An error occurred while uploading or processing this file. "
+                "It is marked for deletion and may remain listed until cleanup succeeds."
+            ),
+        )
+    else:
+        st.badge("File status unknown", icon=":material/help:", color="gray")
 
 
 def _fetch_files() -> list[dict[str, object]] | None:
@@ -98,6 +124,7 @@ def _fetch_files() -> list[dict[str, object]] | None:
                 and isinstance(file.get("id"), int)
                 and isinstance(file.get("original_file_name"), str)
                 and isinstance(file.get("index_status"), str)
+                and isinstance(file.get("file_status"), str)
             ]
             if len(files) != len(payload):
                 logger.error(f"Files response contains invalid records: {payload}")
@@ -179,7 +206,12 @@ def _fetch_pdf(file_id: int) -> bytes | None:
                 "Could not fetch PDF: "
                 f"file_id={file_id}, status={status_code}, message={message}"
             )
-            st.error(f"Could not open this document ({status_code}): {message}")
+            if status_code == 409:
+                st.session_state.pop("selected_file", None)
+                st.session_state.pop("selected_file_pdf", None)
+                st.warning(message)
+            else:
+                st.error(f"Could not open this document ({status_code}): {message}")
             return None
 
         except requests.RequestException as error:
@@ -209,7 +241,9 @@ if files == []:
         st.switch_page("pages/upload_page.py")
 elif files:
     st.caption(f"{len(files)} document{'s' if len(files) != 1 else ''}")
-    available_file_ids = {file["id"] for file in files}
+    available_file_ids = {
+        file["id"] for file in files if file["file_status"].strip().upper() == "READY"
+    }
     selected_file = st.session_state.get("selected_file")
     if (
         not isinstance(selected_file, dict)
@@ -219,13 +253,29 @@ elif files:
         st.session_state.pop("selected_file_pdf", None)
 
     for file in files:
+        file_status = file["file_status"].strip().upper()
+        open_pdf_help = {
+            "PROCESSING": "This file is available after upload finishes.",
+            "DELETING": "This file is unavailable while it is marked for deletion.",
+        }.get(file_status, "This file is unavailable until its status is known.")
         with st.container(border=True):
             name_column, action_column = st.columns([7, 3])
             name_column.markdown(f"#### 📄 {file['original_file_name']}")
             name_column.caption(f"Document ID: {file['id']}")
             with name_column:
-                _show_index_status(file["index_status"])
-            if action_column.button("Open PDF", key=f"open-file-{file['id']}"):
+                file_status_column, index_status_column = st.columns(2)
+                with file_status_column:
+                    st.caption("File")
+                    _show_file_status(file["file_status"])
+                with index_status_column:
+                    st.caption("Indexing")
+                    _show_index_status(file["index_status"])
+            if action_column.button(
+                "Open PDF",
+                key=f"open-file-{file['id']}",
+                disabled=file_status != "READY",
+                help=None if file_status == "READY" else open_pdf_help,
+            ):
                 st.session_state.selected_file = {
                     "id": file["id"],
                     "name": file["original_file_name"],

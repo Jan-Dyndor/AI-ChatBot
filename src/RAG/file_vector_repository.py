@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 from loguru import logger
 from tenacity import (
@@ -9,7 +10,10 @@ from tenacity import (
     wait_exponential_jitter,
 )
 
-from backend.retry.retry_logs import log_final_retry_failure, log_retry
+from backend.retry.retry_logs_logic import (
+    cleanup_and_log_final_retry_failure,
+    log_retry_and_cleanup,
+)
 from RAG.document_indexing_seervice import DocumentIndexingService
 
 
@@ -24,19 +28,19 @@ class FileVectorStorage:
         stop=stop_after_attempt(3),
         reraise=True,
         wait=wait_exponential_jitter(initial=1, max=5, jitter=1),
-        before_sleep=log_retry,
-        retry_error_callback=log_final_retry_failure,
+        before_sleep=log_retry_and_cleanup,
+        retry_error_callback=cleanup_and_log_final_retry_failure,
         retry=retry_if_not_exception_type(FileNotFoundError),
     )
-    def add_document(self, file_path: Path, user_id: int):
+    def add_document(self, file_path: Path, user_id: int, file_db_id: int):
 
         logger.info("Started DOC chunking and embedding process")
 
-        doc_chunks = self.index_service.load_and_split_pdf(
-            file_path=file_path, user_id=user_id
+        doc_chunks, ids = self.index_service.load_and_split_pdf(
+            file_path=file_path, user_id=user_id, file_db_id=file_db_id
         )
 
-        self.vector_storage.add_documents(documents=doc_chunks)
+        self.vector_storage.add_documents(documents=doc_chunks, ids=ids)
         logger.info("Added Doc to Vector Store")
 
     def return_retiver(self, serach_kwargs: dict):
@@ -49,3 +53,38 @@ class FileVectorStorage:
 
     def format_found_docs(self, docs):
         return "\n\n".join([doc.page_content for doc in docs])
+
+    def delete_document(self, user_id: int, file_id: int):
+        """Delete all vector database chunks belonging to a specific user document.
+
+        Retrieves chunk identifiers from ChromaDB using user_id and file_id
+        metadata filters, then deletes all matching chunks from the vector store.
+
+        If no matching chunks are found, logs the result and returns without
+        performing a deletion.
+
+        Args:
+            user_id (int): ID of the user who owns the document.
+            file_id (int): ID of the file record in the application database.
+
+        Returns:
+            None: Matching document chunks are deleted from the vector database.
+        """
+        logger.info(f"Started deleting user {user_id} file {file_id} chunks.")
+        result = self.vector_storage.get(  # type: ignore
+            where={
+                "$and": [
+                    {"user_id": user_id},
+                    {"file_id": file_id},
+                ]
+            },
+            include=[],
+        )
+        chunk_ids = result["ids"]
+
+        if not chunk_ids:
+            logger.info(f"User's {user_id} has not chunks in Chroma for file {file_id}")
+            return
+
+        self.vector_storage.delete(ids=chunk_ids)
+        logger.info(f"Successuflly deleted user {user_id} file {file_id} chunks.")

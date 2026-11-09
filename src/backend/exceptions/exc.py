@@ -149,7 +149,7 @@ class NotEnoughtFileParameters(AppExceptions):
 class DataBaseFileError(AppExceptions):
     def __init__(self, user_id: int, file_name: str) -> None:
         super().__init__(
-            message=f"Database operation to save user's {user_id} file {file_name} failed. ",
+            message=f"Database operation to update User's {user_id} file {file_name} failed.",
             status_code=500,
             client_message="Database operation to save file failed. Upload file again.",
         )
@@ -165,10 +165,10 @@ class FileToLarge(AppExceptions):
 
 
 class FailedFileCleanUp(AppExceptions):
-    def __init__(self, file_path: Path) -> None:
+    def __init__(self, file_path: Path, file_id: int, user_id: int) -> None:
 
         super().__init__(
-            message=f"Cound not cleanup after failed file save. Operation is aborted. Manually delete file {file_path}",
+            message=f"Cound not cleanup after failed file save in storage.Operation is aborted. DB will store file metadata and tried to ad DELETE status attached to file.  !! Manually delete file ID {file_id} in --- {file_path} --- belongs to user {user_id}!!",
             status_code=500,
             client_message="Issue occured while saving the file",
         )
@@ -189,6 +189,53 @@ class FileAlreadyExists(AppExceptions):
             message=f"User's {user_id} file {file_name} already exists in DB",
             status_code=409,
             client_message=f"File {file_name} already exists. Check indexing process on page 'files page'",
+        )
+
+
+class UploadAfterFailedFileDelation(AppExceptions):
+    def __init__(self, file_name: str, user_id: int) -> None:
+        super().__init__(
+            message=f"User {user_id} attempted to re-upload file {file_name}, but the previous failed upload was not cleaned up successfully. Proceed with manual cleanup. Check File path in DB, delte it from storage and then from DB.",
+            status_code=500,
+            client_message=f"This file {file_name} could not be uploaded because a previous failed upload was not fully cleaned up. Please contact support.",
+        )
+
+
+class FileIntegrityError(AppExceptions):
+    def __init__(self, user_id: int, file_name: str) -> None:
+        super().__init__(
+            message=f"Integrity issue occurred while tring to safe User's {user_id} file {file_name} spot in DB",
+            status_code=500,
+            client_message=f"Issue occured while saving the file {file_name} in DB",
+        )
+
+
+class SHACalcuationError(AppExceptions):
+    def __init__(self, user_id: int, file_name: str) -> None:
+        super().__init__(
+            message=f"Issue occured while calculating SHA of user's ID's {user_id} file {file_name}",
+            status_code=500,
+            client_message="An Issue occured while compering existing files",
+        )
+
+
+class FileStorageException(AppExceptions):
+    def __init__(self, user_id: int, file_id: int, file_name: str) -> None:
+        super().__init__(
+            message=f"Issue occured in creation of storage for file {file_id} from User {user_id}",
+            status_code=500,
+            client_message=f"Isse occured while saving the file {file_name}",
+        )
+
+
+class FileCanNotBeViewed(AppExceptions):
+    def __init__(
+        self, user_id: int, file_id: int, file_status: str, file_name: str
+    ) -> None:
+        super().__init__(
+            message=f"User's {user_id} file {file_id} cannot be viewed while its status is {file_status}",
+            status_code=409,
+            client_message=f"File {file_name} cannot be viewed while its status is {file_status}.",
         )
 
 

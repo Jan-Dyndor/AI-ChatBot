@@ -118,6 +118,7 @@ class FilesResponse(BaseModel):
     id: int
     original_file_name: str
     index_status: str
+    file_status: str
 
 
 class CeleryTaskUpdateResponse(BaseModel):

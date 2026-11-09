@@ -9,11 +9,13 @@ from tenacity import wait_none
 
 import backend.database.file_repository as file_repository_module
 from backend.database.file_repository import FileRepository
-from backend.database.models import Files, Users
+from backend.database.models import Files, FileStatus, Users
 from backend.exceptions.exc import (
     DataBaseFileError,
     DataBaseResourceNotFound,
     FailedFileCleanUp,
+    FileCanNotBeViewed,
+    FileNotSaved,
 )
 
 
@@ -25,7 +27,7 @@ def test_create_file_storage_place_creates_user_directory(tmp_path, monkeypatch)
     fake_file = tmp_path / "src" / "backend" / "database" / "file_repository.py"
     monkeypatch.setattr(file_repository_module, "__file__", str(fake_file))
 
-    path = FileRepository(Mock()).create_file_storage_place(7, "report.pdf")
+    path = FileRepository(Mock()).create_file_storage_place(7, "report.pdf", file_id=13)
 
     assert path.parent == tmp_path / "storage" / "7"
     assert path.name.endswith("_report.pdf")
@@ -33,16 +35,15 @@ def test_create_file_storage_place_creates_user_directory(tmp_path, monkeypatch)
     assert path.parent.is_dir()
 
 
-def test_save_file_saves_content_and_metadata(file_repository, tmp_path):
+def test_save_file_writes_content_to_given_path(file_repository, tmp_path):
     path = tmp_path / "storage" / "1" / "stored.txt"
     path.parent.mkdir(parents=True)
 
-    with patch.object(file_repository, "create_file_storage_place", return_value=path):
-        result = file_repository.save_file(
-            upload_file(b"file contents"), "original.txt", 1
-        )
+    result = file_repository.save_file(
+        upload_file(b"file contents"), "original.txt", 1, file_id=13, file_path=path
+    )
 
-    assert result == path
+    assert result is None
     assert path.read_bytes() == b"file contents"
     assert file_repository.db.query(file_repository_module.Files).count() == 0
 
@@ -50,54 +51,149 @@ def test_save_file_saves_content_and_metadata(file_repository, tmp_path):
 def test_save_file_raises_cleanup_error_when_destination_is_not_writable(
     file_repository, tmp_path
 ):
-    # The parent path is a regular file, so opening ``stored.txt`` below it
-    # fails through the real filesystem. No ``open`` mock is needed.
+    # The parent path is a regular file, so opening the destination fails.
+    # Simulate cleanup failing as well to exercise FailedFileCleanUp.
     invalid_parent = tmp_path / "not_a_directory"
     invalid_parent.write_bytes(b"not a directory")
     path = invalid_parent / "stored.txt"
 
-    with patch.object(file_repository, "create_file_storage_place", return_value=path):
-        with pytest.raises(FailedFileCleanUp):
-            file_repository.save_file(upload_file(), "example.txt", 3)
-
-    assert file_repository.db.query(file_repository_module.Files).count() == 0
-
-
-def test_save_file_metadata_rolls_back_three_times_when_database_fails(
-    file_repository, tmp_path, monkeypatch
-):
-    path = tmp_path / "stored.txt"
-    file_repository.db.commit = Mock(
-        side_effect=SQLAlchemyError("database unavailable")
-    )
-    monkeypatch.setattr(file_repository.save_file_metadata.retry, "wait", wait_none())
-
-    with patch.object(file_repository, "create_file_storage_place", return_value=path):
+    with patch.object(
+        file_repository,
+        "delete_file_from_storage",
+        side_effect=PermissionError("cleanup failed"),
+    ):
         with patch.object(
-            file_repository.db, "rollback", wraps=file_repository.db.rollback
-        ) as rollback:
-            with pytest.raises(DataBaseFileError):
-                file_repository.save_file_metadata(
-                    "example.txt", 3, path, "task-1", "sha-example"
+            file_repository, "mark_file_status_to_delte"
+        ) as mark_for_deletion:
+            with pytest.raises(FailedFileCleanUp):
+                file_repository.save_file(
+                    upload_file(), "example.txt", 3, file_id=13, file_path=path
                 )
 
-    # Tenacity performs three total attempts, therefore each failed commit is rolled back.
-    assert rollback.call_count == 3
+    mark_for_deletion.assert_called_once_with(file_id=13, user_id=3)
     assert file_repository.db.query(file_repository_module.Files).count() == 0
 
 
-def test_save_file_metadata_raises_database_error_after_retries(
-    file_repository, tmp_path, monkeypatch
+def test_failed_file_write_removes_metadata_after_retries(
+    file_repository, session, tmp_path, monkeypatch
+):
+    path = tmp_path / "missing_directory" / "upload.pdf"
+
+    owner = Users(email="failed-write@example.com", password_hash="hash")
+    session.add(owner)
+    session.flush()
+    document = Files(
+        user_id=owner.id,
+        original_file_name="upload.pdf",
+        storage_path=str(path),
+        file_sha="failed-write-sha",
+    )
+    session.add(document)
+    session.commit()
+    user_id, file_id = owner.id, document.id
+    monkeypatch.setattr(file_repository.save_file.retry, "wait", wait_none())
+
+    with pytest.raises(FileNotSaved):
+        file_repository.save_file(
+            file=upload_file(b"PDF data"),
+            file_name="upload.pdf",
+            user_id=user_id,
+            file_id=file_id,
+            file_path=path,
+        )
+
+    session.expire_all()
+    assert not path.exists()
+    assert session.get(Files, file_id) is None
+
+
+def test_failed_write_and_cleanup_leaves_file_marked_for_deletion(
+    file_repository, session, tmp_path
+):
+    invalid_parent = tmp_path / "not_a_directory"
+    invalid_parent.write_bytes(b"not a directory")
+    path = invalid_parent / "upload.pdf"
+
+    owner = Users(email="failed-cleanup@example.com", password_hash="hash")
+    session.add(owner)
+    session.flush()
+    document = Files(
+        user_id=owner.id,
+        original_file_name="upload.pdf",
+        storage_path=str(path),
+        file_sha="failed-cleanup-sha",
+    )
+    session.add(document)
+    session.commit()
+    user_id, file_id = owner.id, document.id
+
+    with pytest.raises(FailedFileCleanUp):
+        file_repository.save_file(
+            file=upload_file(b"PDF data"),
+            file_name="upload.pdf",
+            user_id=user_id,
+            file_id=file_id,
+            file_path=path,
+        )
+
+    session.refresh(document)
+    assert not path.exists()
+    assert document.file_status == FileStatus.DELETING
+    with pytest.raises(FileCanNotBeViewed) as error:
+        file_repository.get_file(user_id=user_id, file_id=file_id)
+    assert error.value.status_code == 409
+
+
+def test_update_file_metadata_rolls_back_three_times_when_database_fails(
+    file_repository, session, tmp_path, monkeypatch
 ):
     path = tmp_path / "stored.txt"
+    owner = Users(email="metadata-owner@example.com", password_hash="hash")
+    session.add(owner)
+    session.flush()
+    document = Files(
+        user_id=owner.id,
+        original_file_name="example.txt",
+        storage_path="TO BE SET",
+        file_sha="sha-example",
+    )
+    session.add(document)
+    session.commit()
+    user_id, file_id = owner.id, document.id
+
     file_repository.db.commit = Mock(
         side_effect=SQLAlchemyError("database unavailable")
     )
-    monkeypatch.setattr(file_repository.save_file_metadata.retry, "wait", wait_none())
+    monkeypatch.setattr(file_repository.update_file_metadata.retry, "wait", wait_none())
 
-    with pytest.raises(DataBaseFileError):
-        file_repository.save_file_metadata(
-            "example.txt", 3, path, "task-1", "sha-example"
+    with patch.object(
+        file_repository, "mark_file_status_to_delte"
+    ) as mark_for_deletion:
+        with patch.object(file_repository, "delete_file_from_db") as delete_metadata:
+            with patch.object(
+                file_repository.db, "rollback", wraps=file_repository.db.rollback
+            ) as rollback:
+                with pytest.raises(DataBaseFileError):
+                    file_repository.update_file_metadata(
+                        user_id=user_id,
+                        file_path=path,
+                        file_id=file_id,
+                        file_name="example.txt",
+                    )
+
+    assert rollback.call_count == 3
+    mark_for_deletion.assert_called_once_with(file_id=file_id, user_id=user_id)
+    delete_metadata.assert_called_once_with(file_id=file_id, user_id=user_id)
+    session.refresh(document)
+    assert document.storage_path == "TO BE SET"
+
+
+def test_update_file_metadata_rejects_missing_file(file_repository, tmp_path):
+    path = tmp_path / "stored.txt"
+
+    with pytest.raises(DataBaseResourceNotFound):
+        file_repository.update_file_metadata(
+            user_id=3, file_path=path, file_id=17, file_name="example.txt"
         )
 
 

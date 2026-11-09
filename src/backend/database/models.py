@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Index, text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database.db import Base
@@ -11,6 +11,19 @@ class StatusMessage(StrEnum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+
+
+class FileStatus(StrEnum):
+    PROCESSING = "PROCESSING"
+    READY = "READY"
+    DELETING = "DELETING"
+
+
+class IndexingStatus(StrEnum):
+    FAILURE = "FAILURE"
+    SUCCESS = "SUCCESS"
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
 
 
 class Conversations(Base):
@@ -77,6 +90,16 @@ class Files(Base):
         ),
     )
 
+    __table_args__ = (
+        Index(
+            "uq_user_file_sha",
+            "user_id",
+            "file_sha",
+            unique=True,
+            postgresql_where=text("file_sha != 'NOT COMPUTED'"),
+        ),
+    )
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
@@ -87,11 +110,11 @@ class Files(Base):
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(tz=UTC)
     )
-    index_status: Mapped[str] = mapped_column(
+    index_status: Mapped[IndexingStatus] = mapped_column(
         String,
         nullable=False,
-        default="PENDING",
-        server_default="PENDING",
+        default=IndexingStatus.PENDING,
+        server_default=IndexingStatus.PENDING,
     )
     task_id: Mapped[str | None] = mapped_column(
         String,
@@ -99,3 +122,9 @@ class Files(Base):
         nullable=True,
     )
     file_sha: Mapped[str] = mapped_column(String, nullable=False, unique=False)
+    file_status: Mapped[FileStatus] = mapped_column(
+        String,
+        nullable=False,
+        server_default=FileStatus.PROCESSING,
+        default=FileStatus.PROCESSING,
+    )

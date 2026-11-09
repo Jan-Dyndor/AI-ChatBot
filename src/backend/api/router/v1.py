@@ -241,12 +241,13 @@ def get_files(
     user: UserDB = Depends(get_current_user),
     file_service: FileService = Depends(get_file_service),
 ):
-    x = file_service.get_all_users_files(user.id)
-    print(x)
-    return x
+    return file_service.get_all_users_files(user.id)
 
 
-@router.get("/files/{file_id}", response_class=FileResponse)
+@router.get(
+    "/files/{file_id}",
+    response_class=FileResponse,
+)
 def get_file(
     file_id: int,
     user: UserDB = Depends(get_current_user),

@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi import UploadFile
 from loguru import logger
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.exc import DataError, IntegrityError, ProgrammingError, SQLAlchemyError
 from tenacity import (
     retry,
@@ -22,6 +22,7 @@ from backend.exceptions.exc import (
     DataBaseResourceNotFound,
     FailedFileCleanUp,
     FileAlreadyExists,
+    FileCanNotBeViewed,
     FileIntegrityError,
     FileNotSaved,
     FileStorageException,
@@ -346,8 +347,13 @@ class FileRepository:
         """
         try:
             query = select(
-                Files.id, Files.original_file_name, Files.index_status
-            ).where(Files.user_id == user_id)
+                Files.id,
+                Files.original_file_name,
+                Files.index_status,
+                Files.file_status,
+            ).where(
+                Files.user_id == user_id,
+            )
             user_files = self.db.execute(query).all()
 
             if not user_files:
@@ -360,6 +366,8 @@ class FileRepository:
     def get_file(self, user_id: int, file_id: int) -> str:
         """Retrieve the storage path of a file owned by the specified user.
 
+        Only files with a READY status can be accessed.
+
         Args:
             user_id (int): ID of the user who owns the file.
             file_id (int): ID of the requested file.
@@ -367,21 +375,33 @@ class FileRepository:
         Raises:
             DataBaseResourceNotFound: If the file does not exist or does not
                 belong to the specified user.
+            FileCanNotBeViewed: If the file exists but its status is not READY.
             DataBaseError: If a SQLAlchemy database operation fails.
 
         Returns:
             str: Local storage path of the requested file.
         """
         try:
-            query = select(Files).where(Files.user_id == user_id, Files.id == file_id)
+            query = select(Files).where(
+                Files.user_id == user_id,
+                Files.id == file_id,
+            )
 
             file = self.db.scalar(query)
             if not file:
                 raise DataBaseResourceNotFound()
+            if file.file_status != FileStatus.READY:
+                raise FileCanNotBeViewed(
+                    user_id=user_id,
+                    file_id=file_id,
+                    file_status=file.file_status,
+                    file_name=file.original_file_name,
+                )
 
             return file.storage_path
 
         except SQLAlchemyError as err:
+            self.db.rollback()
             raise DataBaseError() from err
 
     @retry(
@@ -570,18 +590,20 @@ class FileRepository:
             )
 
     def check_file_status(self, sha: str, user_id: int) -> bool | None:
-        #! DOCS STRING
-        """_summary_
+        """Check whether a user's file exists and is marked for deletion.
 
         Args:
-            sha (str): _description_
-            user_id (int): _description_
+            sha (str): SHA-256 hash identifying the file.
+            user_id (int): ID of the user who owns the file.
 
         Raises:
-            DataBaseError: _description_
+            DataBaseError: If a database operation fails.
 
         Returns:
-            bool | None: _description_
+            bool | None:
+                True if the file exists and has DELETING status.
+                False if the file exists with any other status.
+                None if no matching file is found.
         """
         try:
             query = select(Files.file_status).where(
@@ -601,29 +623,3 @@ class FileRepository:
         except SQLAlchemyError as err:
             self.db.rollback()
             raise DataBaseError() from err
-
-    def is_sha_present(self, user_id: int, sha: str) -> bool:
-        """Check whether a file with the given SHA-256 hash exists for a user.
-
-        Args:
-            user_id (int): ID of the user who owns the file.
-            sha (str): SHA-256 hash of the file to check.
-            file_name (str): Original name of the file.
-
-        Returns:
-            bool: True if a matching file exists, False otherwise.
-
-        Raises:
-            DataBaseError: If a SQLAlchemy database operation fails.
-        """
-        query = select(Files.file_sha).where(
-            Files.user_id == user_id, Files.file_sha == sha
-        )
-        try:
-            result = self.db.scalar(query)
-            if not result:
-                return False
-            else:
-                return True
-        except SQLAlchemyError:
-            raise DataBaseError()

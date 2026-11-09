@@ -228,6 +228,17 @@ class FileStorageException(AppExceptions):
         )
 
 
+class FileCanNotBeViewed(AppExceptions):
+    def __init__(
+        self, user_id: int, file_id: int, file_status: str, file_name: str
+    ) -> None:
+        super().__init__(
+            message=f"User's {user_id} file {file_id} cannot be viewed while its status is {file_status}",
+            status_code=409,
+            client_message=f"File {file_name} cannot be viewed while its status is {file_status}.",
+        )
+
+
 #! AUTH HTTP validation
 class ValidationErrorCredentials(AppExceptions):
     def __init__(self, variable_name, issue_message: str) -> None:

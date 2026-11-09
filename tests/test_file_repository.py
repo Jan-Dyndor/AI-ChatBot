@@ -9,11 +9,13 @@ from tenacity import wait_none
 
 import backend.database.file_repository as file_repository_module
 from backend.database.file_repository import FileRepository
-from backend.database.models import Files, Users
+from backend.database.models import Files, FileStatus, Users
 from backend.exceptions.exc import (
     DataBaseFileError,
     DataBaseResourceNotFound,
     FailedFileCleanUp,
+    FileCanNotBeViewed,
+    FileNotSaved,
 )
 
 
@@ -70,6 +72,76 @@ def test_save_file_raises_cleanup_error_when_destination_is_not_writable(
 
     mark_for_deletion.assert_called_once_with(file_id=13, user_id=3)
     assert file_repository.db.query(file_repository_module.Files).count() == 0
+
+
+def test_failed_file_write_removes_metadata_after_retries(
+    file_repository, session, tmp_path, monkeypatch
+):
+    path = tmp_path / "missing_directory" / "upload.pdf"
+
+    owner = Users(email="failed-write@example.com", password_hash="hash")
+    session.add(owner)
+    session.flush()
+    document = Files(
+        user_id=owner.id,
+        original_file_name="upload.pdf",
+        storage_path=str(path),
+        file_sha="failed-write-sha",
+    )
+    session.add(document)
+    session.commit()
+    user_id, file_id = owner.id, document.id
+    monkeypatch.setattr(file_repository.save_file.retry, "wait", wait_none())
+
+    with pytest.raises(FileNotSaved):
+        file_repository.save_file(
+            file=upload_file(b"PDF data"),
+            file_name="upload.pdf",
+            user_id=user_id,
+            file_id=file_id,
+            file_path=path,
+        )
+
+    session.expire_all()
+    assert not path.exists()
+    assert session.get(Files, file_id) is None
+
+
+def test_failed_write_and_cleanup_leaves_file_marked_for_deletion(
+    file_repository, session, tmp_path
+):
+    invalid_parent = tmp_path / "not_a_directory"
+    invalid_parent.write_bytes(b"not a directory")
+    path = invalid_parent / "upload.pdf"
+
+    owner = Users(email="failed-cleanup@example.com", password_hash="hash")
+    session.add(owner)
+    session.flush()
+    document = Files(
+        user_id=owner.id,
+        original_file_name="upload.pdf",
+        storage_path=str(path),
+        file_sha="failed-cleanup-sha",
+    )
+    session.add(document)
+    session.commit()
+    user_id, file_id = owner.id, document.id
+
+    with pytest.raises(FailedFileCleanUp):
+        file_repository.save_file(
+            file=upload_file(b"PDF data"),
+            file_name="upload.pdf",
+            user_id=user_id,
+            file_id=file_id,
+            file_path=path,
+        )
+
+    session.refresh(document)
+    assert not path.exists()
+    assert document.file_status == FileStatus.DELETING
+    with pytest.raises(FileCanNotBeViewed) as error:
+        file_repository.get_file(user_id=user_id, file_id=file_id)
+    assert error.value.status_code == 409
 
 
 def test_update_file_metadata_rolls_back_three_times_when_database_fails(

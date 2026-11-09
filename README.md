@@ -81,6 +81,21 @@ cp .env.docker.example .env.docker
 cp .env.example .env
 ```
 
+Install the Python dependencies and build the local `rust_sha256` extension.
+This step requires a Rust toolchain (`cargo` and `rustc`) on the host. Run these
+commands from the repository root; `maturin` installs the extension into the
+project's `.venv`, which FastAPI and Celery use:
+
+```bash
+uv sync --locked
+(
+  export VIRTUAL_ENV="$PWD/.venv"
+  cd src/backend/rust_sha256
+  "$VIRTUAL_ENV/bin/maturin" develop --release
+)
+uv run python -c "import rust_sha256"
+```
+
 Start only the supporting services, then create the database schema:
 
 ```bash

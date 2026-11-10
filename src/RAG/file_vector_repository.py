@@ -10,6 +10,7 @@ from tenacity import (
     wait_exponential_jitter,
 )
 
+from backend.exceptions.exc import ChromaDBError
 from backend.retry.retry_logs_logic import (
     cleanup_and_log_final_retry_failure,
     log_retry_and_cleanup,
@@ -70,21 +71,30 @@ class FileVectorStorage:
         Returns:
             None: Matching document chunks are deleted from the vector database.
         """
-        logger.info(f"Started deleting user {user_id} file {file_id} chunks.")
-        result = self.vector_storage.get(  # type: ignore
-            where={
-                "$and": [
-                    {"user_id": user_id},
-                    {"file_id": file_id},
-                ]
-            },
-            include=[],
+        logger.info(
+            f"Started deleting user {user_id} file {file_id} chunks from Vector Storage."
         )
-        chunk_ids = result["ids"]
+        try:
+            result = self.vector_storage.get(  # type: ignore
+                where={
+                    "$and": [
+                        {"user_id": user_id},
+                        {"file_id": file_id},
+                    ]
+                },
+                include=[],
+            )
+            chunk_ids = result["ids"]
 
-        if not chunk_ids:
-            logger.info(f"User's {user_id} has not chunks in Chroma for file {file_id}")
-            return
+            if not chunk_ids:
+                logger.info(
+                    f"User's {user_id} has not chunks in Chroma for file {file_id}"
+                )
+                return
 
-        self.vector_storage.delete(ids=chunk_ids)
-        logger.info(f"Successuflly deleted user {user_id} file {file_id} chunks.")
+            self.vector_storage.delete(ids=chunk_ids)
+            logger.info(
+                f"Successuflly deleted user {user_id} file {file_id} chunks from Vector Storage."
+            )
+        except Exception as err:
+            raise ChromaDBError(user_id=user_id, file_id=file_id) from err

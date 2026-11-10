@@ -101,3 +101,53 @@ def test_preview_shows_warning_and_clears_selection_if_status_changes():
     assert [warning.value for warning in page.warning] == [message]
     assert "selected_file" not in page.session_state
     assert "selected_file_pdf" not in page.session_state
+
+
+def test_delete_button_uses_its_file_id_and_refreshes_the_list():
+    page = _page()
+    files = [_file(), {**_file(), "id": 2, "original_file_name": "second.pdf"}]
+
+    def fake_get(url, headers, timeout):
+        return _response(200, files, headers["Request-ID"])
+
+    def fake_delete(url, headers, timeout):
+        assert url.endswith("/2")
+        assert headers["Authorization"] == "Bearer test-token"
+        files.pop()
+        return _response(204, {}, headers["Request-ID"])
+
+    with (
+        patch("requests.get", side_effect=fake_get),
+        patch("requests.delete", side_effect=fake_delete) as delete,
+    ):
+        page.run()
+        page.button(key="delete-file-2").click().run()
+
+    assert not page.exception
+    assert delete.call_count == 1
+    assert [success.value for success in page.success] == ["Deleted second.pdf."]
+    assert any(button.key == "delete-file-1" for button in page.button)
+    assert not any(button.key == "delete-file-2" for button in page.button)
+
+
+def test_delete_failure_keeps_file_and_shows_backend_error():
+    page = _page()
+
+    def fake_get(url, headers, timeout):
+        return _response(200, [_file()], headers["Request-ID"])
+
+    def fake_delete(url, headers, timeout):
+        return _response(500, {"message": "Deletion failed"}, headers["Request-ID"])
+
+    with (
+        patch("requests.get", side_effect=fake_get),
+        patch("requests.delete", side_effect=fake_delete),
+    ):
+        page.run()
+        page.button(key="delete-file-1").click().run()
+
+    assert not page.exception
+    assert any(button.key == "delete-file-1" for button in page.button)
+    assert [error.value for error in page.error] == [
+        "Could not delete this document (500): Deletion failed"
+    ]

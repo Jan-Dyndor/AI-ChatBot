@@ -124,3 +124,8 @@ class FilesResponse(BaseModel):
 class CeleryTaskUpdateResponse(BaseModel):
     task_id: str
     state: str
+
+
+class DeleteFileResponse(BaseModel):
+    file_id: int
+    status: str = Field(default="DELETED")

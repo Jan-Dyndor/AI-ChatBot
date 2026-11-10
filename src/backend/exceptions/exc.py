@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 
 
 # App Error
@@ -168,9 +169,18 @@ class FailedFileCleanUp(AppExceptions):
     def __init__(self, file_path: Path, file_id: int, user_id: int) -> None:
 
         super().__init__(
-            message=f"Cound not cleanup after failed file save in storage.Operation is aborted. DB will store file metadata and tried to ad DELETE status attached to file.  !! Manually delete file ID {file_id} in --- {file_path} --- belongs to user {user_id}!!",
+            message=f"Cound not cleanup after failed file save in storage. Operation is aborted. DB will store file metadata and tried to ad DELETE status attached to file.  !! Manually delete file ID {file_id} in --- {file_path} --- belongs to user {user_id}!!",
             status_code=500,
             client_message="Issue occured while saving the file",
+        )
+
+
+class FailedFileDelete(AppExceptions):
+    def __init__(self, file_id: int, user_id: int) -> None:
+        super().__init__(
+            message=f"Failed to delte User's {user_id} file {file_id} from storage. Whole delete operatin is stopped.",
+            status_code=500,
+            client_message="Failed to delete the file",
         )
 
 
@@ -236,6 +246,40 @@ class FileCanNotBeViewed(AppExceptions):
             message=f"User's {user_id} file {file_id} cannot be viewed while its status is {file_status}",
             status_code=409,
             client_message=f"File {file_name} cannot be viewed while its status is {file_status}.",
+        )
+
+
+class ChromaDBError(AppExceptions):
+    def __init__(self, user_id: int, file_id: int) -> None:
+        super().__init__(
+            message=f"Issue occured while deleting User's {user_id} file {file_id} from ChromaDB",
+            status_code=500,
+            client_message="Issue occured while delting file for Vector Database",
+        )
+
+
+class FileInDeletionProcess(AppExceptions):
+    def __init__(self, user_id: int, file_id: int, index_status: str) -> None:
+        super().__init__(
+            message=f"User's {user_id} file {file_id} already in deletion process. Index status is {index_status}",
+            status_code=409,
+            client_message="File is alredy beeing delted",
+        )
+
+
+class FileStillUploading(AppExceptions):
+    def __init__(
+        self,
+        user_id: int,
+        file_id: int,
+        updated_at: datetime,
+        index_status: str,
+        file_status: str,
+    ) -> None:
+        super().__init__(
+            message=f"User's {user_id} tring to delete file {file_id} that is still processing. File status: {file_status} and indexing status is {index_status}. File was last time updated at {updated_at}",
+            status_code=405,
+            client_message="Can not delete file while its still processing the upload. Wait untill file will be stored and indexed in Vector DB",
         )
 
 

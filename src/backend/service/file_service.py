@@ -6,7 +6,13 @@ from rust_sha256 import calculate_sha  # type: ignore
 
 from backend.api.schemas.pydantic_schemas import FilesResponse
 from backend.database.file_repository import FileRepository
-from backend.exceptions.exc import FileAlreadyExists, FileToLarge, SHACalcuationError
+from backend.exceptions.exc import (
+    DataBaseResourceNotFound,
+    FailedFileDelete,
+    FileAlreadyExists,
+    FileToLarge,
+    SHACalcuationError,
+)
 
 
 class FileService:
@@ -207,3 +213,61 @@ class FileService:
         return self.db.partially_save_file_metadata(
             user_id=user_id, file_name=file_name, sha=sha, task_id=task_id
         )
+
+    def prepare_to_del_file_from_db(self, user_id: int, file_id: int):
+        """Mark a user's file for deletion and remove it from local storage.
+
+        First, atomically marks the file as DELETING in the database and
+        retrieves its storage path. Then attempts to delete the physical file.
+
+        Args:
+            user_id (int): ID of the user who owns the file.
+            file_id (int): ID of the file to be deleted.
+
+        Raises:
+            FailedFileDelete: If an unexpected error occurs while deleting
+                the file from storage.
+            Exception: Propagates exceptions raised by the database operation.
+
+        Notes:
+            - Missing files in storage are logged but do not raise an exception.
+            - The database record is not deleted by this method.
+            - Database and filesystem operations are not part of a single
+              atomic transaction.
+        """
+        file_path: str = self.db.mark_file_to_delete_atomic_operation(
+            file_id=file_id, user_id=user_id
+        )
+
+        try:
+            self.db.delete_file_from_storage(file_path=Path(file_path))
+        except FileNotFoundError:
+            logger.exception(
+                f"User's {user_id} file {file_id} does not exist in storage anymore"
+            )
+        except Exception as err:
+            logger.exception(
+                f"Exception occured while deleting User's {user_id} file {file_id} from storage"
+            )
+            raise FailedFileDelete(user_id=user_id, file_id=file_id) from err
+        logger.info(
+            f"Sucessfully deleted User's {user_id} file {file_id} from sotrage."
+        )
+
+    def delete_file_from_db(self, user_id: int, file_id: int):
+        """Delete a user's file record from the database.
+
+        Args:
+            user_id (int): ID of the user who owns the file.
+            file_id (int): ID of the file record to delete.
+
+        Raises:
+            Exception: Propagates exceptions raised by the database
+                repository during deletion.
+
+        Notes:
+            - Deletes only the database record, not the physical file
+              or its associated vector embeddings.
+            - Database transaction handling is delegated to the repository.
+        """
+        self.db.delete_file_from_db(file_id=file_id, user_id=user_id)

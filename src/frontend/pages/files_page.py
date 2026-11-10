@@ -222,6 +222,52 @@ def _fetch_pdf(file_id: int) -> bytes | None:
             return None
 
 
+def _delete_file(file_id: int) -> bool:
+    """Delete one document owned by the current user."""
+    request_id = str(uuid4())
+
+    with logger.contextualize(request_id=request_id):
+        try:
+            response = requests.delete(
+                f"{settings.api_files_url.rstrip('/')}/{file_id}",
+                headers=_request_headers(request_id),
+                timeout=60,
+            )
+
+            response_request_id = response.headers.get("Request-ID")
+            if response_request_id != request_id:
+                logger.warning(
+                    "Request IDs do not match: "
+                    f"frontend={request_id}, backend={response_request_id}"
+                )
+
+            if response.status_code == 401:
+                logger.warning(f"Session expired while deleting file {file_id}")
+                _redirect_to_login_after_expired_session()
+
+            response.raise_for_status()
+            logger.info(f"Deleted file_id={file_id}")
+            return True
+
+        except requests.HTTPError as error:
+            response = error.response
+            status_code = response.status_code if response is not None else "unknown"
+            message = _get_error_message(response)
+            logger.warning(
+                "Could not delete file: "
+                f"file_id={file_id}, status={status_code}, message={message}"
+            )
+            st.error(f"Could not delete this document ({status_code}): {message}")
+            return False
+
+        except requests.RequestException as error:
+            logger.exception(f"Could not delete file_id={file_id}: {error}")
+            st.error(
+                "Could not connect to the backend. Check whether FastAPI is running."
+            )
+            return False
+
+
 if "access_token" not in st.session_state or not st.session_state.access_token:
     st.warning("You need to log in first.")
     st.switch_page("pages/login_page.py")
@@ -230,6 +276,8 @@ if "access_token" not in st.session_state or not st.session_state.access_token:
 
 st.title("📚 My documents")
 st.caption("Documents uploaded to your account")
+if deleted_file_name := st.session_state.pop("deleted_file_name", None):
+    st.success(f"Deleted {deleted_file_name}.")
 
 files = _fetch_files()
 
@@ -270,17 +318,30 @@ elif files:
                 with index_status_column:
                     st.caption("Indexing")
                     _show_index_status(file["index_status"])
-            if action_column.button(
-                "Open PDF",
-                key=f"open-file-{file['id']}",
-                disabled=file_status != "READY",
-                help=None if file_status == "READY" else open_pdf_help,
-            ):
-                st.session_state.selected_file = {
-                    "id": file["id"],
-                    "name": file["original_file_name"],
-                }
-                st.session_state.pop("selected_file_pdf", None)
+            with action_column:
+                if st.button(
+                    "Open PDF",
+                    key=f"open-file-{file['id']}",
+                    disabled=file_status != "READY",
+                    help=None if file_status == "READY" else open_pdf_help,
+                ):
+                    st.session_state.selected_file = {
+                        "id": file["id"],
+                        "name": file["original_file_name"],
+                    }
+                    st.session_state.pop("selected_file_pdf", None)
+
+                if st.button("Delete", key=f"delete-file-{file['id']}"):
+                    if _delete_file(file["id"]):
+                        selected_file = st.session_state.get("selected_file")
+                        if (
+                            isinstance(selected_file, dict)
+                            and selected_file.get("id") == file["id"]
+                        ):
+                            st.session_state.pop("selected_file", None)
+                            st.session_state.pop("selected_file_pdf", None)
+                        st.session_state.deleted_file_name = file["original_file_name"]
+                        st.rerun()
 
     selected_file = st.session_state.get("selected_file")
     if isinstance(selected_file, dict):

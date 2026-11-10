@@ -47,7 +47,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   celery_flower:
-    image: mher/flower
+    image: mher/flower:2.1
     env_file:
       - .env.docker
     ports:

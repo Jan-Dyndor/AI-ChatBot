@@ -7,7 +7,6 @@ from rust_sha256 import calculate_sha  # type: ignore
 from backend.api.schemas.pydantic_schemas import FilesResponse
 from backend.database.file_repository import FileRepository
 from backend.exceptions.exc import (
-    DataBaseResourceNotFound,
     FailedFileDelete,
     FileAlreadyExists,
     FileToLarge,

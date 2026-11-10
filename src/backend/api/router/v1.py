@@ -14,7 +14,6 @@ from backend.api.schemas.pydantic_schemas import (
     ChatMessage,
     CreateUserRequest,
     CreateUserResponse,
-    DeleteFileResponse,
     FilesResponse,
     Models,
     Token,

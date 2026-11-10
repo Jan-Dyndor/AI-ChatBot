@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 from loguru import logger
 from tenacity import (

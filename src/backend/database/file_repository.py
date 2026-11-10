@@ -629,9 +629,34 @@ class FileRepository:
             raise DataBaseError() from err
 
     def mark_file_to_delete_atomic_operation(self, user_id: int, file_id: int) -> str:
-        #! DOCS
-        # Dodasac commmit  i try except
-        # only once it will return the result
+        """Atomically mark a user's file for deletion and return its storage path.
+
+        Updates the file status from READY to DELETING only if indexing has
+        finished (SUCCESS or FAILURE). The conditional UPDATE ensures that
+        concurrent requests cannot mark the same file for deletion twice.
+
+        Args:
+            user_id (int): ID of the user who owns the file.
+            file_id (int): ID of the file to mark for deletion.
+
+        Returns:
+            str: Storage path of the file successfully marked for deletion.
+
+        Raises:
+            DataBaseResourceNotFound: If the file does not exist or does not
+                belong to the specified user.
+            FileInDeletionProcess: If the file is already marked as DELETING.
+            FileStillUploading: If the file exists but does not meet the
+                conditions required for deletion.
+            DataBaseError: If a SQLAlchemy database operation fails.
+
+        Notes:
+            - Uses a conditional UPDATE with RETURNING to ensure atomicity.
+            - Commits the transaction only after a successful status update.
+            - Rolls back the transaction if the update fails or no eligible
+              file is found.
+            - Does not delete the physical file or its vector embeddings.
+        """
         logger.info(f"Marking User's {user_id} file {file_id} to be delted")
         try:
             query = (

@@ -28,6 +28,7 @@ from backend.celery_app.celery_tasks import index_and_save_file
 from backend.configuration.settings import Settings
 from backend.core.concurency.conversation_thread_lock import ConversationLockManager
 from backend.dependencies.depends import (
+    create_file_vector_storage,
     get_auth_service,
     get_chat_service,
     get_current_user,
@@ -45,6 +46,7 @@ from backend.exceptions.exc import (
 from backend.service.chat_service import ChatService
 from backend.service.file_service import FileService
 from backend.service.user_service import UserService
+from RAG.file_vector_repository import FileVectorStorage
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 
@@ -262,3 +264,17 @@ def get_file(
 def check_celery_task(task_id: str):
     result = AsyncResult(id=task_id, app=celery_app)
     return CeleryTaskUpdateResponse(task_id=task_id, state=result.state)
+
+
+@router.delete("/files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_file(
+    file_id: int,
+    user: UserDB = Depends(get_current_user),
+    file_servce: FileService = Depends(get_file_service),
+    file_vector_storage: FileVectorStorage = Depends(create_file_vector_storage),
+):
+    file_servce.prepare_to_del_file_from_db(user_id=user.id, file_id=file_id)
+
+    file_vector_storage.delete_document(user_id=user.id, file_id=file_id)
+
+    file_servce.delete_file_from_db(user_id=user.id, file_id=file_id)

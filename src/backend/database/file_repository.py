@@ -1,5 +1,6 @@
 import os
 import shutil
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -23,8 +24,10 @@ from backend.exceptions.exc import (
     FailedFileCleanUp,
     FileAlreadyExists,
     FileCanNotBeViewed,
+    FileInDeletionProcess,
     FileIntegrityError,
     FileNotSaved,
+    FileStillUploading,
     FileStorageException,
     UploadAfterFailedFileDelation,
 )
@@ -60,9 +63,9 @@ class FileRepository:
         try:
             query = delete(Files).where(Files.id == file_id, Files.user_id == user_id)
             result = self.db.execute(query)
-            if not result.rowcount:
+            if result.rowcount == 0:
                 self.db.rollback()
-                logger.debug(f"User's {user_id} File {file_id} alredy delted")
+                logger.debug(f"User's {user_id} File {file_id} does not exists")
                 return
             self.db.commit()
             logger.debug(f"Deleted User's {user_id} file {file_id} from DB")
@@ -103,7 +106,7 @@ class FileRepository:
 
             if result.rowcount == 0:
                 self.db.rollback()
-                logger.info(f"File {file_id} not found in DB")
+                logger.info(f"User's {user_id} file {file_id} not found in DB")
                 return False
 
             self.db.commit()
@@ -506,6 +509,7 @@ class FileRepository:
                 index_status=IndexingStatus.PENDING,
                 file_sha=sha,
                 task_id=task_id,
+                file_status=FileStatus.PROCESSING,
             )
             self.db.add(file)
             self.db.commit()
@@ -620,6 +624,125 @@ class FileRepository:
                 return True
             else:
                 return False
+        except SQLAlchemyError as err:
+            self.db.rollback()
+            raise DataBaseError() from err
+
+    def mark_file_to_delete_atomic_operation(self, user_id: int, file_id: int) -> str:
+        """Atomically mark a user's file for deletion and return its storage path.
+
+        Updates the file status from READY to DELETING only if indexing has
+        finished (SUCCESS or FAILURE). The conditional UPDATE ensures that
+        concurrent requests cannot mark the same file for deletion twice.
+
+        Args:
+            user_id (int): ID of the user who owns the file.
+            file_id (int): ID of the file to mark for deletion.
+
+        Returns:
+            str: Storage path of the file successfully marked for deletion.
+
+        Raises:
+            DataBaseResourceNotFound: If the file does not exist or does not
+                belong to the specified user.
+            FileInDeletionProcess: If the file is already marked as DELETING.
+            FileStillUploading: If the file exists but does not meet the
+                conditions required for deletion.
+            DataBaseError: If a SQLAlchemy database operation fails.
+
+        Notes:
+            - Uses a conditional UPDATE with RETURNING to ensure atomicity.
+            - Commits the transaction only after a successful status update.
+            - Rolls back the transaction if the update fails or no eligible
+              file is found.
+            - Does not delete the physical file or its vector embeddings.
+        """
+        logger.info(f"Marking User's {user_id} file {file_id} to be delted")
+        try:
+            query = (
+                update(Files)
+                .where(
+                    Files.file_status == FileStatus.READY,
+                    Files.id == file_id,
+                    Files.user_id == user_id,
+                    or_(
+                        Files.index_status == IndexingStatus.SUCCESS,
+                        Files.index_status == IndexingStatus.FAILURE,
+                        # $ zakaz usuwania plikow jezli nie skonczylo sie ideksowanie
+                    ),
+                )
+                .values(file_status=FileStatus.DELETING)
+                .returning(Files.storage_path)
+            )
+            result = self.db.scalar(query)
+
+            if result is None:
+                logger.info(
+                    f"Cound not set User {user_id} file {file_id} status to 'deleting'. Checkin if file exsits or status was already updated."
+                )
+                is_file_deleting, updated_at, file_status, index_status = (
+                    self.check_file_status_by_file_id(user_id=user_id, file_id=file_id)
+                )
+                if is_file_deleting is None:
+                    self.db.rollback()
+                    raise DataBaseResourceNotFound()
+                elif is_file_deleting:
+                    self.db.rollback()
+                    raise FileInDeletionProcess(
+                        user_id=user_id, file_id=file_id, index_status=index_status  # type: ignore
+                    )
+                else:
+                    self.db.rollback()
+                    raise FileStillUploading(
+                        user_id=user_id, file_id=file_id, updated_at=updated_at, index_status=index_status, file_status=file_status  # type: ignore
+                    )
+            self.db.commit()
+            logger.info(
+                f"Successfully marked User's {user_id} file {file_id} to be deleted."
+            )
+            return result
+        except SQLAlchemyError as err:
+            self.db.rollback()
+            raise DataBaseError() from err
+
+    def check_file_status_by_file_id(self, user_id: int, file_id: int):
+        """Retrieve a user's file status and indexing information by file ID.
+
+        Args:
+            user_id (int): ID of the user who owns the file.
+            file_id (int): ID of the file to retrieve.
+
+        Returns:
+            tuple[bool | None, datetime | None, str | None, str | None]:
+                A tuple containing:
+                - is_deleting: True if the file is marked as DELETING,
+                  False otherwise, or None if the file does not exist.
+                - updated_at: Timestamp stored in the file's uploaded_at field.
+                - file_status: Current file deletion status.
+                - index_status: Current document indexing status.
+
+                Returns (None, None, None, None) if no matching file is found.
+
+        Raises:
+            DataBaseError: If a SQLAlchemy database operation fails.
+        """
+        try:
+            query = select(Files).where(Files.id == file_id, Files.user_id == user_id)
+
+            result = self.db.scalars(query).one_or_none()
+
+            if not result:
+                return (None, None, None, None)
+
+            file_status: str = result.file_status
+            index_status: str = result.index_status
+            updated_at: datetime = result.uploaded_at
+
+            if file_status == FileStatus.DELETING:
+                return (True, updated_at, file_status, index_status)
+            else:
+                return (False, updated_at, file_status, index_status)
+
         except SQLAlchemyError as err:
             self.db.rollback()
             raise DataBaseError() from err

@@ -28,6 +28,13 @@ Important technical decisions are recorded as Architecture Decision Records
 
 - [ADR 0001: Run Ollama natively instead of in Docker Compose](docs/adr/0001-native-ollama-outside-docker-compose.md)
 
+## File deletion
+
+The API deletes an uploaded file from local storage, ChromaDB, and PostgreSQL.
+The database record tracks deletion progress with the `DELETING` status. See
+[File deletion lifecycle](docs/file-deletion.md) for the eligibility rules,
+operation order, failure behavior, and planned recovery work.
+
 ## Run the application
 
 The FastAPI backend uses port `8001`, ChromaDB uses `8000`, and the Streamlit

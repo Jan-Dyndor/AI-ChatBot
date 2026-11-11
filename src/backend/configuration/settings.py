@@ -51,6 +51,15 @@ class Settings(BaseSettings):
     chroma_db_port: int = Field(validation_alias="CHROMA_DB_PORT")
     redis_broker: str = Field(validation_alias="CELERY_BROKER_URL")
     redis_backend: str = Field(validation_alias="CELERY_RESULT_BACKEND")
+    redis_distribiuted_lock_host: str = Field(
+        validation_alias="REDIS_DISTRIBUTED_LOCK_HOST"
+    )
+    redis_distribiuted_lock_port: int = Field(
+        validation_alias="REDIS_DISTRIBUTED_LOCK_PORT"
+    )
+    redis_distribiuted_lock_db: int = Field(
+        validation_alias="REDIS_DISTRIBUTED_LOCK_DB"
+    )
 
     # TEST RAG EVALS
     test_deepevals_model: str = Field(

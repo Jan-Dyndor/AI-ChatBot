@@ -290,7 +290,9 @@ class ChatService:
             Database persistence errors are logged without interrupting the response.
         """
 
-        COMPLETED_TURN: bool = False  # check if streaming went ok, if user disconnected or any other issue - mark whole chat turn as FALIED
+        COMPLETED_TURN: bool = (
+            False  # check if streaming went ok, if user disconnected or any other issue - mark whole chat turn as FALIED
+        )
         full_llm_response = ""
         message_id: int | None = None
 
@@ -463,8 +465,8 @@ class ChatService:
                     f"User {user_id} LLM turn in conversation {conversation_id} COMPLETED"
                 )
 
-    #! Thread Save response
-    def thread_safe_rag_streaming_response(
+    #! Redis Lock wrapper so release lock after generator stream
+    def redis_locked_rag_streaming_response(
         self,
         user_message_id: int,
         model: str,

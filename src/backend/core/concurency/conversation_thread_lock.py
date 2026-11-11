@@ -1,6 +1,9 @@
 from threading import Lock
 
 
+#! CODE no nolnger used. Redis distribiuted lock is in use now.
+# I am leaving the code just as a reference on how the threadig Lock can be implemented
+# Keep in mind that only works with one Uvicorn worker and is NOT scalable - better way is to use Redis Distributed Lock
 class ConversationLockManager:
     """Manage in-memory locks assigned to individual conversations.
 

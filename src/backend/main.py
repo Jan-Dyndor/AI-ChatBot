@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import redis
 from fastapi import FastAPI
 from langchain_core.vectorstores import VectorStore
 from sqlalchemy import text
@@ -43,9 +44,18 @@ def create_lifespan(env_file_location: str | Path | None = None):
             ConversationLockManager()
         )  # Save one instance of Thread Lock to app.state
         app.state.lock = thread_lock
+        # Redis Lock
+        redis_client = redis.Redis(
+            host=settings.redis_distribiuted_lock_host,
+            port=settings.redis_distribiuted_lock_port,
+            db=settings.redis_distribiuted_lock_db,
+            decode_responses=True,
+        )
+        app.state.redis_client = redis_client
         yield
         # After shutdown
         engine.dispose()
+        redis_client.close()
 
     return lifespan
 

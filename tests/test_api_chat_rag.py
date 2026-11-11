@@ -16,22 +16,8 @@ from backend.api.schemas.pydantic_schemas import UserDB
 from backend.dependencies.depends import (
     get_chat_service,
     get_current_user,
-    get_thread_lock,
 )
 from backend.service.chat_service import ChatService
-
-
-class RecordingLock:
-    def __init__(self, acquired=False):
-        self.acquired = acquired
-        self.release_count = 0
-
-    def acquire(self, blocking=False):
-        return not self.acquired
-
-    def release(self):
-        self.acquired = False
-        self.release_count += 1
 
 
 class FakeChatService:
@@ -49,41 +35,44 @@ class FakeChatService:
         self.calls.append(("fetch_chat_history", kwargs))
         return [{"role": "user", "content": "previous question"}]
 
-    def thread_safe_rag_streaming_response(self, **kwargs):
-        self.calls.append(("thread_safe_rag_streaming_response", kwargs))
+    def redis_locked_rag_streaming_response(self, **kwargs):
+        self.calls.append(("redis_locked_rag_streaming_response", kwargs))
+        yield from ChatService.redis_locked_rag_streaming_response(self, **kwargs)
+
+    def rag_streaming_response(self, **kwargs):
         for chunk in self.chunks:
             yield ServerSentEvent(
                 event="token",
                 data=chunk,
             )
-        kwargs["lock_object"].release()
 
 
 @pytest.fixture
-def chat_endpoint_overrides(client):
+def chat_endpoint_overrides(client, redis_lock):
     service = FakeChatService()
-    lock = RecordingLock()
+    lock, redis_client = redis_lock
     user = UserDB(id=7, email="chat@example.com", password_hash="unused")
 
     client.app.dependency_overrides[get_chat_service] = lambda: service
     client.app.dependency_overrides[get_current_user] = lambda: user
-    client.app.dependency_overrides[get_thread_lock] = lambda: Mock(
-        get_or_create_lock=lambda conversation_id: lock
-    )
-    yield service, lock
+    yield service, lock, redis_client
     client.app.dependency_overrides.clear()
 
 
 def test_chat_streams_rag_answer_and_forwards_request_context(
     client, happy_test_user_input_short, chat_endpoint_overrides
 ):
-    service, lock = chat_endpoint_overrides
+    service, lock, redis_client = chat_endpoint_overrides
 
     response = client.post("/v1/chat", json=happy_test_user_input_short)
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
-    assert lock.release_count == 1
+    lock.acquire.assert_called_once_with()
+    lock.release.assert_called_once_with()
+    redis_client.lock.assert_called_once_with(
+        name="lock:conversation:1", timeout=180, blocking=False, thread_local=False
+    )
 
     response_client_generator = sseclient.SSEClient(response.iter_bytes())
     response_client = iter(response_client_generator.events())
@@ -101,7 +90,7 @@ def test_chat_streams_rag_answer_and_forwards_request_context(
         "conversation_summary",
         "fetch_chat_history",
         "save_user_input",
-        "thread_safe_rag_streaming_response",
+        "redis_locked_rag_streaming_response",
     ]
     stream_call = service.calls[-1][1]
     assert stream_call["question"] == "What are you?"
@@ -120,18 +109,15 @@ def test_chat_streams_rag_answer_and_forwards_request_context(
 
 
 def test_chat_returns_conflict_without_writing_when_conversation_is_busy(
-    client, happy_test_user_input_short
+    client, happy_test_user_input_short, redis_lock
 ):
     service = Mock()
-    lock = RecordingLock(acquired=True)
+    lock, _ = redis_lock
+    lock.acquire.return_value = False
     client.app.dependency_overrides[get_chat_service] = lambda: service
     client.app.dependency_overrides[get_current_user] = lambda: UserDB(
         id=7, email="chat@example.com", password_hash="unused"
     )
-    client.app.dependency_overrides[get_thread_lock] = lambda: Mock(
-        get_or_create_lock=lambda conversation_id: lock
-    )
-
     try:
         response = client.post("/v1/chat", json=happy_test_user_input_short)
     finally:
@@ -140,36 +126,33 @@ def test_chat_returns_conflict_without_writing_when_conversation_is_busy(
     assert response.status_code == 409
     assert response.json()["message"] == "Conversation 1 already processing"
     service.save_user_input.assert_not_called()
+    lock.release.assert_not_called()
 
 
 def test_chat_releases_lock_when_pre_stream_work_fails(
-    client, happy_test_user_input_short
+    client, happy_test_user_input_short, redis_lock
 ):
     service = Mock()
     service.conversation_summary.side_effect = RuntimeError("database unavailable")
-    lock = RecordingLock()
+    lock, _ = redis_lock
     client.app.dependency_overrides[get_chat_service] = lambda: service
     client.app.dependency_overrides[get_current_user] = lambda: UserDB(
         id=7, email="chat@example.com", password_hash="unused"
     )
-    client.app.dependency_overrides[get_thread_lock] = lambda: Mock(
-        get_or_create_lock=lambda conversation_id: lock
-    )
-
     try:
         with pytest.raises(RuntimeError, match="database unavailable"):
             client.post("/v1/chat", json=happy_test_user_input_short)
     finally:
         client.app.dependency_overrides.clear()
 
-    assert lock.release_count == 1
+    lock.release.assert_called_once_with()
     service.fetch_chat_history.assert_not_called()
 
 
 def test_chat_rejects_invalid_payload_before_service_calls(
     client, chat_endpoint_overrides
 ):
-    service, _ = chat_endpoint_overrides
+    service, _, _ = chat_endpoint_overrides
     response = client.post(
         "/v1/chat",
         json={

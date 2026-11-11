@@ -206,10 +206,15 @@ def _fetch_pdf(file_id: int) -> bytes | None:
                 "Could not fetch PDF: "
                 f"file_id={file_id}, status={status_code}, message={message}"
             )
+            st.session_state.pop("selected_file", None)
+            st.session_state.pop("selected_file_pdf", None)
             if status_code == 409:
-                st.session_state.pop("selected_file", None)
-                st.session_state.pop("selected_file_pdf", None)
                 st.warning(message)
+            elif status_code == 500:
+                st.error(
+                    "Could not open this document right now. Try opening it again. "
+                    "If the problem continues, delete it and upload it again."
+                )
             else:
                 st.error(f"Could not open this document ({status_code}): {message}")
             return None
@@ -363,6 +368,8 @@ elif files:
                         "data": pdf_data,
                     }
                     cached_pdf = st.session_state.selected_file_pdf
+                else:
+                    cached_pdf = None
 
             if isinstance(cached_pdf, dict) and isinstance(
                 cached_pdf.get("data"), bytes

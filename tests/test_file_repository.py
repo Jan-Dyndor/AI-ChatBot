@@ -140,7 +140,7 @@ def test_failed_write_and_cleanup_leaves_file_marked_for_deletion(
     assert not path.exists()
     assert document.file_status == FileStatus.DELETING
     with pytest.raises(FileCanNotBeViewed) as error:
-        file_repository.get_file(user_id=user_id, file_id=file_id)
+        file_repository.get_file_path(user_id=user_id, file_id=file_id)
     assert error.value.status_code == 409
 
 

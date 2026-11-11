@@ -166,7 +166,8 @@ def test_get_file_rejects_pdf_that_is_not_ready(
     client, valid_token, tmp_path, file_status
 ):
     pdf_path = tmp_path / "unavailable.pdf"
-    pdf_path.write_bytes(b"%PDF-1.4\nnot ready\n%%EOF")
+    pdf_content = b"%PDF-1.4\nnot ready\n%%EOF"
+    pdf_path.write_bytes(pdf_content)
 
     session = client.app.state.session_maker()
     try:
@@ -182,9 +183,10 @@ def test_get_file_rejects_pdf_that_is_not_ready(
         )
 
         assert response.status_code == 409
-        assert response.json() == {
-            "message": f"File unavailable.pdf cannot be viewed while its status is {file_status}."
-        }
+        message = response.json()["message"]
+        assert "unavailable.pdf" in message
+        assert file_status.value in message
+        assert pdf_content not in response.content
     finally:
         session.close()
 
@@ -212,6 +214,34 @@ def test_get_file_becomes_viewable_when_upload_finishes(client, valid_token, tmp
         response = client.get(url, headers=headers)
         assert response.status_code == 200
         assert response.content == pdf_content
+    finally:
+        session.close()
+
+
+def test_get_file_reports_when_ready_pdf_is_missing_from_storage(
+    client, valid_token, tmp_path
+):
+    missing_path = tmp_path / "missing.pdf"
+    assert not missing_path.exists()
+
+    session = client.app.state.session_maker()
+    try:
+        current_user = _create_user(session, "test@gmail.com")
+        document = _create_file(
+            session, current_user.id, "missing.pdf", str(missing_path)
+        )
+        document.file_status = FileStatus.READY
+        session.commit()
+
+        response = client.get(
+            f"/v1/files/{document.id}", headers=_authorization_header(valid_token)
+        )
+
+        assert response.status_code == 500
+        assert response.json() == {
+            "message": "Can not view the file, its not in storage."
+        }
+        assert str(missing_path) not in response.text
     finally:
         session.close()
 

@@ -103,6 +103,88 @@ def test_preview_shows_warning_and_clears_selection_if_status_changes():
     assert "selected_file_pdf" not in page.session_state
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected_message"),
+    [
+        (
+            {"message": "Can not view the file, its not in storage."},
+            "Can not view the file, its not in storage.",
+        ),
+        (
+            {"message": "Database operation failed"},
+            "Database operation failed",
+        ),
+    ],
+)
+def test_preview_500_shows_backend_message_and_retries_only_on_click(
+    payload, expected_message
+):
+    page = _page()
+
+    def fake_get(url, headers, timeout):
+        if url.endswith("/1"):
+            return _response(500, payload, headers["Request-ID"])
+        return _response(200, [_file()], headers["Request-ID"])
+
+    with patch("requests.get", side_effect=fake_get) as get:
+        page.run()
+        page.button(key="open-file-1").click().run()
+
+        assert not page.exception
+        assert [error.value for error in page.error] == [expected_message]
+        assert "selected_file" not in page.session_state
+        assert "selected_file_pdf" not in page.session_state
+        assert sum(call.args[0].endswith("/1") for call in get.call_args_list) == 1
+
+        page.run()
+        assert sum(call.args[0].endswith("/1") for call in get.call_args_list) == 1
+
+        page.button(key="open-file-1").click().run()
+        assert sum(call.args[0].endswith("/1") for call in get.call_args_list) == 2
+
+
+def test_preview_http_408_shows_timeout_warning():
+    page = _page()
+
+    def fake_get(url, headers, timeout):
+        if url.endswith("/1"):
+            return _response(408, {"message": "Request Timeout"}, headers["Request-ID"])
+        return _response(200, [_file()], headers["Request-ID"])
+
+    with patch("requests.get", side_effect=fake_get):
+        page.run()
+        page.button(key="open-file-1").click().run()
+
+    assert not page.exception
+    assert [warning.value for warning in page.warning] == [
+        "Opening this document timed out. Please try again."
+    ]
+    assert not page.error
+    assert "selected_file" not in page.session_state
+    assert "selected_file_pdf" not in page.session_state
+
+
+def test_preview_client_timeout_shows_timeout_warning():
+    page = _page()
+
+    def fake_get(url, headers, timeout):
+        if url.endswith("/1"):
+            raise requests.Timeout("read timed out")
+        return _response(200, [_file()], headers["Request-ID"])
+
+    with patch("requests.get", side_effect=fake_get):
+        page.run()
+        page.button(key="open-file-1").click().run()
+
+    assert not page.exception
+    assert [warning.value for warning in page.warning] == [
+        "Opening this document timed out. Please try again."
+    ]
+    assert not page.error
+    assert "selected_file" not in page.session_state
+    assert "selected_file_pdf" not in page.session_state
+
+
 def test_delete_button_uses_its_file_id_and_refreshes_the_list():
     page = _page()
     files = [_file(), {**_file(), "id": 2, "original_file_name": "second.pdf"}]

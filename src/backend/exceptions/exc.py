@@ -1,5 +1,5 @@
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 
 # App Error
@@ -243,9 +243,22 @@ class FileCanNotBeViewed(AppExceptions):
         self, user_id: int, file_id: int, file_status: str, file_name: str
     ) -> None:
         super().__init__(
-            message=f"User's {user_id} file {file_id} cannot be viewed while its status is {file_status}",
+            message=f"User's {user_id} file {file_id} cannot be viewed while its status is {file_status}.",
             status_code=409,
-            client_message=f"File {file_name} cannot be viewed while its status is {file_status}.",
+            client_message=f"File {file_name} cannot be viewed. Its due to the file  status: {file_status}.",
+        )
+
+
+class FileNotFoundInStorage(AppExceptions):
+    def __init__(
+        self,
+        user_id: int,
+        file_id: int,
+    ) -> None:
+        super().__init__(
+            message=f"User's {user_id} file {file_id} is not present in storage. This validates the Posgtress DB as source of truth rule.",
+            status_code=500,
+            client_message="Can not view the file, its not in storage.",
         )
 
 

@@ -26,6 +26,7 @@ from backend.exceptions.exc import (
     FileCanNotBeViewed,
     FileInDeletionProcess,
     FileIntegrityError,
+    FileNotFoundInStorage,
     FileNotSaved,
     FileStillUploading,
     FileStorageException,
@@ -366,7 +367,7 @@ class FileRepository:
         except SQLAlchemyError as err:
             raise DataBaseError() from err
 
-    def get_file(self, user_id: int, file_id: int) -> str:
+    def get_file_path(self, user_id: int, file_id: int) -> str:
         """Retrieve the storage path of a file owned by the specified user.
 
         Only files with a READY status can be accessed.
@@ -746,3 +747,26 @@ class FileRepository:
         except SQLAlchemyError as err:
             self.db.rollback()
             raise DataBaseError() from err
+
+    def check_if_file_in_storage(self, user_id: int, file_id: int, file_path: Path):
+        """Check whether a user's file exists and can be opened in local storage.
+
+        Args:
+            user_id (int): ID of the user who owns the file.
+            file_id (int): ID of the file in the database.
+            file_path (Path): Path to the file in local storage.
+
+        Raises:
+            FileNotFoundInStorage: If the file does not exist at the specified path.
+
+        Returns:
+            None: If the file can be opened successfully.
+        """
+        logger.info(
+            f"Checking if User's {user_id} file {file_id} is in storage to be viewed."
+        )
+        try:
+            with open(file_path, "rb"):
+                pass
+        except FileNotFoundError as err:
+            raise FileNotFoundInStorage(user_id=user_id, file_id=file_id) from err

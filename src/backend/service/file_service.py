@@ -124,21 +124,29 @@ class FileService:
         return [FilesResponse.model_validate(file) for file in user_files]
 
     def get_file(self, user_id: int, file_id: int) -> str:
-        """Retrieve the storage path of a file owned by the specified user.
+        """Retrieve the storage path of a user's file and verify its availability.
 
         Args:
             user_id (int): ID of the user who owns the file.
             file_id (int): ID of the requested file.
 
         Raises:
-            DataBaseResourceNotFound: If the file does not exist or does not
-                belong to the specified user.
+            DataBaseResourceNotFound: If the file does not exist in the database
+                or does not belong to the specified user.
             DataBaseError: If a database operation fails.
+            FileNotFoundInStorage: If the file exists in the database but is
+                missing from local storage.
 
         Returns:
-            str: Local storage path of the requested file.
+            str: Local storage path of the verified file.
         """
-        return self.db.get_file(user_id=user_id, file_id=file_id)
+        file_path: str = self.db.get_file_path(user_id=user_id, file_id=file_id)
+
+        self.db.check_if_file_in_storage(
+            user_id=user_id, file_path=Path(file_path), file_id=file_id
+        )
+
+        return file_path
 
     def update_idnexing_status(self, user_id: int, file_id: int, new_status: str):
         """Update the indexing status of a file owned by a user.

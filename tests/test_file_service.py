@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -5,6 +6,7 @@ import pytest
 
 from backend.api.router.v1 import get_file, get_files
 from backend.api.schemas.pydantic_schemas import FilesResponse, UserDB
+from backend.database.file_repository import FileRepository
 from backend.exceptions.exc import DataBaseResourceNotFound
 from backend.service.file_service import FileService
 
@@ -59,13 +61,16 @@ def test_get_all_users_files_preserves_not_found_error_for_empty_accounts():
 
 
 def test_get_file_delegates_to_repository_with_owner_and_file_id():
-    repository = Mock()
-    repository.get_file.return_value = "/tmp/report.pdf"
+    repository = Mock(spec=FileRepository)
+    repository.get_file_path.return_value = "/tmp/report.pdf"
 
     result = FileService(repository).get_file(user_id=7, file_id=11)
 
     assert result == "/tmp/report.pdf"
-    repository.get_file.assert_called_once_with(user_id=7, file_id=11)
+    repository.get_file_path.assert_called_once_with(user_id=7, file_id=11)
+    repository.check_if_file_in_storage.assert_called_once_with(
+        user_id=7, file_path=Path("/tmp/report.pdf"), file_id=11
+    )
 
 
 def test_get_files_handler_passes_authenticated_user_id_to_file_service(user):

@@ -206,12 +206,21 @@ def _fetch_pdf(file_id: int) -> bytes | None:
                 "Could not fetch PDF: "
                 f"file_id={file_id}, status={status_code}, message={message}"
             )
+            st.session_state.pop("selected_file", None)
+            st.session_state.pop("selected_file_pdf", None)
             if status_code == 409:
-                st.session_state.pop("selected_file", None)
-                st.session_state.pop("selected_file_pdf", None)
                 st.warning(message)
+            elif status_code == 408:
+                st.warning("Opening this document timed out. Please try again.")
             else:
-                st.error(f"Could not open this document ({status_code}): {message}")
+                st.error(message)
+            return None
+
+        except requests.Timeout as error:
+            logger.warning(f"Timed out fetching PDF for file_id={file_id}: {error}")
+            st.session_state.pop("selected_file", None)
+            st.session_state.pop("selected_file_pdf", None)
+            st.warning("Opening this document timed out. Please try again.")
             return None
 
         except requests.RequestException as error:
@@ -363,6 +372,8 @@ elif files:
                         "data": pdf_data,
                     }
                     cached_pdf = st.session_state.selected_file_pdf
+                else:
+                    cached_pdf = None
 
             if isinstance(cached_pdf, dict) and isinstance(
                 cached_pdf.get("data"), bytes

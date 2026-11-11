@@ -210,13 +210,17 @@ def _fetch_pdf(file_id: int) -> bytes | None:
             st.session_state.pop("selected_file_pdf", None)
             if status_code == 409:
                 st.warning(message)
-            elif status_code == 500:
-                st.error(
-                    "Could not open this document right now. Try opening it again. "
-                    "If the problem continues, delete it and upload it again."
-                )
+            elif status_code == 408:
+                st.warning("Opening this document timed out. Please try again.")
             else:
-                st.error(f"Could not open this document ({status_code}): {message}")
+                st.error(message)
+            return None
+
+        except requests.Timeout as error:
+            logger.warning(f"Timed out fetching PDF for file_id={file_id}: {error}")
+            st.session_state.pop("selected_file", None)
+            st.session_state.pop("selected_file_pdf", None)
+            st.warning("Opening this document timed out. Please try again.")
             return None
 
         except requests.RequestException as error:

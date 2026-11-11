@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
 from pydantic import ValidationError
+from redis.exceptions import LockNotOwnedError
 from sse_starlette import EventSourceResponse
 
 from backend.api.schemas.pydantic_schemas import (
@@ -191,7 +192,7 @@ def rag_chat(
 
     lock = redis_client.lock(
         name=f"lock:conversation:{user_input.conversation_id}",
-        timeout=180,  # 3 min TTL
+        timeout=240,  # 5 min TTL
         blocking=False,
         thread_local=False,
     )
@@ -233,9 +234,15 @@ def rag_chat(
                     lock_object=lock,
                 )
             )
+
         except Exception:
-            lock.release()
-            logger.warning(
+            try:
+                lock.release()
+            except LockNotOwnedError:
+                logger.error(
+                    f"User's {user.id} conversation {user_input.conversation_id} request lost the Lock object"
+                )
+            logger.exception(
                 f"Exception occured file processing User's {user.id} request. Releasing REDIS LOCK"
             )
             raise

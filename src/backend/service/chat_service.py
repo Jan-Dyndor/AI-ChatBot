@@ -14,6 +14,7 @@ from langchain_classic.chains.combine_documents import create_stuff_documents_ch
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langsmith import traceable
 from loguru import logger
+from redis.exceptions import LockNotOwnedError
 from sse_starlette import ServerSentEvent
 
 from backend.api.schemas.pydantic_schemas import Message
@@ -528,4 +529,9 @@ class ChatService:
                     yield chunk
         finally:
             #! realase LOCK after streaming
-            lock_object.release()
+            try:
+                lock_object.release()
+            except LockNotOwnedError:
+                logger.error(
+                    f"User's {user_id} conversation {conversation_id} request lost the Lock object"
+                )

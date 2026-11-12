@@ -192,7 +192,7 @@ def rag_chat(
 
     lock = redis_client.lock(
         name=f"lock:conversation:{user_input.conversation_id}",
-        timeout=240,  # 5 min TTL
+        timeout=300,  # 5 min TTL
         blocking=False,
         thread_local=False,
     )

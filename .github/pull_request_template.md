@@ -26,5 +26,5 @@ If applicable
 **Commands:**
 
 ```bash
-python -m pytest
+uv run pytest
 ```

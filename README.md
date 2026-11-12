@@ -342,7 +342,7 @@ Multiple FastAPI workers or backend instances coordinate through the same Redis
 server. Actual parallel LLM generation also depends on Ollama's
 `OLLAMA_NUM_PARALLEL` configuration.
 
-The lock expires after 180 seconds and is not renewed during streaming. A response
+The lock expires after 300 seconds (5 mins) and is not renewed during streaming. A response
 that takes longer can outlive its lock, allowing another request for that
 conversation to start. The endpoint attempts to release the lock after
 pre-stream errors or when streaming ends. Redis is required for chat requests.

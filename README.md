@@ -81,14 +81,15 @@ cloned above and run commands from its root unless a command changes directory.
 
    ```bash
    brew install postgresql@18 redis
+   export PATH="$(brew --prefix postgresql@18)/bin:$PATH"
    brew services start postgresql@18
    brew services start redis
    createuser --pwprompt ai_chatbot
    createdb --owner=ai_chatbot ai_chatbot
    ```
 
-2. Install Python 3.14 and the project dependencies, including its Rust
-   extension:
+2. In the same terminal (with PostgreSQL on `PATH` for `pg_config`), install
+   Python 3.14 and the project dependencies, including its Rust extension:
 
    ```bash
    uv python install 3.14

@@ -75,7 +75,9 @@ with tempfile.TemporaryDirectory() as test_temp_dir:
     )
 
     # ! ADD docs to test Vector Storage
-    file_vector_storage.add_document(file_path=test_docs_path, user_id=TEST_USR_ID)
+    file_vector_storage.add_document(
+        file_path=test_docs_path, user_id=TEST_USR_ID, file_db_id=-1
+    )
 
     # Save some chunks to examine how chunking is working in the experiment
     data_chunks_example = test_vector_store.get(  # type: ignore

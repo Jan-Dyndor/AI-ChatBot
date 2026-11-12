@@ -1,419 +1,204 @@
 # AI Conversational Chatbot
 
-Local AI conversational chatbot with contextualized RAG, built with FastAPI, Streamlit, LangChain and Ollama.
+A local chatbot with FastAPI, Streamlit, Ollama, and document search. Users can
+create an account, chat, and upload PDFs for retrieval-augmented answers.
 
-The goal of this project is to understand how production-oriented LLM applications work, from streaming responses and conversation history to authentication, persistence and observability.
+## Before you start
 
-The project started with direct LLM integration to explore the underlying mechanics. It now uses LangChain for LLM interactions and retrieval while keeping application architecture, conversation management and backend services explicit.
+Install [Git](https://git-scm.com/downloads) and [Ollama](https://ollama.com/download).
+The commands below use a POSIX shell (bash or zsh). Clone the repository:
 
-## Project Goals
+```bash
+git clone https://github.com/Jan-Dyndor/AI-ChatBot.git
+cd AI-ChatBot
+```
 
-This project was created to explore and understand:
-
-- LLM application architecture
-- streaming AI responses
-- backend/frontend separation
-- conversational memory handling
-- authentication & session management
-- observability and monitoring
-- async Python backend systems
-- understanding the trade-offs between direct integrations and framework abstractions
-- document ingestion, embeddings and vector similarity search
-- contextualized retrieval using conversation history
-
-## Architecture decisions
-
-Important technical decisions are recorded as Architecture Decision Records
-(ADRs). Start with the [ADR index](docs/adr/README.md).
-
-- [ADR 0001: Run Ollama natively instead of in Docker Compose](docs/adr/0001-native-ollama-outside-docker-compose.md)
-
-## File deletion
-
-The API deletes an uploaded file from local storage, ChromaDB, and PostgreSQL.
-The database record tracks deletion progress with the `DELETING` status. See
-[File deletion lifecycle](docs/file-deletion.md) for the eligibility rules,
-operation order, failure behavior, and planned recovery work.
-
-## Run the application
-
-The FastAPI backend uses port `8001`, ChromaDB uses `8000`, and the Streamlit
-frontend uses `8501`. Ollama runs on the host at `11434` and needs the chat and
-embedding models before either setup can be used. Start Docker Desktop and make
-sure Ollama is running, then download the models:
+Open the Ollama desktop app, or run `ollama serve` in another terminal. On Linux
+with Docker Engine, set `OLLAMA_HOST=0.0.0.0:11434` for the Ollama service and
+restart it. If using the CLI, run `OLLAMA_HOST=0.0.0.0:11434 ollama serve`.
+This lets containers reach Ollama; restrict port `11434` to trusted networks.
+See the
+[Ollama FAQ](https://github.com/ollama/ollama/blob/main/docs/faq.mdx).
+With Ollama running, download both models:
 
 ```bash
 ollama pull llama3:8b
 ollama pull embeddinggemma
 ```
 
-### 1. Run everything with Docker Compose
-
-Use this option when you want the complete application stack in containers.
-Copy [`.env.docker.example`](.env.docker.example) to `.env.docker` and replace
-every `CHANGE_ME` value. The template already uses the Compose service names
-for the backend, PostgreSQL, ChromaDB, and Redis. Use the same password in
-`POSTGRES_PASSWORD` and `DB_URL`.
-
-```bash
-cp .env.docker.example .env.docker
-docker compose up --build -d
-
-# First run, and again after pulling a migration.
-docker compose exec backend uv run alembic upgrade head
-```
-
-Open `http://localhost:8501`. Docker Compose starts the frontend, backend,
-Celery worker, Flower, PostgreSQL, ChromaDB, and Redis. Flower is available at
-`http://localhost:5555`.
-
-For later starts, run `docker compose up -d`. Use `docker compose down` to stop
-the stack. The `postgres_data`, `uploaded_files`, `chroma_data`, and `redis_data`
-volumes keep their data unless you use `docker compose down -v`.
-
-### 2. Debug FastAPI, Streamlit, and Celery locally
-
-Use this option when you want automatic reload and debugger access for the
-Python applications and Celery worker while PostgreSQL, ChromaDB, and Redis
-remain in Docker. The locally running FastAPI process and worker share the
-repository's `storage/` directory, so uploaded files are available to the
-worker without a Docker volume mount.
-
-Create both environment files. `.env.docker` configures the Docker services;
-`.env` configures the local FastAPI and Streamlit processes. Set the same
-PostgreSQL password in `.env.docker` and in the `DB_URL` value in `.env`.
-
-```bash
-cp .env.docker.example .env.docker
-cp .env.example .env
-```
-
-Install the Python dependencies and build the local `rust_sha256` extension.
-This step requires a Rust toolchain (`cargo` and `rustc`) on the host. Run these
-commands from the repository root; `maturin` installs the extension into the
-project's `.venv`, which FastAPI and Celery use:
-
-```bash
-uv sync --locked
-(
-  export VIRTUAL_ENV="$PWD/.venv"
-  cd src/backend/rust_sha256
-  "$VIRTUAL_ENV/bin/maturin" develop --release
-)
-uv run python -c "import rust_sha256"
-```
-
-Start only the supporting services, then create the database schema:
-
-```bash
-docker compose up -d postgres chroma redis
-uv run alembic upgrade head
-```
-
-Run the application processes from the repository root in separate terminals:
-
-```bash
-# Terminal 1 — FastAPI with automatic reload
-uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8001 --no-access-log
-```
-
-```bash
-# Terminal 2 — Streamlit
-uv run streamlit run src/frontend/main.py
-```
-
-```bash
-# Terminal 3 — Celery worker
-# macOS only: required when using Celery's prefork pool.
-export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
-export FORKED_BY_MULTIPROCESSING=1
-
-uv run celery -A backend.celery_app.celery:celery_app \
-  worker --loglevel=INFO --pool=prefork --concurrency=4
-```
-
-Flower does not need to run locally: Docker Compose runs it and exposes the
-dashboard at `http://localhost:5555`. Open `http://localhost:8501` for the
-application. In this mode, [`.env.example`](.env.example) points the local
-applications and Celery to FastAPI at `localhost:8001`, ChromaDB at
-`localhost:8000`, PostgreSQL at `localhost:5433`, and Redis at
-`localhost:6379`.
-
-Run `uv run alembic upgrade head` on the first start and whenever the project
-contains a new database migration. Stop the supporting services with
-`docker compose down`.
-
-## DeepEval RAG evaluations
-
-The repository contains two standalone DeepEval scripts. They run the real RAG
-pipeline against a local benchmark PDF and Ollama; they are excluded from the
-default `pytest` run.
-
-- `tests/RAG_evals/single_turn_test.py` — evaluates independent, single-turn RAG questions.
-- `tests/RAG_evals/multi_turn_rag_test.py` — evaluates conversations containing multiple related turns.
-
-Start Ollama and download the default chat and embedding models:
-
-```bash
-ollama pull llama3:8b
-ollama pull embeddinggemma
-```
-
-Set the model configuration in the repository-root `.env` file:
-
-```env
-EMBEDDING_MODEL="embeddinggemma"
-TEST_DEEPEVALS_MODEL="llama3:8b"
-TEST_DEEPEVALS_TEMP=0
-TEST_DEEPEVALS_TOP_K=40
-TEST_DEEPEVALS_TOP_P=0.9
-TEST_DEEPEVALS_NUM_CTX=4096
-TEST_DEEPEVALS_NUM_PREDICT=300
-TEST_DEEPEVALS_REPEAT_PENALTY=1.1
-TEST_DEEPEVALS_IS_THINKING=false
-```
-
-Run one script at a time from the repository root:
-
-```bash
-uv run python tests/RAG_evals/single_turn_test.py
-# or
-uv run python tests/RAG_evals/multi_turn_rag_test.py
-```
-
-### How it works
-
-Each script loads the benchmark PDF from `tests/RAG_evals/data/`, splits it into
-chunks, creates embeddings, and puts them in a temporary Chroma collection. It
-then reads the matching golden file (`single_turn_goldens.json` or
-`multi_turn_goldens.json`), asks the RAG chain each question, and compares its
-answer and retrieved context with the expected result.
-
-The test document and all searches use the isolated `user_id = -1`, so only its
-chunks can be retrieved. This mirrors the application's user-level document
-filtering without requiring a backend server, database, account, or file upload.
-The temporary vectors are deleted after the script ends.
-
-To test another document, replace the PDF at
-`tests/RAG_evals/data/harborline_rag_benchmark_10_pages.pdf` (or update
-`test_docs_path` in both scripts) and update the corresponding golden JSON with
-questions and expected answers. Use the single-turn golden file for independent
-questions; use the multi-turn file for follow-up questions that depend on chat
-history.
-
-The single-turn evaluation currently measures contextual relevancy. The
-multi-turn evaluation measures faithfulness plus contextual relevancy,
-precision, and recall. Results are saved as HTML reports under
-`evals_results/single/basic/test_results/` or
-`evals_results/multi/basic/test_results/`; each run also overwrites its saved
-configuration and an example of the generated chunks in `evals_results/`.
-
-If DeepEval reports a timeout, increase its per-attempt and per-task timeouts before running the command again:
-
-```bash
-export DEEPEVAL_PER_ATTEMPT_TIMEOUT_SECONDS_OVERRIDE=600
-export DEEPEVAL_PER_TASK_TIMEOUT_SECONDS_OVERRIDE=600
-
-uv run python tests/RAG_evals/single_turn_test.py
-# or
-uv run python tests/RAG_evals/multi_turn_rag_test.py
-```
-
-The value `600` is only a starting point. Adjust it to match the available hardware, the selected model, and whether the evaluation is running asynchronously.
-
-## Architecture
-
-Frontend:
-- Streamlit
-
-Backend API:
-- FastAPI
-
-LLM Integration:
-- LangChain
-- ChatOllama for communication with local Ollama models
-
-Retrieval-Augmented Generation:
-- LangChain history-aware retriever
-- Chroma persistent vector store
-- Ollama embeddings
-- PDF loading and recursive text splitting
-
-Persistence:
-- PostgreSQL 
-
-Caching (planned):
-- Redis
-
-Conversation locking:
-- Redis distributed lock
-
-Validation:
-- Pydantic v2
-
-Logging:
-- Loguru
-
-Infrastructure (planned):
-- Docker & Docker Compose
-
-Monitoring (planned):
-- Grafana + Loki + Prometheus
-
-## Project Structure
-
-```text
-AI-ChatBot/
-├── .github/
-│   └── workflows/              # GitHub Actions workflows
-│
-├── src/
-│   ├── RAG/
-│   │   ├── chroma_db.py                    # Persistent Chroma vector-store setup
-│   │   ├── document_indexing_seervice.py   # PDF loading and text chunking
-│   │   └── file_vector_repository.py       # Document indexing and retrieval adapter
-│   │
-│   ├── backend/
-│   │   ├── api/                # FastAPI routers and API endpoints and Pydantic schemas
-│   │   ├── authentication/     # Authentication, password hashing and JWT handling
-│   │   ├── chat_bot/           # LLM/Ollama communication logic
-│   │   ├── configuration/      # Settings and logging configuration
-│   │   ├── core/               # Utilities, including the unused legacy in-memory lock
-│   │   ├── database/           # SQLAlchemy models, engine and DB setup, repository class setup
-│   │   ├── dependencies/       # FastAPI dependencies
-│   │   ├── exceptions/         # Custom exceptions and handlers
-│   │   ├── middleware/         # Request ID and logging middleware
-│   │   ├── service/            # Business logic and orchestration layer
-│   │   └── main.py             # FastAPI application entrypoint
-│   │
-│   └── frontend/
-│       ├── main.py             # Streamlit application entrypoint
-│       └── pages/
-│           ├── chatbot_page.py # Chat UI
-│           ├── login_page.py   # Login UI
-│           ├── register_page.py # Registration UI
-│           ├── upload_page.py  # PDF upload UI
-│           └── files_page.py   # User document list UI
-│
-├── tests/                      # Unit and integration tests
-├── alembic/                     # Database migration environment and revisions
-├── storage/                     # Uploaded files, organized by user at runtime
-├── compose.yaml                 # Application, PostgreSQL, ChromaDB, and Redis services
-├── .gitignore
-├── .env                        # Env file with env variables
-├── .env.tests                  # Env file with env variables for tests purposes 
-├── .env.example                # Example env file with env variables that application needs
-├── .python-version
-├── README.md
-├── pyproject.toml              # Project configuration and dependencies
-└── uv.lock                     # Locked dependency versions
-```
-
-## Contextualized RAG
-
-Authenticated users can upload PDF documents from the Streamlit upload page. The backend stores the file and its metadata, then indexes the PDF in a background task:
-
-1. `PyPDFLoader` loads the PDF.
-2. `RecursiveCharacterTextSplitter` creates chunks using the configured `chunk_size` and `chunk_overlap` settings.
-3. `OllamaEmbeddings` creates embeddings for each chunk.
-4. The ChromaDB service persists the embeddings in the `chroma_data` Docker
-   volume.
-5. Each chunk receives the owning `user_id` as metadata.
-
-When a user sends a chat message, the RAG pipeline uses the conversation history to rewrite follow-up questions into standalone questions. A history-aware LangChain retriever then searches the user's documents only (`k=3`), and the retrieved context is passed to the Ollama chat model to generate a streamed answer. The completed answer is saved to the conversation history.
-
-The upload endpoint is `POST /v1/file`, and the RAG chat endpoint is `POST /v1/chat`. PDF uploads are limited by `MAX_FILE_SIZE_BYTES` (10 MB by default).
-
-## Streaming Responses
-
-The backend streams responses from Ollama as server-sent events through `EventSourceResponse`.
-
-The Streamlit frontend consumes streamed chunks in real-time to simulate ChatGPT-like interaction.
-
-## Concurrency and Conversation Locking
-
-The `POST /v1/chat` endpoint uses a Redis distributed lock keyed by conversation
-ID. A request acquires the lock before reading or changing conversation history
-and holds it through response streaming. If another request is already processing
-the same conversation, the endpoint returns HTTP `409 Conflict` immediately.
-
-Different conversations use different lock keys and can be processed concurrently.
-Multiple FastAPI workers or backend instances coordinate through the same Redis
-server. Actual parallel LLM generation also depends on Ollama's
-`OLLAMA_NUM_PARALLEL` configuration.
-
-The lock expires after 300 seconds (5 mins) and is not renewed during streaming. A response
-that takes longer can outlive its lock, allowing another request for that
-conversation to start. The endpoint attempts to release the lock after
-pre-stream errors or when streaming ends. Redis is required for chat requests.
-Configure its host, port, and database with `REDIS_DISTRIBUTED_LOCK_HOST`,
-`REDIS_DISTRIBUTED_LOCK_PORT`, and
-`REDIS_DISTRIBUTED_LOCK_DB` (database `2` in the example environment files).
+## Docker Compose (recommended)
+
+Install and start [Docker Desktop](https://docs.docker.com/desktop/) or Docker
+Engine with Compose on Linux. Compose runs Streamlit, FastAPI, Celery,
+PostgreSQL, ChromaDB, Redis, and Flower. Ollama stays on your computer; see the
+[architecture decision](docs/adr/0001-native-ollama-outside-docker-compose.md).
+
+1. Copy the configuration template:
+
+   ```bash
+   cp .env.docker.example .env.docker
+   ```
+
+2. Edit `.env.docker` and replace every `CHANGE_ME` value. Use the same password
+   in `POSTGRES_PASSWORD` and `DB_URL`; choose letters and digits unless you
+   URL-encode special characters in `DB_URL`. Generate `SECRET_KEY` with
+   `openssl rand -hex 32`.
+
+3. Start the stack and create the database tables:
+
+   ```bash
+   docker compose up --build -d
+   docker compose exec backend uv run alembic upgrade head
+   ```
+
+4. Open [http://localhost:8501](http://localhost:8501), select **Create new
+   account**, then sign in. Select `llama3:8b` for chat; `embeddinggemma` is used
+   to index and search PDFs. The [API health endpoint](http://localhost:8001/v1/)
+   and [Flower](http://localhost:5555) are available separately.
+
+For later starts use `docker compose up -d`. After pulling new migrations, run
+`docker compose exec backend uv run alembic upgrade head` again. Stop with
+`docker compose down`. Docker volumes retain data; `docker compose down -v`
+**deletes the database, uploads, vectors, and Redis data**.
+
+If startup fails, check `docker compose ps`,
+`docker compose logs backend celery_worker`, and `ollama list`.
+Containers reach Ollama at
+`host.docker.internal:11434`; their own `localhost` is different. Make sure
+ports `8000`, `8001`, `8501`, `5433`, `6379`, and `5555` are free.
+
+## Run without Docker
+
+These commands use macOS and [Homebrew](https://brew.sh/) for PostgreSQL and
+Redis. On another operating system, install and start PostgreSQL 18 and Redis 8
+with your package manager. You also need
+[uv](https://docs.astral.sh/uv/getting-started/installation/) and
+[Rust](https://rust-lang.org/install) (`cargo` and `rustc`). Use the repository
+cloned above and run commands from its root unless a command changes directory.
+
+1. Start PostgreSQL and Redis, then create the application database.
+   `createuser` asks for a password; use it in `.env` below.
+
+   ```bash
+   brew install postgresql@18 redis
+   export PATH="$(brew --prefix postgresql@18)/bin:$PATH"
+   brew services start postgresql@18
+   brew services start redis
+   createuser --pwprompt ai_chatbot
+   createdb --owner=ai_chatbot ai_chatbot
+   ```
+
+2. In the same terminal (with PostgreSQL on `PATH` for `pg_config`), install
+   Python 3.14 and the project dependencies, including its Rust extension:
+
+   ```bash
+   uv python install 3.14
+   uv sync --locked
+   (
+     export VIRTUAL_ENV="$PWD/.venv"
+     cd src/backend/rust_sha256
+     "$VIRTUAL_ENV/bin/maturin" develop --release
+   )
+   uv run python -c "import rust_sha256"
+   cp .env.example .env
+   ```
+
+   In `.env`, replace all `CHANGE_ME` values and generate `SECRET_KEY` with
+   `openssl rand -hex 32`. Set `DB_URL` to
+   `postgresql://ai_chatbot:YOUR_PASSWORD@localhost:5432/ai_chatbot`. Keep the
+   ChromaDB and Redis settings as provided. Use a URL-safe database password or
+   URL-encode special characters.
+
+3. Run Chroma in one terminal, then apply the database migrations in another:
+
+   ```bash
+   uv run chroma run --path ./chroma-data --host localhost --port 8000
+   ```
+
+   ```bash
+   uv run alembic upgrade head
+   ```
+
+4. Start these processes in separate terminals:
+
+   ```bash
+   uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8001 --no-access-log
+   ```
+
+   ```bash
+   uv run streamlit run src/frontend/main.py
+   ```
+
+   ```bash
+   uv run celery -A backend.celery_app.celery_app:celery_app worker --loglevel=INFO --pool=solo
+   ```
+
+Open [http://localhost:8501](http://localhost:8501) and create an account.
+The Celery worker indexes uploaded PDFs. Stop application processes with
+`Ctrl+C`; on macOS, stop PostgreSQL and Redis with
+`brew services stop postgresql@18` and `brew services stop redis`. Run
+`uv run alembic upgrade head` after pulling new migrations.
+
+## Configuration and services
+
+| Service | Docker Compose | Local |
+| --- | --- | --- |
+| Streamlit | `localhost:8501` | `localhost:8501` |
+| FastAPI | `localhost:8001` | `localhost:8001` |
+| ChromaDB | `localhost:8000` | `localhost:8000` |
+| PostgreSQL | `localhost:5433` | `localhost:5432` |
+| Redis | `localhost:6379` | `localhost:6379` |
+| Ollama | host `localhost:11434` | `localhost:11434` |
+
+`.env.docker` uses Compose service names (`backend`, `postgres`, `chroma`);
+`.env` uses `localhost`. Neither file should be committed. The examples use
+`llama3:8b` for chat and `embeddinggemma` for PDFs. You can download and select
+another chat model; `EMBEDDING_MODEL` must match an installed embedding model.
+LangSmith tracing is optional and disabled in both templates.
 
 ## Current Features
 
-- LangChain integration for LLM interactions and prompt construction
-- Streaming AI responses
-- FastAPI backend API
-- Streamlit frontend UI
-- Chat history 
-- Request tracing middleware
-- Structured logging with Loguru
-- Pydantic settings & validation
-- Project managed with uv
-- Installed as editable Python package
-- Basic test suite
-- Layered backend architecture
-- Persistent chat history (PostgreSQL; SQLite for tests)
-- Multi-chat support 
-- Multiple LLM models supported through Ollama
-- JWT-based authentication
-- CI with GitHub Actions
-- Redis distributed locking for chat requests within each conversation
-- PostgreSQL integration
-- Continuous Integration with GitHub Actions
-- Contextualized RAG over user-uploaded PDF documents
-- Persistent Chroma vector store with Ollama embeddings
-- User-scoped document retrieval
-- PDF upload page in the Streamlit frontend
+- Account registration and JWT login; multiple conversations with saved history.
+- Ollama model selection, generation settings, and streamed chat responses.
+- History-aware RAG over PDFs, with retrieval limited to the current user.
+- PDF upload (10 MB default), background indexing, status, preview, and deletion.
+- Redis conversation locks and request ID logging; optional LangSmith tracing.
 
+## Project Structure
 
-## Planned Features
-- Redis-based conversational memory
-- Voice input (speech-to-text)
-- AI text-to-speech responses
-- User metrics dashboard
-- Grafana/Loki and Prometheus observability stack
-- CD with GitHub Actions
-- Dockerized deployment
+[Architecture diagram](https://mermaid.ai/d/210c41c3-156e-4bde-9dbb-ae3b78509538)
 
+```text
+AI-ChatBot/
+├── src/backend/          FastAPI, auth, services, Celery, database, Rust extension
+├── src/frontend/         Streamlit UI and pages
+├── src/RAG/              PDF indexing and ChromaDB integration
+├── alembic/              PostgreSQL migrations
+├── tests/                API, service, and RAG evaluation tests
+├── docs/                 Architecture decisions and file deletion lifecycle
+├── storage/              Local PDF uploads; Docker uses a named volume
+├── compose.yaml          Container services and volumes
+├── .env*.example         Configuration templates
+└── pyproject.toml        Python dependencies (locked in uv.lock)
+```
 
-## LangChain Integration
+PostgreSQL stores accounts and chat history. Celery indexes uploaded PDFs in
+ChromaDB with Ollama embeddings; Redis carries tasks and conversation locks.
+See [file deletion](docs/file-deletion.md) and the
+[architecture decisions](docs/adr/README.md) for details.
 
-The initial implementation used direct Ollama integration to build an understanding of prompt handling, streaming, conversation management and error handling.
+## RAG evaluations
 
-The project now uses LangChain for model interaction, prompt construction and contextualized retrieval. Authentication, persistence, conversation locking, file management and application-level orchestration remain part of the project's own backend services.
+The optional DeepEval scripts use the benchmark PDF in `tests/RAG_evals/data/`
+and a temporary local Chroma collection. They need installed Python dependencies,
+a configured `.env`, and Ollama with both models; no separate Chroma server or
+PostgreSQL is needed. Run one script at a time:
 
-The learning goal remains the same: understand how each component works, why an abstraction is useful and which responsibilities belong to the application.
-The main goal is to understand:
-- streaming mechanics
-- prompt handling
-- memory management
-- contextualized retrieval and document grounding
-- API communication
-- retries & error handling
-- observability
-- architecture decisions
+```bash
+uv run python tests/RAG_evals/single_turn_test.py
+# or
+uv run python tests/RAG_evals/multi_turn_rag_test.py
+```
 
-
-## Learning Focus
-
-This project is primarily focused on learning how modern AI systems are built in practice.
-
-The emphasis is on:
-- backend engineering
-- system architecture
-- AI infrastructure
-- observability
-- streaming systems
-- production-oriented thinking
+Reports go to `evals_results/`. To evaluate another PDF, update the benchmark
+file and matching golden JSON in `tests/RAG_evals/`.

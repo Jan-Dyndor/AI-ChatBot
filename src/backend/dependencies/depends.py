@@ -91,8 +91,9 @@ def get_user_service(user_repo=Depends(get_user_repo)):
 
 
 #! Thread Lock
-def get_thread_lock(request: Request):
-    return request.app.state.lock
+# Code no more needed - Redis Distribiuted Lock took its place
+# def get_thread_lock(request: Request):
+#     return request.app.state.lock
 
 
 # ! Files
@@ -146,3 +147,10 @@ def get_chat_service(
         chat_bot_client=chat_bot_client,
         file_vector_storage=file_vector_storage,
     )
+
+
+#! REDIS LOCK
+
+
+def get_redis_client(request: Request):
+    return request.app.state.redis_client

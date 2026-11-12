@@ -14,6 +14,7 @@ from langchain_classic.chains.combine_documents import create_stuff_documents_ch
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langsmith import traceable
 from loguru import logger
+from redis.exceptions import LockNotOwnedError
 from sse_starlette import ServerSentEvent
 
 from backend.api.schemas.pydantic_schemas import Message
@@ -290,7 +291,9 @@ class ChatService:
             Database persistence errors are logged without interrupting the response.
         """
 
-        COMPLETED_TURN: bool = False  # check if streaming went ok, if user disconnected or any other issue - mark whole chat turn as FALIED
+        COMPLETED_TURN: bool = (
+            False  # check if streaming went ok, if user disconnected or any other issue - mark whole chat turn as FALIED
+        )
         full_llm_response = ""
         message_id: int | None = None
 
@@ -463,8 +466,8 @@ class ChatService:
                     f"User {user_id} LLM turn in conversation {conversation_id} COMPLETED"
                 )
 
-    #! Thread Save response
-    def thread_safe_rag_streaming_response(
+    #! Redis Lock wrapper so release lock after generator stream
+    def redis_locked_rag_streaming_response(
         self,
         user_message_id: int,
         model: str,
@@ -526,4 +529,9 @@ class ChatService:
                     yield chunk
         finally:
             #! realase LOCK after streaming
-            lock_object.release()
+            try:
+                lock_object.release()
+            except LockNotOwnedError:
+                logger.error(
+                    f"User's {user_id} conversation {conversation_id} request lost the Lock object"
+                )

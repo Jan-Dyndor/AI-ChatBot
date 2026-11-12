@@ -42,8 +42,9 @@ jobs:
       LANGSMITH_API_KEY: ${{secrets.TEST_LANGSMITH_API_KEY}}
       CHROMA_DB_HOST : ${{vars.CHROMA_DB_HOST}}
       CHROMA_DB_PORT : ${{vars.CHROMA_DB_PORT}}
-      
-
+      REDIS_DISTRIBUTED_LOCK_HOST:  ${{vars.REDIS_DISTRIBUTED_LOCK_HOST}}
+      REDIS_DISTRIBUTED_LOCK_PORT:  ${{vars.REDIS_DISTRIBUTED_LOCK_PORT}}
+      REDIS_DISTRIBUTED_LOCK_DB:  ${{vars.REDIS_DISTRIBUTED_LOCK_DB}}
     steps:
     - uses: actions/checkout@v4
 

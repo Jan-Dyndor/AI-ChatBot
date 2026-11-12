@@ -15,7 +15,7 @@ from backend.database.chat_repository import ChatRepository
 from backend.database.db import Base
 from backend.database.file_repository import FileRepository
 from backend.database.models import Users
-from backend.dependencies.depends import get_db
+from backend.dependencies.depends import get_db, get_redis_client
 from backend.main import create_app
 
 
@@ -189,6 +189,18 @@ def client(session_maker):
         app.dependency_overrides.clear()
 
     get_settings.cache_clear()
+
+
+@pytest.fixture
+def redis_lock(client):
+    """Replace Redis only for tests that reach the chat lock."""
+    lock = Mock()
+    lock.acquire.return_value = True
+    redis_client = Mock()
+    redis_client.lock.return_value = lock
+    client.app.dependency_overrides[get_redis_client] = lambda: redis_client
+    yield lock, redis_client
+    client.app.dependency_overrides.pop(get_redis_client, None)
 
 
 #! FileRepo object

@@ -52,7 +52,7 @@ ollama pull embeddinggemma
 Use this option when you want the complete application stack in containers.
 Copy [`.env.docker.example`](.env.docker.example) to `.env.docker` and replace
 every `CHANGE_ME` value. The template already uses the Compose service names
-for the backend, PostgreSQL, and ChromaDB. Use the same password in
+for the backend, PostgreSQL, ChromaDB, and Redis. Use the same password in
 `POSTGRES_PASSWORD` and `DB_URL`.
 
 ```bash
@@ -245,6 +245,9 @@ Persistence:
 Caching (planned):
 - Redis
 
+Conversation locking:
+- Redis distributed lock
+
 Validation:
 - Pydantic v2
 
@@ -275,7 +278,7 @@ AI-ChatBot/
 │   │   ├── authentication/     # Authentication, password hashing and JWT handling
 │   │   ├── chat_bot/           # LLM/Ollama communication logic
 │   │   ├── configuration/      # Settings and logging configuration
-│   │   ├── core/               # Utils files. Threading Lock
+│   │   ├── core/               # Utilities, including the unused legacy in-memory lock
 │   │   ├── database/           # SQLAlchemy models, engine and DB setup, repository class setup
 │   │   ├── dependencies/       # FastAPI dependencies
 │   │   ├── exceptions/         # Custom exceptions and handlers
@@ -295,7 +298,7 @@ AI-ChatBot/
 ├── tests/                      # Unit and integration tests
 ├── alembic/                     # Database migration environment and revisions
 ├── storage/                     # Uploaded files, organized by user at runtime
-├── compose.yaml                 # Frontend, backend, PostgreSQL, and ChromaDB services
+├── compose.yaml                 # Application, PostgreSQL, ChromaDB, and Redis services
 ├── .gitignore
 ├── .env                        # Env file with env variables
 ├── .env.tests                  # Env file with env variables for tests purposes 
@@ -323,33 +326,29 @@ The upload endpoint is `POST /v1/file`, and the RAG chat endpoint is `POST /v1/c
 
 ## Streaming Responses
 
-The backend streams responses from Ollama through FastAPI StreamingResponse.
+The backend streams responses from Ollama as server-sent events through `EventSourceResponse`.
 
 The Streamlit frontend consumes streamed chunks in real-time to simulate ChatGPT-like interaction.
 
 ## Concurrency and Conversation Locking
 
-The backend uses an in-memory `threading.Lock` for each conversation.
+The `POST /v1/chat` endpoint uses a Redis distributed lock keyed by conversation
+ID. A request acquires the lock before reading or changing conversation history
+and holds it through response streaming. If another request is already processing
+the same conversation, the endpoint returns HTTP `409 Conflict` immediately.
 
-Requests targeting the same conversation are processed sequentially. This
-prevents concurrent requests from modifying the conversation history while
-an assistant response is still being generated and streamed.
-
-Different conversations use separate locks and can be processed concurrently.
-However, actual parallel LLM generation also depends on the Ollama
+Different conversations use different lock keys and can be processed concurrently.
+Multiple FastAPI workers or backend instances coordinate through the same Redis
+server. Actual parallel LLM generation also depends on Ollama's
 `OLLAMA_NUM_PARALLEL` configuration.
 
-### Current limitation
-
-The lock manager stores its locks in the memory of a single Python process.
-Therefore, the current implementation is safe only when FastAPI runs with
-one Uvicorn worker.
-
-Multiple Uvicorn workers would maintain separate lock registries, so requests
-handled by different workers would not share the same conversation locks.
-
-A distributed lock, for example using Redis, will be required before running
-the application with multiple workers or multiple backend instances.
+The lock expires after 180 seconds and is not renewed during streaming. A response
+that takes longer can outlive its lock, allowing another request for that
+conversation to start. The endpoint attempts to release the lock after
+pre-stream errors or when streaming ends. Redis is required for chat requests.
+Configure its host, port, and database with `REDIS_DISTRIBUTED_LOCK_HOST`,
+`REDIS_DISTRIBUTED_LOCK_PORT`, and
+`REDIS_DISTRIBUTED_LOCK_DB` (database `2` in the example environment files).
 
 ## Current Features
 
@@ -370,7 +369,7 @@ the application with multiple workers or multiple backend instances.
 - Multiple LLM models supported through Ollama
 - JWT-based authentication
 - CI with GitHub Actions
-- Per-conversation request locking within a single FastAPI process
+- Redis distributed locking for chat requests within each conversation
 - PostgreSQL integration
 - Continuous Integration with GitHub Actions
 - Contextualized RAG over user-uploaded PDF documents
@@ -387,7 +386,6 @@ the application with multiple workers or multiple backend instances.
 - Grafana/Loki and Prometheus observability stack
 - CD with GitHub Actions
 - Dockerized deployment
-- Redis-based distributed conversation locking for multi-worker deployment
 
 
 ## LangChain Integration

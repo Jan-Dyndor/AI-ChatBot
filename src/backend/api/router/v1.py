@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
 from pydantic import ValidationError
+from redis.exceptions import LockNotOwnedError
 from sse_starlette import EventSourceResponse
 
 from backend.api.schemas.pydantic_schemas import (
@@ -26,16 +27,15 @@ from backend.authentication.auth import AuthService
 from backend.celery_app.celery_app import celery_app
 from backend.celery_app.celery_tasks import index_and_save_file
 from backend.configuration.settings import Settings
-from backend.core.concurency.conversation_thread_lock import ConversationLockManager
 from backend.dependencies.depends import (
     create_file_vector_storage,
     get_auth_service,
     get_chat_service,
     get_current_user,
     get_file_service,
+    get_redis_client,
     get_request_id,
     get_settings,
-    get_thread_lock,
     get_user_service,
 )
 from backend.exceptions.exc import (
@@ -187,11 +187,17 @@ def rag_chat(
     user_input: UserInput,
     service: ChatService = Depends(get_chat_service),
     user: UserDB = Depends(get_current_user),
-    thread_lock: ConversationLockManager = Depends(get_thread_lock),
+    redis_client=Depends(get_redis_client),
 ):
 
-    lock = thread_lock.get_or_create_lock(conversation_id=user_input.conversation_id)
-    if lock.acquire(blocking=False):
+    lock = redis_client.lock(
+        name=f"lock:conversation:{user_input.conversation_id}",
+        timeout=240,  # 5 min TTL
+        blocking=False,
+        thread_local=False,
+    )
+
+    if lock.acquire():
         try:
             service.conversation_summary(
                 user_input=user_input.input,
@@ -210,30 +216,36 @@ def rag_chat(
                 user_id=user.id,
             )
 
-        except Exception:
-            logger.warning("Relase LOCK due to the error")
-            lock.release()
-            raise
-
-        return EventSourceResponse(
-            service.thread_safe_rag_streaming_response(
-                user_message_id=user_message_id,
-                model=user_input.model,
-                conversation_id=user_input.conversation_id,
-                user_id=user.id,
-                temperature=user_input.model_parameters.temperature,
-                top_k=user_input.model_parameters.top_k,
-                top_p=user_input.model_parameters.top_p,
-                num_ctx=user_input.model_parameters.num_ctx,
-                num_predict=user_input.model_parameters.num_predict,
-                repeat_penalty=user_input.model_parameters.repeat_penalty,
-                is_thinking=user_input.model_parameters.is_thinking,
-                chat_history=chat_history,
-                question=user_input.input,
-                lock_object=lock,
+            return EventSourceResponse(
+                service.redis_locked_rag_streaming_response(
+                    user_message_id=user_message_id,
+                    model=user_input.model,
+                    conversation_id=user_input.conversation_id,
+                    user_id=user.id,
+                    temperature=user_input.model_parameters.temperature,
+                    top_k=user_input.model_parameters.top_k,
+                    top_p=user_input.model_parameters.top_p,
+                    num_ctx=user_input.model_parameters.num_ctx,
+                    num_predict=user_input.model_parameters.num_predict,
+                    repeat_penalty=user_input.model_parameters.repeat_penalty,
+                    is_thinking=user_input.model_parameters.is_thinking,
+                    chat_history=chat_history,
+                    question=user_input.input,
+                    lock_object=lock,
+                )
             )
-        )
 
+        except Exception:
+            try:
+                lock.release()
+            except LockNotOwnedError:
+                logger.error(
+                    f"User's {user.id} conversation {user_input.conversation_id} request lost the Lock object"
+                )
+            logger.exception(
+                f"Exception occured file processing User's {user.id} request. Releasing REDIS LOCK"
+            )
+            raise
     else:
         raise ConversationIDConflict(conversation_id=user_input.conversation_id)
 

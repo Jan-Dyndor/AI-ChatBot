@@ -53,7 +53,7 @@ def test_chat_wrong_user_input_long(client, wrong_user_input_too_long, valid_tok
 
 
 def test_chat_streaming_save_user_input_error(
-    client, happy_test_user_input_short, valid_token
+    client, happy_test_user_input_short, valid_token, redis_lock
 ):
     """Function tests API response when there is an error within save_user_input_function
 
@@ -80,11 +80,13 @@ def test_chat_streaming_save_user_input_error(
     service.save_user_input.assert_called_once_with(
         user_input="What are you?", conversation_id=1, user_id=1
     )
+    lock, _ = redis_lock
+    lock.release.assert_called_once_with()
     client.app.dependency_overrides.clear()
 
 
 def test_chat_streaming_save_bot_output_error(
-    client, happy_test_user_input_short, valid_token
+    client, happy_test_user_input_short, valid_token, redis_lock
 ):
     """Function tests API response when there is an error within save_bot_output.
     Since function save_bot_output is inside StreamingResponse it can not riase an error and I can not let this error go to FastAPI exception handler since there is no wayt o change HTTP response. Otherwise I will get raise RuntimeError("Caught handled exception, but response already started.")
@@ -129,6 +131,8 @@ def test_chat_streaming_save_bot_output_error(
     repo_mock.save_bot_output.assert_called_once_with(
         output="", conversation_id=1, user_id=1
     )
+    lock, _ = redis_lock
+    lock.release.assert_called_once_with()
 
 
 #! Invalid token

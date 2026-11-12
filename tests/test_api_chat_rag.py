@@ -71,7 +71,7 @@ def test_chat_streams_rag_answer_and_forwards_request_context(
     lock.acquire.assert_called_once_with()
     lock.release.assert_called_once_with()
     redis_client.lock.assert_called_once_with(
-        name="lock:conversation:1", timeout=240, blocking=False, thread_local=False
+        name="lock:conversation:1", timeout=300, blocking=False, thread_local=False
     )
 
     response_client_generator = sseclient.SSEClient(response.iter_bytes())

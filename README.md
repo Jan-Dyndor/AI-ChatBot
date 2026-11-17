@@ -215,3 +215,36 @@ hardware, the selected model, and whether the evaluation runs asynchronously.
 
 Reports go to `evals_results/`. To evaluate another PDF, update the benchmark
 file and matching golden JSON in `tests/RAG_evals/`.
+
+### RAG evaluation results
+
+DeepEval compared `RecursiveCharacterTextSplitter` (Basic) and semantic chunking on the same 26 single-turn questions from the Harborline benchmark. Scores are means on a 0–1 scale. Pass counts use a per-metric threshold of 0.70.
+
+| Metric | Recursive mean | Semantic mean | Recursive passed | Semantic passed |
+| --- | ---: | ---: | ---: | ---: |
+| Contextual Relevancy | 0.40 | 0.42 | 5/26 | 5/26 |
+| Contextual Precision | 0.89 | 0.91 | 22/26 | 23/26 |
+| Contextual Recall | 0.77 | 0.80 | 13/26 | 15/26 |
+| Answer Relevancy | 0.83 | 0.78 | 20/26 | 18/26 |
+| Faithfulness | 0.65 | 0.64 | 10/26 | 12/26 |
+
+Semantic chunking improved mean contextual recall (0.77 → 0.80) and precision (0.89 → 0.91). Mean answer relevancy fell (0.83 → 0.78), while contextual relevancy still passed on only 5 of 26 questions. Faithfulness passed on two more questions and had a slightly lower mean. This single run per chunker shows a trade-off between retrieval and answer relevancy on this benchmark.
+
+[Evaluation reports and configuration](evals_results/)
+
+### Multi-turn RAG evaluation results
+
+DeepEval compared `RecursiveCharacterTextSplitter` (Basic) and semantic chunking on the same five Harborline conversations, with three user questions per conversation. Scores are means on a 0–1 scale. Pass counts use a threshold of 0.70 per metric and are counted per conversation.
+
+| Metric | Recursive mean | Semantic mean | Recursive passed | Semantic passed |
+| --- | ---: | ---: | ---: | ---: |
+| Turn Contextual Relevancy | 0.52 | 0.53 | 1/5 | 1/5 |
+| Turn Contextual Precision | 0.92 | 0.81 | 5/5 | 3/5 |
+| Turn Contextual Recall | 0.70 | 0.72 | 2/5 | 3/5 |
+| Turn Faithfulness | 0.85 | 0.81 | 4/5 | 4/5 |
+
+Semantic chunking improved mean turn contextual recall (0.70 → 0.72), and one more conversation passed that metric. Mean turn contextual precision fell (0.92 → 0.81), and two fewer conversations passed it. Mean turn faithfulness also fell (0.85 → 0.81), with four conversations passing in both runs. Turn contextual relevancy passed in one conversation per run. Each chunker passed all four metrics in one conversation: standard cutoff and dispatch for recursive chunking, and chilled temperature and quality hold for semantic chunking.
+
+In the single-turn benchmark, semantic chunking also improved recall (0.77 → 0.80). Precision rose slightly in the single-turn run (0.89 → 0.91) and fell in the multi-turn run (0.92 → 0.81). These results reflect one run per chunker in each benchmark.
+
+[Evaluation reports and configuration](evals_results/)

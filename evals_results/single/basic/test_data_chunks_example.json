@@ -1,0 +1,110 @@
+{
+  "ids": [
+    "-1_10",
+    "-1_11",
+    "-1_12",
+    "-1_13",
+    "-1_14"
+  ],
+  "embeddings": null,
+  "documents": [
+    "HARBORLINE  /  FULFILLMENT\nHF-OPS-2026-Q4   ·   v2.4\nSYNTHETIC TEST DOCUMENT  ·  NOT A REAL OPERATIONS POLICY\n03 / 10\n03 / INVENTORY\nInbound receiving and storage controls\nScan controls, variance rules and environmental limits.\n3.1 Warehouse specialization\nWRO-1 (Wroclaw) handles all chilled grocery stock and a limited ambient overflow zone. POZ-2 (Poznan)\nhandles the primary ambient catalog and returns inspection. A chilled order may be picked only at",
+    "WRO-1; POZ-2 does not hold chilled inventory.\n3.2 Receiving and stock variance\nInbound pallets must receive their first dock scan within four hours of their recorded arrival. Each stock\nkeeping unit (SKU) is reconciled against its expected quantity. Escalate a variance to Inventory Control\nwhen the absolute difference is greater than three units OR greater than 2% of expected quantity.\nExactly three missing units do not trigger the unit threshold, but can still trigger the percentage\nthreshold.",
+    "threshold.\nFor example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore\nrequires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does\nnot cross either escalation threshold. Negative and positive variances follow the same rule.\n3.3 Chilled conditions and sensor policies\nThe chilled-grocery storage target is 2-6 degrees Celsius. A temperature alert is raised when a monitored",
+    "location is above 6 degrees Celsius for more than 10 consecutive minutes. A quality hold is mandatory\nwhen the measured temperature is above 8 degrees Celsius for more than 5 consecutive minutes. The\nquality hold remains active until a documented release decision is recorded by the Quality Lead.\nStationary cold-room sensors are reviewed twice per operating day. Their formal calibration cycle is\nannual, with the next documented calibration due on 15 January 2027. A missed calibration is a",
+    "quality-system finding and must be escalated even when temperature readings appear plausible.\nTHRESHOLD LOGIC\n“More than” is strict. Exactly 10 minutes above 6 C is not sufficient for an alert; exactly 5 minutes above 8 C is\nnot sufficient for the mandatory hold."
+  ],
+  "uris": null,
+  "included": [
+    "documents",
+    "metadatas"
+  ],
+  "data": null,
+  "metadatas": [
+    {
+      "title": "Harborline Fulfillment - Synthetic RAG Evaluation Handbook v2.4",
+      "user_id": -1,
+      "producer": "ReportLab PDF Library - (opensource)",
+      "total_pages": 10,
+      "source": "tests/RAG_evals/data/harborline_rag_benchmark_10_pages.pdf",
+      "subject": "Ten-page fictional knowledge base for single-turn RAG evaluations",
+      "creator": "(unspecified)",
+      "author": "Synthetic RAG Benchmark",
+      "page": 2,
+      "file_id": -1,
+      "creationdate": "2026-10-13T15:39:54+00:00",
+      "trapped": "/False",
+      "moddate": "2026-10-13T15:39:54+00:00",
+      "keywords": "",
+      "page_label": "3"
+    },
+    {
+      "keywords": "",
+      "source": "tests/RAG_evals/data/harborline_rag_benchmark_10_pages.pdf",
+      "producer": "ReportLab PDF Library - (opensource)",
+      "file_id": -1,
+      "creator": "(unspecified)",
+      "page_label": "3",
+      "trapped": "/False",
+      "author": "Synthetic RAG Benchmark",
+      "moddate": "2026-10-13T15:39:54+00:00",
+      "title": "Harborline Fulfillment - Synthetic RAG Evaluation Handbook v2.4",
+      "total_pages": 10,
+      "subject": "Ten-page fictional knowledge base for single-turn RAG evaluations",
+      "page": 2,
+      "creationdate": "2026-10-13T15:39:54+00:00",
+      "user_id": -1
+    },
+    {
+      "page": 2,
+      "creationdate": "2026-10-13T15:39:54+00:00",
+      "total_pages": 10,
+      "producer": "ReportLab PDF Library - (opensource)",
+      "source": "tests/RAG_evals/data/harborline_rag_benchmark_10_pages.pdf",
+      "author": "Synthetic RAG Benchmark",
+      "keywords": "",
+      "file_id": -1,
+      "creator": "(unspecified)",
+      "page_label": "3",
+      "title": "Harborline Fulfillment - Synthetic RAG Evaluation Handbook v2.4",
+      "subject": "Ten-page fictional knowledge base for single-turn RAG evaluations",
+      "user_id": -1,
+      "trapped": "/False",
+      "moddate": "2026-10-13T15:39:54+00:00"
+    },
+    {
+      "user_id": -1,
+      "moddate": "2026-10-13T15:39:54+00:00",
+      "trapped": "/False",
+      "keywords": "",
+      "creator": "(unspecified)",
+      "source": "tests/RAG_evals/data/harborline_rag_benchmark_10_pages.pdf",
+      "page_label": "3",
+      "title": "Harborline Fulfillment - Synthetic RAG Evaluation Handbook v2.4",
+      "total_pages": 10,
+      "subject": "Ten-page fictional knowledge base for single-turn RAG evaluations",
+      "creationdate": "2026-10-13T15:39:54+00:00",
+      "file_id": -1,
+      "producer": "ReportLab PDF Library - (opensource)",
+      "author": "Synthetic RAG Benchmark",
+      "page": 2
+    },
+    {
+      "moddate": "2026-10-13T15:39:54+00:00",
+      "file_id": -1,
+      "page": 2,
+      "author": "Synthetic RAG Benchmark",
+      "keywords": "",
+      "total_pages": 10,
+      "source": "tests/RAG_evals/data/harborline_rag_benchmark_10_pages.pdf",
+      "page_label": "3",
+      "creator": "(unspecified)",
+      "title": "Harborline Fulfillment - Synthetic RAG Evaluation Handbook v2.4",
+      "user_id": -1,
+      "trapped": "/False",
+      "creationdate": "2026-10-13T15:39:54+00:00",
+      "producer": "ReportLab PDF Library - (opensource)",
+      "subject": "Ten-page fictional knowledge base for single-turn RAG evaluations"
+    }
+  ]
+}

@@ -2,14 +2,19 @@ from pathlib import Path
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
+from langchain_experimental.text_splitter import SemanticChunker
+from langchain_ollama.embeddings import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from loguru import logger
 
 
 class DocumentIndexingService:
-    def __init__(self, chunk_size: int, chunk_overlap: int) -> None:
+    def __init__(
+        self, chunk_size: int, chunk_overlap: int, embedding_model: str
+    ) -> None:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.embeddings = OllamaEmbeddings(model=embedding_model)
 
     def load_and_split_pdf(
         self, user_id: int, file_path: Path, file_db_id: int
@@ -39,12 +44,18 @@ class DocumentIndexingService:
         loader = PyPDFLoader(file_path=file_path)
         doc = loader.load()
         logger.info("Loaded file")
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap,
+
+        # splitter = RecursiveCharacterTextSplitter(
+        #     chunk_size=self.chunk_size,
+        #     chunk_overlap=self.chunk_overlap,
+        # )
+        semantic_splitter = SemanticChunker(
+            embeddings=self.embeddings,
+            breakpoint_threshold_amount=90,
+            breakpoint_threshold_type="percentile",
         )
 
-        doc_split = splitter.split_documents(doc)
+        doc_split = semantic_splitter.split_documents(doc)
 
         for doc in doc_split:
             doc.metadata["user_id"] = user_id

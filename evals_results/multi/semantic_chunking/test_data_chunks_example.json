@@ -1,0 +1,72 @@
+{
+  "ids": [
+    "-1_6",
+    "-1_7",
+    "-1_8"
+  ],
+  "embeddings": null,
+  "documents": [
+    "HARBORLINE  /  FULFILLMENT\nHF-OPS-2026-Q4   ·   v2.4\nSYNTHETIC TEST DOCUMENT  ·  NOT A REAL OPERATIONS POLICY\n03 / 10\n03 / INVENTORY\nInbound receiving and storage controls\nScan controls, variance rules and environmental limits. 3.1 Warehouse specialization\nWRO-1 (Wroclaw) handles all chilled grocery stock and a limited ambient overflow zone. POZ-2 (Poznan)\nhandles the primary ambient catalog and returns inspection. A chilled order may be picked only at\nWRO-1; POZ-2 does not hold chilled inventory. 3.2 Receiving and stock variance\nInbound pallets must receive their first dock scan within four hours of their recorded arrival. Each stock\nkeeping unit (SKU) is reconciled against its expected quantity. Escalate a variance to Inventory Control\nwhen the absolute difference is greater than three units OR greater than 2% of expected quantity. Exactly three missing units do not trigger the unit threshold, but can still trigger the percentage\nthreshold. For example, receiving 97 units against 100 expected creates a three-unit, 3% shortage and therefore\nrequires escalation. Receiving 197 against 200 expected creates a three-unit, 1.5% shortage and does\nnot cross either escalation threshold.",
+    "Negative and positive variances follow the same rule. 3.3 Chilled conditions and sensor policies\nThe chilled-grocery storage target is 2-6 degrees Celsius. A temperature alert is raised when a monitored\nlocation is above 6 degrees Celsius for more than 10 consecutive minutes. A quality hold is mandatory\nwhen the measured temperature is above 8 degrees Celsius for more than 5 consecutive minutes. The\nquality hold remains active until a documented release decision is recorded by the Quality Lead. Stationary cold-room sensors are reviewed twice per operating day. Their formal calibration cycle is\nannual, with the next documented calibration due on 15 January 2027. A missed calibration is a\nquality-system finding and must be escalated even when temperature readings appear plausible.",
+    "THRESHOLD LOGIC\n“More than” is strict. Exactly 10 minutes above 6 C is not sufficient for an alert; exactly 5 minutes above 8 C is\nnot sufficient for the mandatory hold."
+  ],
+  "uris": null,
+  "included": [
+    "documents",
+    "metadatas"
+  ],
+  "data": null,
+  "metadatas": [
+    {
+      "source": "tests/RAG_evals/data/harborline_rag_benchmark_10_pages.pdf",
+      "total_pages": 10,
+      "user_id": -1,
+      "author": "Synthetic RAG Benchmark",
+      "page_label": "3",
+      "producer": "ReportLab PDF Library - (opensource)",
+      "file_id": -1,
+      "creationdate": "2026-10-13T15:39:54+00:00",
+      "creator": "(unspecified)",
+      "keywords": "",
+      "subject": "Ten-page fictional knowledge base for single-turn RAG evaluations",
+      "moddate": "2026-10-13T15:39:54+00:00",
+      "title": "Harborline Fulfillment - Synthetic RAG Evaluation Handbook v2.4",
+      "page": 2,
+      "trapped": "/False"
+    },
+    {
+      "page": 2,
+      "creator": "(unspecified)",
+      "creationdate": "2026-10-13T15:39:54+00:00",
+      "author": "Synthetic RAG Benchmark",
+      "user_id": -1,
+      "file_id": -1,
+      "source": "tests/RAG_evals/data/harborline_rag_benchmark_10_pages.pdf",
+      "subject": "Ten-page fictional knowledge base for single-turn RAG evaluations",
+      "producer": "ReportLab PDF Library - (opensource)",
+      "page_label": "3",
+      "moddate": "2026-10-13T15:39:54+00:00",
+      "trapped": "/False",
+      "keywords": "",
+      "total_pages": 10,
+      "title": "Harborline Fulfillment - Synthetic RAG Evaluation Handbook v2.4"
+    },
+    {
+      "total_pages": 10,
+      "trapped": "/False",
+      "title": "Harborline Fulfillment - Synthetic RAG Evaluation Handbook v2.4",
+      "page": 2,
+      "source": "tests/RAG_evals/data/harborline_rag_benchmark_10_pages.pdf",
+      "author": "Synthetic RAG Benchmark",
+      "moddate": "2026-10-13T15:39:54+00:00",
+      "creator": "(unspecified)",
+      "page_label": "3",
+      "subject": "Ten-page fictional knowledge base for single-turn RAG evaluations",
+      "producer": "ReportLab PDF Library - (opensource)",
+      "user_id": -1,
+      "keywords": "",
+      "file_id": -1,
+      "creationdate": "2026-10-13T15:39:54+00:00"
+    }
+  ]
+}

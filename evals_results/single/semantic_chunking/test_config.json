@@ -1,0 +1,5 @@
+{
+  "embedding_model": "embeddinggemma",
+  "top_k": 40,
+  "method": "Semantic chunking"
+}

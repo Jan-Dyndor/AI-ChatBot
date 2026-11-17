@@ -11,8 +11,7 @@ storage/*
 chroma-data/*
 !chroma_data/.gitkeep
 .deepeval
-evals_results/*
-!evals_results/.gitkeep
+evals_results/**/.test_run.lock
 .DS_Store
 .env.docker
 !.env.docker.example

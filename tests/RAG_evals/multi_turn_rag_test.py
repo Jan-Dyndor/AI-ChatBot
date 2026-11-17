@@ -31,17 +31,21 @@ TEST_USR_ID: int = -1
 
 settings = get_settings()
 config = {
-    "chunk_size": settings.chunk_size,
-    "chunk_overlap": settings.chunk_overlap,
+    # "chunk_size": settings.chunk_size,
+    # "chunk_overlap": settings.chunk_overlap,
     "embedding_model": settings.embedding_model,
     "top_k": settings.test_deepevals_top_k,
+    "method": "Semantic chunking",
 }
 
-config_path = Path("evals_results/multi/basic/test_config.json")
-data_chunks_path = Path("evals_results/multi/basic/test_data_chunks_example.json")
-multi_turn_golden_dataset_path: Path = Path("tests/RAG_evals/multi_turn_goldens.json")
+config_path = Path("evals_results/multi/semantic_chunking/test_config.json")
+data_chunks_path = Path(
+    "evals_results/multi/semantic_chunking/test_data_chunks_example.json"
+)
 
-test_results_path: str = "./evals_results/multi/basic/test_results"
+test_results_path: str = "./evals_results/multi/semantic_chunking/test_results"
+
+multi_turn_golden_dataset_path: Path = Path("tests/RAG_evals/multi_turn_goldens.json")
 # Create directories if they don't exist
 config_path.parent.mkdir(parents=True, exist_ok=True)
 data_chunks_path.parent.mkdir(parents=True, exist_ok=True)
@@ -53,7 +57,9 @@ with config_path.open("w", encoding="utf-8") as f:
 with tempfile.TemporaryDirectory() as test_temp_dir:
 
     document_index_service = DocumentIndexingService(
-        chunk_overlap=settings.chunk_overlap, chunk_size=settings.chunk_size
+        chunk_overlap=settings.chunk_overlap,
+        chunk_size=settings.chunk_size,
+        embedding_model=settings.embedding_model,
     )
 
     chat_client = ChatBotClient(ollama_url=settings.ollama_url)

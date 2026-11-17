@@ -141,6 +141,7 @@ def get_vector_store_service() -> FileVectorStorage:
     document_index_service = DocumentIndexingService(
         chunk_overlap=settings.chunk_overlap,
         chunk_size=settings.chunk_size,
+        embedding_model=settings.embedding_model,
     )
 
     return FileVectorStorage(

@@ -114,7 +114,9 @@ def get_vector_storage(request: Request):
 
 def get_indexing_service(settings: Settings = Depends(get_settings)):
     return DocumentIndexingService(
-        chunk_overlap=settings.chunk_overlap, chunk_size=settings.chunk_size
+        chunk_overlap=settings.chunk_overlap,
+        chunk_size=settings.chunk_size,
+        embedding_model=settings.embedding_model,
     )
 
 

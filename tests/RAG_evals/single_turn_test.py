@@ -31,15 +31,16 @@ TEST_USR_ID: int = -1
 
 settings = get_settings()
 config = {
-    "chunk_size": settings.chunk_size,
-    "chunk_overlap": settings.chunk_overlap,
+    # "chunk_size": settings.chunk_size,
+    # "chunk_overlap": settings.chunk_overlap,
     "embedding_model": settings.embedding_model,
     "top_k": settings.test_deepevals_top_k,
+    "method": "Semantic chunking",
 }
-test_results_path: str = "./evals_results/single/basic/test_results"
-config_path: Path = Path("evals_results/single/basic/test_config.json")
+test_results_path: str = "./evals_results/single/semantic_chunking/test_results"
+config_path: Path = Path("evals_results/single/semantic_chunking/test_config.json")
 data_chunks_path: Path = Path(
-    "evals_results/single/basic/test_data_chunks_example.json"
+    "evals_results/single/semantic_chunking/test_data_chunks_example.json"
 )
 single_turn_golden_dataset_path: Path = Path("tests/RAG_evals/single_turn_goldens.json")
 
@@ -61,7 +62,9 @@ with tempfile.TemporaryDirectory() as dir_storage_test:
     )
 
     document_index_service = DocumentIndexingService(
-        chunk_overlap=settings.chunk_overlap, chunk_size=settings.chunk_size
+        chunk_overlap=settings.chunk_overlap,
+        chunk_size=settings.chunk_size,
+        embedding_model=settings.embedding_model,
     )
 
     chat_client = ChatBotClient(ollama_url=settings.ollama_url)

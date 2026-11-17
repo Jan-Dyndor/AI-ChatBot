@@ -200,5 +200,18 @@ uv run python tests/RAG_evals/single_turn_test.py
 uv run python tests/RAG_evals/multi_turn_rag_test.py
 ```
 
+If DeepEval times out, increase its per-attempt and per-task timeouts before
+rerunning either script:
+
+```bash
+export DEEPEVAL_PER_ATTEMPT_TIMEOUT_SECONDS_OVERRIDE=600
+export DEEPEVAL_PER_TASK_TIMEOUT_SECONDS_OVERRIDE=600
+uv run python tests/RAG_evals/single_turn_test.py
+# or: uv run python tests/RAG_evals/multi_turn_rag_test.py
+```
+
+The `600`-second values are a starting point. Adjust them for the available
+hardware, the selected model, and whether the evaluation runs asynchronously.
+
 Reports go to `evals_results/`. To evaluate another PDF, update the benchmark
 file and matching golden JSON in `tests/RAG_evals/`.
